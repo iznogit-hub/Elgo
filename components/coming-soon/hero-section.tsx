@@ -26,16 +26,7 @@ export function HeroSection() {
           stagger: 0.15,
         }
       );
-
-      // Subtle floating animation for the background blob
-      gsap.to(".hero-blob", {
-        y: -20,
-        rotation: 10,
-        duration: 5,
-        repeat: -1,
-        yoyo: true,
-        ease: "sine.inOut",
-      });
+      // Note: The blob animation code was removed here
     },
     { scope: containerRef }
   );
@@ -45,10 +36,9 @@ export function HeroSection() {
       ref={containerRef}
       className="relative flex min-h-[70vh] w-full flex-col items-center justify-center overflow-hidden px-4 py-12 md:px-6"
     >
-      {/* Background Decorator */}
-      <div className="hero-blob pointer-events-none absolute top-1/2 left-1/2 -z-10 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 opacity-20">
-        <div className="h-full w-full rounded-full bg-linear-to-tr from-primary to-violet-500 blur-[100px]" />
-      </div>
+      {/* REMOVED: The local background blob div. 
+               The global Background component now handles this.
+            */}
 
       <div className="container flex flex-col items-center space-y-8 text-center">
         <div className="space-y-4">
@@ -58,7 +48,7 @@ export function HeroSection() {
           <h1 className="hero-animate text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl">
             Something amazing is
             <br className="hidden sm:inline" />
-            <span className="text-transparent bg-clip-text bg-linear-to-r from-primary to-primary/60">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary/60">
               {" "}
               in the works.
             </span>
