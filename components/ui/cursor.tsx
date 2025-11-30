@@ -125,7 +125,7 @@ export function Cursor() {
   );
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-[9999] hidden md:block">
+    <div className="pointer-events-none fixed inset-0 z-9999 hidden md:block">
       <div
         ref={cursorRef}
         className={cn(
