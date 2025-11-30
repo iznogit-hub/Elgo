@@ -40,7 +40,6 @@ export function AvatarImage({ onImageLoad, startAnimation }: AvatarImageProps) {
   );
 
   return (
-    // Set initial opacity to 0 via class to ensure it's hidden before JS loads
     <div
       ref={containerRef}
       className="fixed bottom-0 left-0 z-50 hidden md:block opacity-0"
@@ -50,6 +49,7 @@ export function AvatarImage({ onImageLoad, startAnimation }: AvatarImageProps) {
           src="/me.png"
           alt="Avatar"
           fill
+          sizes="(max-width: 768px) 100vw, 256px"
           className="object-contain object-bottom-left drop-shadow-2xl"
           priority
           draggable={false}
