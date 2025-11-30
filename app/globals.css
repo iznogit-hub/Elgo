@@ -120,3 +120,29 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ... existing code ... */
+
+/* --- VIEW TRANSITIONS API OVERRIDES --- */
+
+/* 1. Stop all default browser animations */
+::view-transition-group(root),
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none !important;
+  mix-blend-mode: normal !important;
+}
+
+/* 2. Ensure the "New" state is ALWAYS on top */
+::view-transition-new(root) {
+  z-index: 9999;
+  /* Default to transparent/closed so we can animate it open */
+  clip-path: circle(0px at 50% 50%);
+}
+
+/* 3. Ensure the "Old" state sits behind */
+::view-transition-old(root) {
+  z-index: 1;
+  /* Force it to stay visible until covered */
+  opacity: 1;
+}
