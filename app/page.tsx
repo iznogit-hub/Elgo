@@ -1,21 +1,24 @@
-import Link from "next/link"; // Import added here
+import Link from "next/link";
 import { HeroSection } from "@/components/coming-soon/hero-section";
 import { SocialLinks } from "@/components/coming-soon/social-links";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Background } from "@/components/coming-soon/background";
 import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
 import { Logo } from "@/components/ui/logo";
+import { AvatarImage } from "@/components/ui/avatar-image";
 
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between bg-background text-foreground selection:bg-primary selection:text-primary-foreground">
+    // UPDATED:
+    // 1. 'h-screen' forces exact viewport height (no more, no less).
+    // 2. 'overflow-hidden' clips any potential scrollbars.
+    <main className="flex h-screen w-full flex-col items-center justify-between overflow-hidden bg-background text-foreground selection:bg-primary selection:text-primary-foreground">
       <Background />
 
       {/* Navigation Header */}
-      <nav className="flex w-full items-center justify-between p-6 md:px-12 z-10">
+      <nav className="flex w-full items-center justify-between p-6 md:px-12 z-10 shrink-0">
         <div className="flex items-center gap-2">
           <MagneticWrapper strength={0.2}>
-            {/* FIXED: Changed <a> to <Link> for internal routing */}
             <Link href="/" aria-label="Home" className="block">
               <Logo className="h-8 w-auto text-foreground transition-transform hover:scale-105" />
             </Link>
@@ -27,13 +30,16 @@ export default function Home() {
         </MagneticWrapper>
       </nav>
 
-      {/* Central Content */}
-      <div className="w-full z-10">
+      {/* Central Content - Allows flex growth to center perfectly */}
+      <div className="w-full z-10 flex-grow flex flex-col justify-center">
         <HeroSection />
       </div>
 
+      {/* Fixed Avatar Widget (Bottom Left) */}
+      <AvatarImage />
+
       {/* Footer Section */}
-      <footer className="flex w-full flex-col items-center gap-6 pb-12 pt-8 z-10">
+      <footer className="flex w-full flex-col items-center gap-6 pb-8 pt-8 z-10 shrink-0">
         <SocialLinks />
         <p className="text-xs text-muted-foreground">
           © {new Date().getFullYear()} t7sen. All rights reserved.
