@@ -2,6 +2,7 @@ import { HeroSection } from "@/components/coming-soon/hero-section";
 import { SocialLinks } from "@/components/coming-soon/social-links";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Background } from "@/components/coming-soon/background";
+import { MagneticWrapper } from "@/components/ui/magnetic-wrapper"; // Import here
 
 export default function Home() {
   return (
@@ -15,7 +16,10 @@ export default function Home() {
             t7sen
           </span>
         </div>
-        <ThemeToggle />
+        {/* Wrap the Theme Toggle */}
+        <MagneticWrapper strength={0.6}>
+          <ThemeToggle />
+        </MagneticWrapper>
       </nav>
 
       {/* Central Content */}
