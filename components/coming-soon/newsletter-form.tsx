@@ -90,7 +90,7 @@ export function NewsletterForm() {
         ref={formRef}
         onSubmit={handleSubmit(onSubmit)}
         onMouseMove={handleMouseMove}
-        className="group relative flex flex-col gap-2 rounded-xl p-[1px]"
+        className="group relative flex flex-col gap-2 rounded-xl p-px"
       >
         {/* --- Spotlight Glow Layer --- 
                     This sits behind the input. It uses a radial gradient that follows the mouse.
