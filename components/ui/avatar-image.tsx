@@ -31,14 +31,14 @@ export function AvatarImage() {
       ref={containerRef}
       className="fixed bottom-0 left-0 z-50 hidden md:block"
     >
-      <div className="relative h-[256px] w-[256px]">
+      <div className="relative h-64 w-[256px]">
         {/* REMOVED: Background glow div */}
 
         <Image
           src="/me.png"
           alt="Avatar"
           fill
-          className="object-contain object-left-bottom drop-shadow-2xl"
+          className="object-contain object-bottom-left drop-shadow-2xl"
           priority
           draggable={false}
         />
