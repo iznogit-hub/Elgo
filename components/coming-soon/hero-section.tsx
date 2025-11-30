@@ -5,6 +5,7 @@ import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { NewsletterForm } from "@/components/coming-soon/newsletter-form";
 import { HackerText } from "@/components/ui/hacker-text";
+import { DiscordStatus } from "@/components/coming-soon/discord-status"; // Import here
 
 gsap.registerPlugin(useGSAP);
 
@@ -36,10 +37,12 @@ export function HeroSection() {
       className="relative flex min-h-[70vh] w-full flex-col items-center justify-center overflow-hidden px-4 py-12 md:px-6"
     >
       <div className="container flex flex-col items-center space-y-8 text-center">
-        <div className="space-y-4">
-          <div className="hero-animate inline-block rounded-full border border-border bg-background/50 px-3 py-1 text-sm text-muted-foreground backdrop-blur-sm">
-            t7sen.com
+        <div className="space-y-4 flex flex-col items-center">
+          {/* REPLACED: The old static pill with the Live Tracker */}
+          <div className="hero-animate mb-2">
+            <DiscordStatus />
           </div>
+
           <h1 className="hero-animate text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl">
             Something amazing is
             <br className="hidden sm:inline" />
