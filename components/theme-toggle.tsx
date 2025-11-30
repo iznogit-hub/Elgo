@@ -5,6 +5,7 @@ import { useTheme } from "next-themes";
 import { flushSync } from "react-dom";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
+import { useSfx } from "@/hooks/use-sfx"; // Import SFX Hook
 
 import { Button } from "@/components/ui/button";
 
@@ -13,7 +14,8 @@ gsap.registerPlugin(useGSAP);
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  
+  const { play } = useSfx(); // Initialize SFX
+
   // Animation Lock to prevent flashing during rapid clicks
   const lockedRef = useRef(false);
 
@@ -51,6 +53,9 @@ export function ThemeToggle() {
   const toggleTheme = async (e: React.MouseEvent<HTMLButtonElement>) => {
     // 1. BLOCK: If animation is running, ignore click.
     if (!mounted || lockedRef.current) return;
+
+    // PLAY SOUND: Immediate click feedback
+    play("click");
 
     const isDark = theme === "dark";
     const nextTheme = isDark ? "light" : "dark";
@@ -99,7 +104,7 @@ export function ThemeToggle() {
 
     // 4. UNLOCK: When animation finishes, allow clicking again
     wipeAnimation.onfinish = () => {
-        lockedRef.current = false;
+      lockedRef.current = false;
     };
 
     // 5. Animate the Icon (Morphing)

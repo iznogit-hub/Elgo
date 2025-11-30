@@ -11,7 +11,8 @@ import { Logo } from "@/components/ui/logo";
 import { AvatarImage } from "@/components/ui/avatar-image";
 import { Preloader } from "@/components/ui/preloader";
 import { Cursor } from "@/components/ui/cursor";
-import { CommandMenu } from "@/components/command-menu"; // Import here
+import { CommandMenu } from "@/components/command-menu";
+import { SoundToggle } from "@/components/sound-toggle";
 
 export default function Home() {
   const [assetsLoaded, setAssetsLoaded] = useState(false);
@@ -39,9 +40,15 @@ export default function Home() {
           </MagneticWrapper>
         </div>
 
-        <MagneticWrapper strength={0.6}>
-          <ThemeToggle />
-        </MagneticWrapper>
+        <div className="flex items-center gap-2">
+          <MagneticWrapper strength={0.6}>
+            <SoundToggle />
+          </MagneticWrapper>
+
+          <MagneticWrapper strength={0.6}>
+            <ThemeToggle />
+          </MagneticWrapper>
+        </div>
       </nav>
       <div className="w-full z-10 grow flex flex-col justify-center">
         <HeroSection startAnimation={assetsLoaded} />

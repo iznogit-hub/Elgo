@@ -4,37 +4,23 @@ import * as React from "react";
 import { Github, Linkedin, Twitter, Mail } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
+import { useSfx } from "@/hooks/use-sfx";
 
 import { Button } from "@/components/ui/button";
-import { MagneticWrapper } from "@/components/ui/magnetic-wrapper"; // Import the new wrapper
+import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
 
 gsap.registerPlugin(useGSAP);
 
 const socialLinks = [
-  {
-    name: "GitHub",
-    href: "https://github.com/t7sen",
-    icon: Github,
-  },
-  {
-    name: "LinkedIn",
-    href: "https://linkedin.com/in/t7sen",
-    icon: Linkedin,
-  },
-  {
-    name: "Twitter",
-    href: "https://twitter.com/t7sen",
-    icon: Twitter,
-  },
-  {
-    name: "Email",
-    href: "mailto:contact@t7sen.com",
-    icon: Mail,
-  },
+  { name: "GitHub", href: "https://github.com/t7sen", icon: Github },
+  { name: "LinkedIn", href: "https://linkedin.com/in/t7sen", icon: Linkedin },
+  { name: "Twitter", href: "https://twitter.com/t7sen", icon: Twitter },
+  { name: "Email", href: "mailto:contact@t7sen.com", icon: Mail },
 ];
 
 export function SocialLinks() {
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const { play } = useSfx();
 
   useGSAP(
     () => {
@@ -54,12 +40,16 @@ export function SocialLinks() {
     <div ref={containerRef} className="flex items-center gap-4">
       {socialLinks.map((item) => (
         <div key={item.name} className="social-item">
-          {/* Wrap each button in the MagneticWrapper */}
+          {/* The wrapper handles the Hover Sound */}
           <MagneticWrapper strength={0.4}>
             <Button
               variant="ghost"
               size="icon"
               asChild
+              // The button handles the Click Sound
+              // Because this is a prop, it re-renders with the component
+              // and always sees the current 'play' function
+              onClick={() => play("click")}
               className="text-muted-foreground transition-transform duration-200 hover:scale-110 hover:text-foreground hover:bg-muted/50"
             >
               <a

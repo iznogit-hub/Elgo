@@ -3,6 +3,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
+import { useSfx } from "@/hooks/use-sfx"; // Import Hook
 
 interface PreloaderProps {
   contentLoaded: boolean;
@@ -11,6 +12,7 @@ interface PreloaderProps {
 export function Preloader({ contentLoaded }: PreloaderProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [count, setCount] = useState(0);
+  const { play } = useSfx(); // Initialize SFX
 
   const counterTween = useRef<gsap.core.Tween | null>(null);
   const counterObj = useRef({ value: 0 });
@@ -32,6 +34,9 @@ export function Preloader({ contentLoaded }: PreloaderProps) {
 
   useEffect(() => {
     if (contentLoaded && containerRef.current) {
+      // PLAY SOUND: System Ready Chime
+      play("success");
+
       if (counterTween.current) counterTween.current.kill();
 
       const tl = gsap.timeline();
@@ -61,16 +66,13 @@ export function Preloader({ contentLoaded }: PreloaderProps) {
 
       tl.set(containerRef.current, { display: "none" });
     }
-  }, [contentLoaded]);
+  }, [contentLoaded, play]);
 
   return (
     <div
       ref={containerRef}
-      // UPDATED: 'justify-center items-center' forces true center
-      // Removed px-6 md:px-12 to avoid offset
       className="fixed inset-0 z-99999 flex h-screen w-full items-center justify-center bg-background"
     >
-      {/* UPDATED: 'items-center' to center text block */}
       <div className="preloader-content flex flex-col items-center justify-center text-center">
         <div className="text-6xl font-bold tracking-tighter md:text-8xl lg:text-9xl">
           {count}%

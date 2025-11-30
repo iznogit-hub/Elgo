@@ -3,18 +3,19 @@
 import * as React from "react";
 import { Music, Gamepad2, Moon, Code2 } from "lucide-react";
 import { useLanyard } from "@/hooks/use-lanyard";
+import { useSfx } from "@/hooks/use-sfx"; // Import Hook
 import { cn } from "@/lib/utils";
 
 const DISCORD_ID = "170916597156937728";
 
 export function DiscordStatus() {
   const { data, isConnected } = useLanyard(DISCORD_ID);
+  const { play } = useSfx(); // Initialize
 
-  // Robust Loading Skeleton
-  // Matches the exact dimensions of the loaded state to prevent layout shift
   if (!data || !isConnected) {
     return (
       <div className="flex min-w-[220px] items-center gap-3 rounded-2xl border border-border/50 bg-background/40 px-4 py-3 backdrop-blur-md">
+        {/* ... loading skeletons ... */}
         <div className="relative">
           <div className="h-10 w-10 animate-pulse rounded-full bg-muted" />
           <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background bg-muted-foreground" />
@@ -35,7 +36,6 @@ export function DiscordStatus() {
     spotify,
   } = data;
 
-  // Determine Primary Activity
   let statusText = "Chilling";
   let StatusIcon = Moon;
   let isActivity = false;
@@ -47,8 +47,6 @@ export function DiscordStatus() {
   } else if (activities.length > 0) {
     const game = activities.find((a) => a.type !== 4) || activities[0];
     if (game.type !== 4) {
-      // Not custom status
-      // VS Code Detection (Special Flex)
       if (game.name === "Visual Studio Code") {
         statusText = "Coding";
         StatusIcon = Code2;
@@ -62,7 +60,6 @@ export function DiscordStatus() {
     }
   }
 
-  // Status Color Map
   const statusColor = {
     online: "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]",
     idle: "bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.4)]",
@@ -75,12 +72,15 @@ export function DiscordStatus() {
       href={`https://discord.com/users/${DISCORD_ID}`}
       target="_blank"
       rel="noopener noreferrer"
+      // EXISTING: Hover Sound
+      onMouseEnter={() => play("hover")}
+      // ADDED: Click Sound
+      onClick={() => play("click")}
       className="group relative flex min-w-[220px] items-center gap-4 rounded-2xl border border-border/40 bg-background/40 px-4 py-3 backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:bg-background/60 hover:shadow-xl hover:shadow-primary/5 active:scale-[0.98] active:translate-y-0"
     >
-      {/* Avatar Wrapper */}
+      {/* ... rest of the component ... */}
       <div className="relative shrink-0">
         {discord_user.avatar ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={`https://cdn.discordapp.com/avatars/${discord_user.id}/${discord_user.avatar}.png`}
             alt={discord_user.username}
@@ -89,8 +89,6 @@ export function DiscordStatus() {
         ) : (
           <div className="h-10 w-10 rounded-full bg-muted border border-border/50" />
         )}
-
-        {/* Status Indicator (Pulse) */}
         <span
           className={cn(
             "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background transition-all duration-300",
@@ -99,7 +97,6 @@ export function DiscordStatus() {
         />
       </div>
 
-      {/* Info Section */}
       <div className="flex flex-col text-left overflow-hidden">
         <div className="flex items-center gap-1.5">
           <span className="text-sm font-bold leading-none text-foreground tracking-tight">
@@ -120,7 +117,6 @@ export function DiscordStatus() {
         </div>
       </div>
 
-      {/* Hover Glow Effect */}
       <div className="absolute -inset-px -z-10 rounded-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100 bg-linear-to-r from-primary/10 via-transparent to-transparent blur-sm" />
     </a>
   );

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { newsletterSchema, type NewsletterFormValues } from "@/lib/validators";
 import { cn } from "@/lib/utils";
+import { useSfx } from "@/hooks/use-sfx";
 
 gsap.registerPlugin(useGSAP);
 
@@ -18,6 +19,7 @@ export function NewsletterForm() {
   const [isSubmitted, setIsSubmitted] = React.useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const formRef = React.useRef<HTMLFormElement>(null);
+  const { play } = useSfx(); // Initialize
 
   const form = useForm<NewsletterFormValues>({
     resolver: zodResolver(newsletterSchema),
@@ -32,7 +34,6 @@ export function NewsletterForm() {
     formState: { errors, isSubmitting },
   } = form;
 
-  // --- 1. Spotlight Logic ---
   const handleMouseMove = (e: React.MouseEvent<HTMLFormElement>) => {
     if (!formRef.current) return;
     const rect = formRef.current.getBoundingClientRect();
@@ -43,9 +44,9 @@ export function NewsletterForm() {
     formRef.current.style.setProperty("--mouse-y", `${y}px`);
   };
 
-  // --- 2. Animations ---
   useGSAP(
     () => {
+      // ... animations ...
       if (isSubmitted) {
         gsap.from(".success-msg", {
           opacity: 0,
@@ -71,6 +72,7 @@ export function NewsletterForm() {
     await new Promise((resolve) => setTimeout(resolve, 1500));
     console.log("Form submitted:", data);
     setIsSubmitted(true);
+    play("success");
   }
 
   if (isSubmitted) {
@@ -90,11 +92,11 @@ export function NewsletterForm() {
         ref={formRef}
         onSubmit={handleSubmit(onSubmit)}
         onMouseMove={handleMouseMove}
+        // ADDED: Play sound when user enters the form area
+        onMouseEnter={() => play("hover")}
         className="group relative flex flex-col gap-2 rounded-xl p-px"
       >
-        {/* --- Spotlight Glow Layer --- 
-                    This sits behind the input. It uses a radial gradient that follows the mouse.
-                */}
+        {/* ... rest of the form ... */}
         <div
           className="pointer-events-none absolute -inset-px rounded-xl opacity-0 transition-opacity duration-300 group-hover:opacity-100"
           style={{
@@ -102,7 +104,6 @@ export function NewsletterForm() {
           }}
         />
 
-        {/* Secondary static border for non-hover state */}
         <div className="absolute inset-0 rounded-xl border border-border/50" />
 
         <div className="relative flex items-center gap-2 z-10 bg-background/80 backdrop-blur-xl rounded-xl p-1">
@@ -120,6 +121,12 @@ export function NewsletterForm() {
             type="submit"
             size="icon"
             disabled={isSubmitting}
+            onMouseEnter={(e) => {
+              e.stopPropagation();
+              play("hover");
+            }}
+            // PLAY SOUND: On Click
+            onClick={() => play("click")}
             className="h-9 w-9 shrink-0 rounded-lg transition-all hover:scale-105"
           >
             {isSubmitting ? (

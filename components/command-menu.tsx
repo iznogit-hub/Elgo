@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
   Laptop,
@@ -25,34 +24,52 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/command";
-import { Button } from "@/components/ui/button";
+import { useSfx } from "@/hooks/use-sfx";
 
 export function CommandMenu() {
   const [open, setOpen] = React.useState(false);
   const { setTheme } = useTheme();
-  const router = useRouter();
+  const { play } = useSfx();
 
-  // 1. Event Listener for CMD+K
+  // 1. Toggle Event Listener
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
+        if (!open) play("click");
         setOpen((open) => !open);
       }
     };
     document.addEventListener("keydown", down);
     return () => document.removeEventListener("keydown", down);
-  }, []);
+  }, [open, play]);
 
-  // 2. Action Handlers
-  const runCommand = React.useCallback((command: () => void) => {
-    setOpen(false);
-    command();
-  }, []);
+  // 2. Keyboard Navigation Sound
+  React.useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+        play("hover");
+      }
+      if (e.key === "Enter") {
+        play("click");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, play]);
+
+  const runCommand = React.useCallback(
+    (command: () => void) => {
+      play("success");
+      setOpen(false);
+      command();
+    },
+    [play]
+  );
 
   return (
     <>
-      {/* Optional: A visual hint button in the bottom right (for mobile users) */}
       <div className="fixed bottom-4 right-4 z-50 hidden md:flex items-center gap-2 text-muted-foreground text-xs pointer-events-none">
         <span className="bg-muted px-2 py-1 rounded border border-border/50">
           ⌘ K
@@ -71,6 +88,8 @@ export function CommandMenu() {
                   window.open("mailto:contact@t7sen.com", "_self")
                 )
               }
+              // ADDED: Mouse Hover Sound
+              onMouseEnter={() => play("hover")}
             >
               <Mail className="mr-2 h-4 w-4" />
               <span>Send Email</span>
@@ -82,6 +101,7 @@ export function CommandMenu() {
                   navigator.clipboard.writeText("contact@t7sen.com")
                 )
               }
+              onMouseEnter={() => play("hover")}
             >
               <ArrowRight className="mr-2 h-4 w-4" />
               <span>Copy Email</span>
@@ -97,6 +117,7 @@ export function CommandMenu() {
                   window.open("https://github.com/t7sen", "_blank")
                 )
               }
+              onMouseEnter={() => play("hover")}
             >
               <Github className="mr-2 h-4 w-4" />
               <span>GitHub</span>
@@ -107,6 +128,7 @@ export function CommandMenu() {
                   window.open("https://linkedin.com/in/t7sen", "_blank")
                 )
               }
+              onMouseEnter={() => play("hover")}
             >
               <Linkedin className="mr-2 h-4 w-4" />
               <span>LinkedIn</span>
@@ -117,6 +139,7 @@ export function CommandMenu() {
                   window.open("https://twitter.com/t7sen", "_blank")
                 )
               }
+              onMouseEnter={() => play("hover")}
             >
               <Twitter className="mr-2 h-4 w-4" />
               <span>Twitter</span>
@@ -126,15 +149,24 @@ export function CommandMenu() {
           <CommandSeparator />
 
           <CommandGroup heading="Theme">
-            <CommandItem onSelect={() => runCommand(() => setTheme("light"))}>
+            <CommandItem
+              onSelect={() => runCommand(() => setTheme("light"))}
+              onMouseEnter={() => play("hover")}
+            >
               <Sun className="mr-2 h-4 w-4" />
               <span>Light Mode</span>
             </CommandItem>
-            <CommandItem onSelect={() => runCommand(() => setTheme("dark"))}>
+            <CommandItem
+              onSelect={() => runCommand(() => setTheme("dark"))}
+              onMouseEnter={() => play("hover")}
+            >
               <Moon className="mr-2 h-4 w-4" />
               <span>Dark Mode</span>
             </CommandItem>
-            <CommandItem onSelect={() => runCommand(() => setTheme("system"))}>
+            <CommandItem
+              onSelect={() => runCommand(() => setTheme("system"))}
+              onMouseEnter={() => play("hover")}
+            >
               <Laptop className="mr-2 h-4 w-4" />
               <span>System</span>
             </CommandItem>
@@ -145,6 +177,7 @@ export function CommandMenu() {
           <CommandGroup heading="System">
             <CommandItem
               onSelect={() => runCommand(() => window.location.reload())}
+              onMouseEnter={() => play("hover")}
             >
               <RotateCcw className="mr-2 h-4 w-4" />
               <span>Reboot System</span>
