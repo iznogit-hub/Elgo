@@ -4,6 +4,7 @@ import * as React from "react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { NewsletterForm } from "@/components/coming-soon/newsletter-form";
+import { HackerText } from "@/components/ui/hacker-text";
 
 gsap.registerPlugin(useGSAP);
 
@@ -14,7 +15,6 @@ export function HeroSection() {
     () => {
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
-      // Animate elements with the class 'hero-animate'
       tl.fromTo(
         ".hero-animate",
         { y: 40, opacity: 0, filter: "blur(10px)" },
@@ -26,7 +26,6 @@ export function HeroSection() {
           stagger: 0.15,
         }
       );
-      // Note: The blob animation code was removed here
     },
     { scope: containerRef }
   );
@@ -36,10 +35,6 @@ export function HeroSection() {
       ref={containerRef}
       className="relative flex min-h-[70vh] w-full flex-col items-center justify-center overflow-hidden px-4 py-12 md:px-6"
     >
-      {/* REMOVED: The local background blob div. 
-               The global Background component now handles this.
-            */}
-
       <div className="container flex flex-col items-center space-y-8 text-center">
         <div className="space-y-4">
           <div className="hero-animate inline-block rounded-full border border-border bg-background/50 px-3 py-1 text-sm text-muted-foreground backdrop-blur-sm">
@@ -50,7 +45,7 @@ export function HeroSection() {
             <br className="hidden sm:inline" />
             <span className="text-transparent bg-clip-text bg-linear-to-r from-primary to-primary/60">
               {" "}
-              in the works.
+              <HackerText text="in the works." />
             </span>
           </h1>
           <p className="hero-animate mx-auto max-w-[600px] text-muted-foreground md:text-xl">
