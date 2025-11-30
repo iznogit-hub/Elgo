@@ -1,21 +1,21 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image"; // Import Image
 import { Music, Gamepad2, Moon, Code2 } from "lucide-react";
 import { useLanyard } from "@/hooks/use-lanyard";
-import { useSfx } from "@/hooks/use-sfx"; // Import Hook
+import { useSfx } from "@/hooks/use-sfx";
 import { cn } from "@/lib/utils";
 
 const DISCORD_ID = "170916597156937728";
 
 export function DiscordStatus() {
   const { data, isConnected } = useLanyard(DISCORD_ID);
-  const { play } = useSfx(); // Initialize
+  const { play } = useSfx();
 
   if (!data || !isConnected) {
     return (
       <div className="flex min-w-[220px] items-center gap-3 rounded-2xl border border-border/50 bg-background/40 px-4 py-3 backdrop-blur-md">
-        {/* ... loading skeletons ... */}
         <div className="relative">
           <div className="h-10 w-10 animate-pulse rounded-full bg-muted" />
           <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background bg-muted-foreground" />
@@ -72,23 +72,24 @@ export function DiscordStatus() {
       href={`https://discord.com/users/${DISCORD_ID}`}
       target="_blank"
       rel="noopener noreferrer"
-      // EXISTING: Hover Sound
       onMouseEnter={() => play("hover")}
-      // ADDED: Click Sound
       onClick={() => play("click")}
       className="group relative flex min-w-[220px] items-center gap-4 rounded-2xl border border-border/40 bg-background/40 px-4 py-3 backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:bg-background/60 hover:shadow-xl hover:shadow-primary/5 active:scale-[0.98] active:translate-y-0"
     >
-      {/* ... rest of the component ... */}
       <div className="relative shrink-0">
         {discord_user.avatar ? (
-          <img
+          // UPDATED: Used Next.js Image component
+          <Image
             src={`https://cdn.discordapp.com/avatars/${discord_user.id}/${discord_user.avatar}.png`}
             alt={discord_user.username}
+            width={40}
+            height={40}
             className="h-10 w-10 rounded-full border border-border/50 bg-muted transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
           <div className="h-10 w-10 rounded-full bg-muted border border-border/50" />
         )}
+
         <span
           className={cn(
             "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background transition-all duration-300",

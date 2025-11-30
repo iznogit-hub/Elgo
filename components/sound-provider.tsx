@@ -17,13 +17,15 @@ interface SoundContextType {
   toggleMute: () => void;
 }
 
+// STRICT TYPING: Extend the Window interface to include the Webkit prefix
+interface WindowWithWebkit extends Window {
+  webkitAudioContext: typeof AudioContext;
+}
+
 const SoundContext = createContext<SoundContextType | undefined>(undefined);
 
 export function SoundProvider({ children }: { children: React.ReactNode }) {
   const [isMuted, setIsMuted] = useState(false);
-
-  // 1. Create a Ref to track mute state synchronously
-  // This allows 'play' to access the latest value without being recreated
   const isMutedRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
 
@@ -31,29 +33,30 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
     const stored = localStorage.getItem("sound-muted");
     if (stored) {
       const val = JSON.parse(stored);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsMuted(val);
       isMutedRef.current = val;
     }
 
+    // Type-safe fallback for Safari
     const AudioContextClass =
-      window.AudioContext || (window as any).webkitAudioContext;
+      window.AudioContext ||
+      (window as unknown as WindowWithWebkit).webkitAudioContext;
+
     if (AudioContextClass) {
-      audioContextRef.current = new AudioContext();
+      audioContextRef.current = new AudioContextClass();
     }
   }, []);
 
   const toggleMute = useCallback(() => {
     setIsMuted((prev) => {
       const next = !prev;
-      // Update Ref immediately
       isMutedRef.current = next;
       localStorage.setItem("sound-muted", JSON.stringify(next));
       return next;
     });
   }, []);
 
-  // 2. The 'play' function is now stable (no dependencies)
-  // It checks the Ref instead of the State
   const play = useCallback((type: SoundType) => {
     if (isMutedRef.current || !audioContextRef.current) return;
 
@@ -103,7 +106,7 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
         osc.stop(st + 0.1);
       });
     }
-  }, []); // Empty dependency array = Stable Reference
+  }, []);
 
   return (
     <SoundContext.Provider value={{ play, isMuted, toggleMute }}>
