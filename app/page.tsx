@@ -10,7 +10,8 @@ import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
 import { Logo } from "@/components/ui/logo";
 import { AvatarImage } from "@/components/ui/avatar-image";
 import { Preloader } from "@/components/ui/preloader";
-import { Cursor } from "@/components/ui/cursor"; // Import here
+import { Cursor } from "@/components/ui/cursor";
+import { CommandMenu } from "@/components/command-menu"; // Import here
 
 export default function Home() {
   const [assetsLoaded, setAssetsLoaded] = useState(false);
@@ -24,15 +25,12 @@ export default function Home() {
 
   return (
     <main className="flex h-screen w-full flex-col items-center justify-between overflow-hidden bg-background text-foreground selection:bg-primary selection:text-primary-foreground">
-      {/* Custom Cursor System */}
+      {/* Global Interactive Layers */}
       <Cursor />
-
       <Preloader contentLoaded={assetsLoaded} />
-
+      <CommandMenu /> {/* The Palette */}
       <Background />
-
       <nav className="flex w-full items-center justify-between p-6 md:px-12 z-10 shrink-0">
-        {/* ... existing nav code ... */}
         <div className="flex items-center gap-2">
           <MagneticWrapper strength={0.2}>
             <Link href="/" aria-label="Home" className="block">
@@ -45,16 +43,13 @@ export default function Home() {
           <ThemeToggle />
         </MagneticWrapper>
       </nav>
-
       <div className="w-full z-10 grow flex flex-col justify-center">
         <HeroSection startAnimation={assetsLoaded} />
       </div>
-
       <AvatarImage
         onImageLoad={() => setAssetsLoaded(true)}
         startAnimation={assetsLoaded}
       />
-
       <footer className="flex w-full flex-col items-center gap-6 pb-8 pt-8 z-10 shrink-0">
         <SocialLinks />
         <p className="text-xs text-muted-foreground">
