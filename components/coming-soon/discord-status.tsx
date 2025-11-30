@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Loader2, Music, Gamepad2, Moon, Code2 } from "lucide-react";
+import { Music, Gamepad2, Moon, Code2 } from "lucide-react";
 import { useLanyard } from "@/hooks/use-lanyard";
 import { cn } from "@/lib/utils";
 
@@ -80,6 +80,7 @@ export function DiscordStatus() {
       {/* Avatar Wrapper */}
       <div className="relative shrink-0">
         {discord_user.avatar ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={`https://cdn.discordapp.com/avatars/${discord_user.id}/${discord_user.avatar}.png`}
             alt={discord_user.username}
@@ -120,7 +121,7 @@ export function DiscordStatus() {
       </div>
 
       {/* Hover Glow Effect */}
-      <div className="absolute -inset-px -z-10 rounded-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100 bg-gradient-to-r from-primary/10 via-transparent to-transparent blur-sm" />
+      <div className="absolute -inset-px -z-10 rounded-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100 bg-linear-to-r from-primary/10 via-transparent to-transparent blur-sm" />
     </a>
   );
 }
