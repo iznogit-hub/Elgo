@@ -1,8 +1,10 @@
+import Link from "next/link"; // Import added here
 import { HeroSection } from "@/components/coming-soon/hero-section";
 import { SocialLinks } from "@/components/coming-soon/social-links";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Background } from "@/components/coming-soon/background";
-import { MagneticWrapper } from "@/components/ui/magnetic-wrapper"; // Import here
+import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
+import { Logo } from "@/components/ui/logo";
 
 export default function Home() {
   return (
@@ -11,12 +13,15 @@ export default function Home() {
 
       {/* Navigation Header */}
       <nav className="flex w-full items-center justify-between p-6 md:px-12 z-10">
-        <div className="text-xl font-bold tracking-tighter">
-          <span className="cursor-default transition-colors hover:text-primary">
-            t7sen
-          </span>
+        <div className="flex items-center gap-2">
+          <MagneticWrapper strength={0.2}>
+            {/* FIXED: Changed <a> to <Link> for internal routing */}
+            <Link href="/" aria-label="Home" className="block">
+              <Logo className="h-8 w-auto text-foreground transition-transform hover:scale-105" />
+            </Link>
+          </MagneticWrapper>
         </div>
-        {/* Wrap the Theme Toggle */}
+
         <MagneticWrapper strength={0.6}>
           <ThemeToggle />
         </MagneticWrapper>
