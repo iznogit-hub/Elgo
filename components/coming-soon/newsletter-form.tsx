@@ -17,6 +17,7 @@ gsap.registerPlugin(useGSAP);
 export function NewsletterForm() {
   const [isSubmitted, setIsSubmitted] = React.useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const formRef = React.useRef<HTMLFormElement>(null);
 
   const form = useForm<NewsletterFormValues>({
     resolver: zodResolver(newsletterSchema),
@@ -31,7 +32,18 @@ export function NewsletterForm() {
     formState: { errors, isSubmitting },
   } = form;
 
-  // Animate Success Message or Errors when they appear
+  // --- 1. Spotlight Logic ---
+  const handleMouseMove = (e: React.MouseEvent<HTMLFormElement>) => {
+    if (!formRef.current) return;
+    const rect = formRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    formRef.current.style.setProperty("--mouse-x", `${x}px`);
+    formRef.current.style.setProperty("--mouse-y", `${y}px`);
+  };
+
+  // --- 2. Animations ---
   useGSAP(
     () => {
       if (isSubmitted) {
@@ -56,13 +68,11 @@ export function NewsletterForm() {
   );
 
   async function onSubmit(data: NewsletterFormValues) {
-    // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1500));
     console.log("Form submitted:", data);
     setIsSubmitted(true);
   }
 
-  // Render Success State
   if (isSubmitted) {
     return (
       <div ref={containerRef}>
@@ -74,18 +84,34 @@ export function NewsletterForm() {
     );
   }
 
-  // Render Form State
   return (
     <div ref={containerRef} className="w-full max-w-sm">
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-2">
-        <div className="relative flex items-center gap-2">
+      <form
+        ref={formRef}
+        onSubmit={handleSubmit(onSubmit)}
+        onMouseMove={handleMouseMove}
+        className="group relative flex flex-col gap-2 rounded-xl p-[1px]"
+      >
+        {/* --- Spotlight Glow Layer --- 
+                    This sits behind the input. It uses a radial gradient that follows the mouse.
+                */}
+        <div
+          className="pointer-events-none absolute -inset-px rounded-xl opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+          style={{
+            background: `radial-gradient(600px circle at var(--mouse-x) var(--mouse-y), rgba(255,255,255,0.4), transparent 40%)`,
+          }}
+        />
+
+        {/* Secondary static border for non-hover state */}
+        <div className="absolute inset-0 rounded-xl border border-border/50" />
+
+        <div className="relative flex items-center gap-2 z-10 bg-background/80 backdrop-blur-xl rounded-xl p-1">
           <Input
             {...register("email")}
             placeholder="Enter your email"
             className={cn(
-              "pr-12 transition-all duration-200 bg-background/50 backdrop-blur-sm",
-              errors.email &&
-                "border-destructive focus-visible:ring-destructive"
+              "pr-12 border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50",
+              errors.email && "text-destructive placeholder:text-destructive/50"
             )}
             disabled={isSubmitting}
             autoComplete="email"
@@ -94,7 +120,7 @@ export function NewsletterForm() {
             type="submit"
             size="icon"
             disabled={isSubmitting}
-            className="absolute right-1 h-8 w-8 transition-all"
+            className="h-9 w-9 shrink-0 rounded-lg transition-all hover:scale-105"
           >
             {isSubmitting ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -104,8 +130,9 @@ export function NewsletterForm() {
             <span className="sr-only">Notify me</span>
           </Button>
         </div>
+
         {errors.email && (
-          <p className="error-msg text-xs text-destructive px-1">
+          <p className="error-msg absolute -bottom-6 left-1 text-xs text-destructive">
             {errors.email.message}
           </p>
         )}
