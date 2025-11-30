@@ -3,7 +3,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
-import { useSfx } from "@/hooks/use-sfx"; // Import Hook
+import { useSfx } from "@/hooks/use-sfx";
 
 interface PreloaderProps {
   contentLoaded: boolean;
@@ -12,13 +12,24 @@ interface PreloaderProps {
 export function Preloader({ contentLoaded }: PreloaderProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [count, setCount] = useState(0);
-  const { play } = useSfx(); // Initialize SFX
+  const [mounted, setMounted] = useState(false);
+  const { play } = useSfx();
 
   const counterTween = useRef<gsap.core.Tween | null>(null);
   const counterObj = useRef({ value: 0 });
 
+  // 1. Prevent Hydration Mismatch
+  useEffect(() => {
+    // This double-render is intentional to ensure the component
+    // only mounts on the client side.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
+
   useGSAP(
     () => {
+      if (!mounted) return;
+
       // Initial Load: Animate 0 -> 85% slowly
       counterTween.current = gsap.to(counterObj.current, {
         value: 85,
@@ -29,12 +40,11 @@ export function Preloader({ contentLoaded }: PreloaderProps) {
         },
       });
     },
-    { scope: containerRef }
+    { scope: containerRef, dependencies: [mounted] }
   );
 
   useEffect(() => {
-    if (contentLoaded && containerRef.current) {
-      // PLAY SOUND: System Ready Chime
+    if (mounted && contentLoaded && containerRef.current) {
       play("success");
 
       if (counterTween.current) counterTween.current.kill();
@@ -66,7 +76,9 @@ export function Preloader({ contentLoaded }: PreloaderProps) {
 
       tl.set(containerRef.current, { display: "none" });
     }
-  }, [contentLoaded, play]);
+  }, [contentLoaded, play, mounted]);
+
+  if (!mounted) return null;
 
   return (
     <div

@@ -116,6 +116,7 @@ export function NewsletterForm() {
             )}
             disabled={isSubmitting}
             autoComplete="email"
+            suppressHydrationWarning
           />
           <Button
             type="submit"
