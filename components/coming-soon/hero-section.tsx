@@ -44,7 +44,7 @@ export function HeroSection() {
         <h1 className="hero-animate text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-8xl">
           Something amazing is
           <br className="hidden sm:inline" />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary/60">
+          <span className="text-transparent bg-clip-text bg-linear-to-r from-primary to-primary/60">
             {" "}
             <HackerText text="in the works." />
           </span>

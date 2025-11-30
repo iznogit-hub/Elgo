@@ -31,7 +31,7 @@ export default function Home() {
       </nav>
 
       {/* Central Content - Allows flex growth to center perfectly */}
-      <div className="w-full z-10 flex-grow flex flex-col justify-center">
+      <div className="w-full z-10 grow flex flex-col justify-center">
         <HeroSection />
       </div>
 
