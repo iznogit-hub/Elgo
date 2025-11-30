@@ -4,7 +4,7 @@ export function Background() {
   return (
     <div className="fixed inset-0 -z-50 h-full w-full overflow-hidden bg-background">
       {/* 1. Technical Grid Layer */}
-      <div className="absolute inset-0 h-full w-full bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)]" />
+      <div className="absolute inset-0 h-full w-full bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-size-[40px_40px] mask-[radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)]" />
 
       {/* 2. Film Grain Layer */}
       <div className="pointer-events-none absolute inset-0 opacity-[0.03] mix-blend-overlay">
