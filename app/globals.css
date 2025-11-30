@@ -146,3 +146,31 @@
   /* Force it to stay visible until covered */
   opacity: 1;
 }
+
+/* ... existing code ... */
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
+
+    /* ADD THIS: Hide default cursor on desktop */
+    @media (min-width: 768px) {
+      cursor: none;
+    }
+  }
+
+  /* Ensure links/buttons also hide the cursor */
+  a,
+  button,
+  input {
+    @media (min-width: 768px) {
+      cursor: none;
+    }
+  }
+}
+
+/* ... view transitions code ... */

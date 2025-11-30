@@ -10,11 +10,11 @@ import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
 import { Logo } from "@/components/ui/logo";
 import { AvatarImage } from "@/components/ui/avatar-image";
 import { Preloader } from "@/components/ui/preloader";
+import { Cursor } from "@/components/ui/cursor"; // Import here
 
 export default function Home() {
   const [assetsLoaded, setAssetsLoaded] = useState(false);
 
-  // Safety fallback
   useEffect(() => {
     const timer = setTimeout(() => {
       setAssetsLoaded(true);
@@ -24,14 +24,15 @@ export default function Home() {
 
   return (
     <main className="flex h-screen w-full flex-col items-center justify-between overflow-hidden bg-background text-foreground selection:bg-primary selection:text-primary-foreground">
+      {/* Custom Cursor System */}
+      <Cursor />
+
       <Preloader contentLoaded={assetsLoaded} />
 
       <Background />
 
-      {/* Header: We can optionally animate this in too, 
-               but static header is often better for UX.
-            */}
       <nav className="flex w-full items-center justify-between p-6 md:px-12 z-10 shrink-0">
+        {/* ... existing nav code ... */}
         <div className="flex items-center gap-2">
           <MagneticWrapper strength={0.2}>
             <Link href="/" aria-label="Home" className="block">
@@ -49,7 +50,6 @@ export default function Home() {
         <HeroSection startAnimation={assetsLoaded} />
       </div>
 
-      {/* PASS THE SIGNAL HERE */}
       <AvatarImage
         onImageLoad={() => setAssetsLoaded(true)}
         startAnimation={assetsLoaded}
