@@ -12,14 +12,16 @@ import { Input } from "@/components/ui/input";
 import { newsletterSchema, type NewsletterFormValues } from "@/lib/validators";
 import { cn } from "@/lib/utils";
 import { useSfx } from "@/hooks/use-sfx";
+import { subscribe } from "@/app/actions/subscribe"; // Import Server Action
 
 gsap.registerPlugin(useGSAP);
 
 export function NewsletterForm() {
   const [isSubmitted, setIsSubmitted] = React.useState(false);
+  const [serverError, setServerError] = React.useState<string | null>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const formRef = React.useRef<HTMLFormElement>(null);
-  const { play } = useSfx(); // Initialize
+  const { play } = useSfx();
 
   const form = useForm<NewsletterFormValues>({
     resolver: zodResolver(newsletterSchema),
@@ -46,13 +48,21 @@ export function NewsletterForm() {
 
   useGSAP(
     () => {
-      // ... animations ...
       if (isSubmitted) {
         gsap.from(".success-msg", {
           opacity: 0,
           scale: 0.9,
           duration: 0.5,
           ease: "back.out(1.7)",
+        });
+      }
+
+      // Animate server error if it appears
+      if (serverError) {
+        gsap.from(".server-error", {
+          opacity: 0,
+          y: -10,
+          duration: 0.3,
         });
       }
 
@@ -65,14 +75,29 @@ export function NewsletterForm() {
         });
       }
     },
-    { scope: containerRef, dependencies: [isSubmitted, errors.email] }
+    {
+      scope: containerRef,
+      dependencies: [isSubmitted, errors.email, serverError],
+    }
   );
 
   async function onSubmit(data: NewsletterFormValues) {
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    console.log("Form submitted:", data);
-    setIsSubmitted(true);
-    play("success");
+    setServerError(null); // Clear previous errors
+
+    // Create FormData to send to Server Action
+    const formData = new FormData();
+    formData.append("email", data.email);
+
+    // Call Server Action
+    const result = await subscribe(formData);
+
+    if (result.error) {
+      setServerError(result.error);
+      play("click"); // Reuse click sound for error feedback
+    } else {
+      setIsSubmitted(true);
+      play("success");
+    }
   }
 
   if (isSubmitted) {
@@ -92,11 +117,9 @@ export function NewsletterForm() {
         ref={formRef}
         onSubmit={handleSubmit(onSubmit)}
         onMouseMove={handleMouseMove}
-        // ADDED: Play sound when user enters the form area
         onMouseEnter={() => play("hover")}
         className="group relative flex flex-col gap-2 rounded-xl p-px"
       >
-        {/* ... rest of the form ... */}
         <div
           className="pointer-events-none absolute -inset-px rounded-xl opacity-0 transition-opacity duration-300 group-hover:opacity-100"
           style={{
@@ -126,7 +149,6 @@ export function NewsletterForm() {
               e.stopPropagation();
               play("hover");
             }}
-            // PLAY SOUND: On Click
             onClick={() => play("click")}
             className="h-9 w-9 shrink-0 rounded-lg transition-all hover:scale-105"
           >
@@ -139,9 +161,17 @@ export function NewsletterForm() {
           </Button>
         </div>
 
+        {/* Zod Validation Error */}
         {errors.email && (
           <p className="error-msg absolute -bottom-6 left-1 text-xs text-destructive">
             {errors.email.message}
+          </p>
+        )}
+
+        {/* Server-Side Error (e.g. API fail) */}
+        {serverError && (
+          <p className="server-error absolute -bottom-6 left-1 text-xs text-destructive font-medium">
+            {serverError}
           </p>
         )}
       </form>

@@ -40,7 +40,12 @@ export function AvatarImage({
   return (
     <div
       ref={containerRef}
-      className="fixed bottom-0 left-0 z-50 hidden md:block opacity-0"
+      // UPDATED CLASS:
+      // 'hidden' by default
+      // 'xl:block' -> Only show on XL screens (Desktop) to keep mobile clean
+      // OR 'lg:block' if you want it on smaller laptops.
+      // I recommend hiding it on mobile/tablet to give text full focus.
+      className="fixed bottom-0 left-0 z-50 hidden xl:block opacity-0"
     >
       <Link
         href="/about"
