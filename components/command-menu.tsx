@@ -14,7 +14,6 @@ import {
   ArrowRight,
   User,
   Home,
-  FileText,
   Volume2,
   VolumeX,
   Gamepad2,
@@ -89,8 +88,6 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
 
   return (
     <>
-      {/* REMOVED: The fixed bottom div */}
-
       <CommandDialog open={open} onOpenChange={setOpen}>
         <CommandInput placeholder="Type a command or search..." />
         <CommandList>
@@ -134,15 +131,6 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
                 <VolumeX className="mr-2 h-4 w-4" />
               )}
               <span>{isMuted ? "Unmute Sounds" : "Mute Sounds"}</span>
-            </CommandItem>
-            <CommandItem
-              onSelect={() =>
-                runCommand(() => window.open("/resume.pdf", "_blank"))
-              }
-              onMouseEnter={() => play("hover")}
-            >
-              <FileText className="mr-2 h-4 w-4" />
-              <span>View Resume</span>
             </CommandItem>
             <CommandItem
               onSelect={() =>
@@ -211,7 +199,7 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
           <CommandGroup heading="System">
             {onOpenGame && (
               <CommandItem
-                onSelect={() => runCommand(() => onOpenGame())}
+                onSelect={() => runCommand(onOpenGame)}
                 onMouseEnter={() => play("hover")}
               >
                 <Gamepad2 className="mr-2 h-4 w-4" />

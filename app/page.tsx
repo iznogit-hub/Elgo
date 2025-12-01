@@ -12,14 +12,17 @@ import { AvatarImage } from "@/components/ui/avatar-image";
 import { Preloader } from "@/components/ui/preloader";
 import { Cursor } from "@/components/ui/cursor";
 import { CommandMenu } from "@/components/command-menu";
+import { SnakeTerminal } from "@/components/snake/snake-terminal";
 
 export default function Home() {
   const [assetsLoaded, setAssetsLoaded] = useState(false);
+  const [isGameOpen, setIsGameOpen] = useState(false);
   const { play } = useSfx();
 
   // Konami Code Logic
   useKonami(() => {
     play("success");
+    setIsGameOpen(true);
     const duration = 3 * 1000;
     const animationEnd = Date.now() + duration;
     const defaults = {
@@ -60,7 +63,8 @@ export default function Home() {
     <main className="flex h-screen w-full flex-col items-center justify-between overflow-hidden bg-background text-foreground selection:bg-primary selection:text-primary-foreground">
       <Cursor />
       <Preloader contentLoaded={assetsLoaded} />
-      <CommandMenu />
+      <CommandMenu onOpenGame={() => setIsGameOpen(true)} />
+      {isGameOpen && <SnakeTerminal onClose={() => setIsGameOpen(false)} />}
       <Background />
 
       <div className="w-full z-10 grow flex flex-col justify-center">
