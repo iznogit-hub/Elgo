@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/react"; // Import Analytics
-import { SpeedInsights } from "@vercel/speed-insights/next"; // Import Speed Insights
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SoundProvider } from "@/components/sound-provider";
 import { TabManager } from "@/components/ui/tab-manager";
+import { Navbar } from "@/components/navbar"; // Import here
 import "./globals.css";
 
 const geistSans = Geist({
@@ -18,7 +19,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("http://localhost:3000"), // Remember to change this when deploying
+  metadataBase: new URL("http://localhost:3000"),
   title: "t7sen | Portfolio",
   description: "Something amazing is being built.",
   openGraph: {
@@ -49,9 +50,12 @@ export default function RootLayout({
         >
           <SoundProvider>
             <TabManager />
+
+            {/* GLOBAL NAVIGATION BAR */}
+            <Navbar />
+
             {children}
-            {/* ANALYTICS INJECTION */}
-            {/* These components render nothing visually but collect data silently */}
+
             <Analytics />
             <SpeedInsights />
           </SoundProvider>

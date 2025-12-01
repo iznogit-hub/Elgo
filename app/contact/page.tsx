@@ -1,18 +1,13 @@
 "use client";
 
-import React, { useRef } from "react";
+import { useRef } from "react";
 import Link from "next/link";
 import { ArrowLeft, Wifi } from "lucide-react"; // Added Wifi icon
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 
 import { Background } from "@/components/coming-soon/background";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { SoundToggle } from "@/components/sound-toggle";
-import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
-import { Logo } from "@/components/ui/logo";
 import { CommandMenu } from "@/components/command-menu";
-import { CommandTrigger } from "@/components/command-trigger";
 import { Cursor } from "@/components/ui/cursor";
 import { Button } from "@/components/ui/button";
 import { useSfx } from "@/hooks/use-sfx";
@@ -58,33 +53,6 @@ export default function ContactPage() {
       <Cursor />
       <CommandMenu />
       <Background />
-
-      <nav className="flex w-full items-center justify-between p-6 md:px-12 z-10 shrink-0">
-        <div className="flex items-center gap-2">
-          <MagneticWrapper strength={0.2}>
-            <Link
-              href="/"
-              aria-label="Home"
-              className="block cursor-none"
-              onClick={() => play("click")}
-            >
-              <Logo className="h-8 w-auto text-foreground transition-transform hover:scale-105" />
-            </Link>
-          </MagneticWrapper>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <MagneticWrapper strength={0.6}>
-            <CommandTrigger />
-          </MagneticWrapper>
-          <MagneticWrapper strength={0.6}>
-            <SoundToggle />
-          </MagneticWrapper>
-          <MagneticWrapper strength={0.6}>
-            <ThemeToggle />
-          </MagneticWrapper>
-        </div>
-      </nav>
 
       <div className="container mx-auto z-10 flex flex-col justify-center px-4 md:px-6 mt-8 max-w-2xl">
         <div className="back-btn mb-8 opacity-0">

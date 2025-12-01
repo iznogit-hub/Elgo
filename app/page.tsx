@@ -1,25 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import confetti from "canvas-confetti";
-import { Mail } from "lucide-react"; // Import Mail Icon
 import { useSfx } from "@/hooks/use-sfx";
 import { useKonami } from "@/hooks/use-konami";
 
 import { HeroSection } from "@/components/coming-soon/hero-section";
 import { SocialLinks } from "@/components/coming-soon/social-links";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { SoundToggle } from "@/components/sound-toggle";
 import { Background } from "@/components/coming-soon/background";
-import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
-import { Logo } from "@/components/ui/logo";
 import { AvatarImage } from "@/components/ui/avatar-image";
 import { Preloader } from "@/components/ui/preloader";
 import { Cursor } from "@/components/ui/cursor";
 import { CommandMenu } from "@/components/command-menu";
-import { CommandTrigger } from "@/components/command-trigger";
-import { Button } from "@/components/ui/button"; // Import Button
 
 export default function Home() {
   const [assetsLoaded, setAssetsLoaded] = useState(false);
@@ -70,45 +62,6 @@ export default function Home() {
       <Preloader contentLoaded={assetsLoaded} />
       <CommandMenu />
       <Background />
-
-      {/* --- NAVBAR --- */}
-      <nav className="flex w-full items-center justify-between p-6 md:px-12 z-10 shrink-0">
-        <div className="flex items-center gap-2">
-          <MagneticWrapper strength={0.2}>
-            <Link href="/" aria-label="Home" className="block">
-              <Logo className="h-8 w-auto text-foreground transition-transform hover:scale-105" />
-            </Link>
-          </MagneticWrapper>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <MagneticWrapper strength={0.6}>
-            <Link href="/contact" onClick={() => play("click")}>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative overflow-hidden w-10 h-10 rounded-full hover:bg-muted/50 transition-colors"
-                onMouseEnter={() => play("hover")}
-                aria-label="Contact Page"
-              >
-                <Mail className="h-5 w-5 text-foreground" />
-              </Button>
-            </Link>
-          </MagneticWrapper>
-
-          <MagneticWrapper strength={0.6}>
-            <CommandTrigger />
-          </MagneticWrapper>
-
-          <MagneticWrapper strength={0.6}>
-            <SoundToggle />
-          </MagneticWrapper>
-
-          <MagneticWrapper strength={0.6}>
-            <ThemeToggle />
-          </MagneticWrapper>
-        </div>
-      </nav>
 
       <div className="w-full z-10 grow flex flex-col justify-center">
         <HeroSection startAnimation={assetsLoaded} />
