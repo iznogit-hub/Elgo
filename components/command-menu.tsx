@@ -4,7 +4,6 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
-  Laptop,
   Moon,
   Sun,
   Github,
@@ -15,6 +14,7 @@ import {
   ArrowRight,
   User,
   Home,
+  FileText,
   Volume2,
   VolumeX,
   Gamepad2,
@@ -30,20 +30,19 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { useSfx } from "@/hooks/use-sfx";
-import { useSound } from "@/components/sound-provider"; // Import global sound state
+import { useSound } from "@/components/sound-provider";
 
 interface CommandMenuProps {
-  onOpenGame: () => void;
+  onOpenGame?: () => void;
 }
 
 export function CommandMenu({ onOpenGame }: CommandMenuProps) {
   const [open, setOpen] = React.useState(false);
   const { setTheme } = useTheme();
   const { play } = useSfx();
-  const { isMuted, toggleMute } = useSound(); // Access global mute state
+  const { isMuted, toggleMute } = useSound();
   const router = useRouter();
 
-  // 1. Toggle Event Listener
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
@@ -52,20 +51,28 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
         setOpen((open) => !open);
       }
     };
+
+    // NEW: Listen for custom event from Navbar button
+    const openHandler = () => {
+      if (!open) play("click");
+      setOpen(true);
+    };
+
     document.addEventListener("keydown", down);
-    return () => document.removeEventListener("keydown", down);
+    window.addEventListener("open-command-menu", openHandler); // Add Listener
+
+    return () => {
+      document.removeEventListener("keydown", down);
+      window.removeEventListener("open-command-menu", openHandler); // Cleanup
+    };
   }, [open, play]);
 
-  // 2. Keyboard Navigation Sound
+  // ... (Keep existing keyboard navigation useEffect) ...
   React.useEffect(() => {
     if (!open) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-        play("hover");
-      }
-      if (e.key === "Enter") {
-        play("click");
-      }
+      if (e.key === "ArrowUp" || e.key === "ArrowDown") play("hover");
+      if (e.key === "Enter") play("click");
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -82,11 +89,7 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
 
   return (
     <>
-      <div className="fixed bottom-4 right-4 z-50 hidden md:flex items-center gap-2 text-muted-foreground text-xs pointer-events-none select-none">
-        <span className="bg-muted px-2 py-1 rounded border border-border/50">
-          ⌘ K
-        </span>
-      </div>
+      {/* REMOVED: The fixed bottom div */}
 
       <CommandDialog open={open} onOpenChange={setOpen}>
         <CommandInput placeholder="Type a command or search..." />
@@ -123,6 +126,15 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
                 <VolumeX className="mr-2 h-4 w-4" />
               )}
               <span>{isMuted ? "Unmute Sounds" : "Mute Sounds"}</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() =>
+                runCommand(() => window.open("/resume.pdf", "_blank"))
+              }
+              onMouseEnter={() => play("hover")}
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              <span>View Resume</span>
             </CommandItem>
             <CommandItem
               onSelect={() =>
@@ -188,7 +200,16 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
 
           <CommandSeparator />
 
-          <CommandGroup heading="Theme">
+          <CommandGroup heading="System">
+            {onOpenGame && (
+              <CommandItem
+                onSelect={() => runCommand(() => onOpenGame())}
+                onMouseEnter={() => play("hover")}
+              >
+                <Gamepad2 className="mr-2 h-4 w-4" />
+                <span>Initialize Snake Protocol</span>
+              </CommandItem>
+            )}
             <CommandItem
               onSelect={() => runCommand(() => setTheme("light"))}
               onMouseEnter={() => play("hover")}
@@ -203,27 +224,6 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
               <Moon className="mr-2 h-4 w-4" />
               <span>Dark Mode</span>
             </CommandItem>
-            <CommandItem
-              onSelect={() => runCommand(() => setTheme("system"))}
-              onMouseEnter={() => play("hover")}
-            >
-              <Laptop className="mr-2 h-4 w-4" />
-              <span>System</span>
-            </CommandItem>
-          </CommandGroup>
-
-          <CommandSeparator />
-
-          <CommandGroup heading="System">
-            {/* ADDED: Game Trigger */}
-            <CommandItem
-              onSelect={() => runCommand(() => onOpenGame())}
-              onMouseEnter={() => play("hover")}
-            >
-              <Gamepad2 className="mr-2 h-4 w-4" />
-              <span>Initialize Snake Protocol</span>
-            </CommandItem>
-
             <CommandItem
               onSelect={() => runCommand(() => window.location.reload())}
               onMouseEnter={() => play("hover")}

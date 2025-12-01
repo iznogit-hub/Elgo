@@ -19,6 +19,7 @@ import { useSfx } from "@/hooks/use-sfx";
 import { cn } from "@/lib/utils";
 import { Globe } from "@/components/ui/globe";
 import { HackerText } from "@/components/ui/hacker-text";
+import { CommandTrigger } from "@/components/command-trigger";
 
 gsap.registerPlugin(useGSAP);
 
@@ -135,6 +136,9 @@ export default function AboutPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <MagneticWrapper strength={0.6}>
+            <CommandTrigger />
+          </MagneticWrapper>
           <MagneticWrapper strength={0.6}>
             <SoundToggle />
           </MagneticWrapper>

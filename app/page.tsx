@@ -18,6 +18,7 @@ import { Preloader } from "@/components/ui/preloader";
 import { Cursor } from "@/components/ui/cursor";
 import { CommandMenu } from "@/components/command-menu";
 import { SnakeTerminal } from "@/components/snake/snake-terminal";
+import { CommandTrigger } from "@/components/command-trigger";
 
 export default function Home() {
   const [assetsLoaded, setAssetsLoaded] = useState(false);
@@ -91,6 +92,9 @@ export default function Home() {
         </div>
 
         <div className="flex items-center gap-2">
+          <MagneticWrapper strength={0.6}>
+            <CommandTrigger />
+          </MagneticWrapper>
           <MagneticWrapper strength={0.6}>
             <SoundToggle />
           </MagneticWrapper>
