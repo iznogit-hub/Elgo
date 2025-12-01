@@ -19,62 +19,90 @@ export function useSnakeGame() {
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
 
-  // Refs for mutable state inside interval
   const directionRef = useRef<Direction>("RIGHT");
-  const gameLoopRef = useRef<NodeJS.Timeout | null>(null);
+  const gameLoopRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Only one direction change per game tick
+  const canChangeDirectionRef = useRef<boolean>(true);
+
+  // Load high score from localStorage once on mount
   useEffect(() => {
+    if (typeof window === "undefined") return;
     const stored = localStorage.getItem("snake-highscore");
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (stored) setHighScore(parseInt(stored, 10));
+    if (stored) {
+      const parsed = parseInt(stored, 10);
+      if (!Number.isNaN(parsed)) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setHighScore(parsed);
+      }
+    }
   }, []);
 
-  const generateFood = useCallback((currentSnake: Point[]) => {
-    let newFood: Point;
-    let isOnSnake;
-    do {
-      newFood = {
-        x: Math.floor(Math.random() * GRID_SIZE),
-        y: Math.floor(Math.random() * GRID_SIZE),
-      };
-      isOnSnake = currentSnake.some(
-        (segment) => segment.x === newFood.x && segment.y === newFood.y
-      );
-    } while (isOnSnake);
-    return newFood;
+  const generateFood = useCallback((currentSnake: Point[]): Point => {
+    // Simple random spawn that avoids snake body
+    while (true) {
+      const x = Math.floor(Math.random() * GRID_SIZE);
+      const y = Math.floor(Math.random() * GRID_SIZE);
+
+      const onSnake = currentSnake.some((seg) => seg.x === x && seg.y === y);
+      if (!onSnake) {
+        return { x, y };
+      }
+    }
   }, []);
 
-  const startGame = () => {
-    setSnake(INITIAL_SNAKE);
+  const startGame = useCallback(() => {
+    const initial = INITIAL_SNAKE;
+
+    setSnake(initial);
+    setFood(generateFood(initial));
+
     setDirection("RIGHT");
     directionRef.current = "RIGHT";
+
     setScore(0);
     setStatus("PLAYING");
-    setFood(generateFood(INITIAL_SNAKE));
-  };
+
+    // First tick can accept a direction change
+    canChangeDirectionRef.current = true;
+  }, [generateFood]);
 
   const changeDirection = useCallback((newDir: Direction) => {
+    // Block multiple inputs in one tick
+    if (!canChangeDirectionRef.current) return;
+
     const currentDir = directionRef.current;
-    const invalid =
+
+    // Forbid 180° reversals
+    const isOpposite =
       (currentDir === "UP" && newDir === "DOWN") ||
       (currentDir === "DOWN" && newDir === "UP") ||
       (currentDir === "LEFT" && newDir === "RIGHT") ||
       (currentDir === "RIGHT" && newDir === "LEFT");
 
-    if (!invalid) {
-      setDirection(newDir);
+    if (isOpposite) return;
+
+    if (newDir !== currentDir) {
       directionRef.current = newDir;
+      setDirection(newDir);
+      canChangeDirectionRef.current = false; // lock until next tick
     }
   }, []);
 
   useEffect(() => {
     if (status !== "PLAYING") return;
 
+    // Ensure only one interval at a time
+    if (gameLoopRef.current) {
+      clearInterval(gameLoopRef.current);
+    }
+
     const moveSnake = () => {
       setSnake((prevSnake) => {
         const head = prevSnake[0];
-        const newHead = { ...head };
+        const newHead: Point = { ...head };
 
+        // Move based on the latest directionRef
         switch (directionRef.current) {
           case "UP":
             newHead.y -= 1;
@@ -90,42 +118,61 @@ export function useSnakeGame() {
             break;
         }
 
-        // Wall Collision (Wrap Around Logic - Optional, but easier for UX)
-        // Let's do Hard Walls for "True Gamer" difficulty
+        // Wall collision
         if (
           newHead.x < 0 ||
           newHead.x >= GRID_SIZE ||
           newHead.y < 0 ||
-          newHead.y >= GRID_SIZE ||
+          newHead.y >= GRID_SIZE
+        ) {
+          setStatus("GAME_OVER");
+          return prevSnake;
+        }
+
+        // Self collision
+        if (
           prevSnake.some((seg) => seg.x === newHead.x && seg.y === newHead.y)
         ) {
           setStatus("GAME_OVER");
           return prevSnake;
         }
 
-        const newSnake = [newHead, ...prevSnake];
+        const ateFood = newHead.x === food.x && newHead.y === food.y;
 
-        if (newHead.x === food.x && newHead.y === food.y) {
-          setScore((s) => {
-            const newScore = s + 10;
+        const nextSnake = [newHead, ...prevSnake];
+
+        if (!ateFood) {
+          // Move forward: drop tail
+          nextSnake.pop();
+        } else {
+          // Grow and respawn food, update score
+          setScore((prevScore) => {
+            const newScore = prevScore + 10;
             if (newScore > highScore) {
               setHighScore(newScore);
-              localStorage.setItem("snake-highscore", newScore.toString());
+              if (typeof window !== "undefined") {
+                localStorage.setItem("snake-highscore", newScore.toString());
+              }
             }
             return newScore;
           });
-          setFood(generateFood(newSnake));
-        } else {
-          newSnake.pop();
+
+          setFood(generateFood(nextSnake));
         }
 
-        return newSnake;
+        return nextSnake;
       });
+
+      // After the snake actually moves, unlock direction change
+      canChangeDirectionRef.current = true;
     };
 
     gameLoopRef.current = setInterval(moveSnake, INITIAL_SPEED);
+
     return () => {
-      if (gameLoopRef.current) clearInterval(gameLoopRef.current);
+      if (gameLoopRef.current) {
+        clearInterval(gameLoopRef.current);
+      }
     };
   }, [status, food, generateFood, highScore]);
 

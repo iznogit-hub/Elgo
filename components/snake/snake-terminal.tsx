@@ -43,26 +43,56 @@ export function SnakeTerminal({ onClose }: SnakeTerminalProps) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       switch (e.key) {
+        // UP
         case "ArrowUp":
+        case "w":
+        case "W":
           changeDirection("UP");
           break;
+
+        // DOWN
         case "ArrowDown":
+        case "s":
+        case "S":
           changeDirection("DOWN");
           break;
+
+        // LEFT
         case "ArrowLeft":
+        case "a":
+        case "A":
           changeDirection("LEFT");
           break;
+
+        // RIGHT
         case "ArrowRight":
+        case "d":
+        case "D":
           changeDirection("RIGHT");
           break;
+
+        // SPACE: start from IDLE or retry after GAME_OVER
+        case " ":
+        case "Spacebar":
+        case "Space":
+          if (status === "IDLE" || status === "GAME_OVER") {
+            play("click");
+            startGame();
+          }
+          break;
+
+        // ESC: close terminal
         case "Escape":
           onClose();
           break;
       }
     };
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [changeDirection, onClose]);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [changeDirection, onClose, status, startGame, play]);
 
   return (
     <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
@@ -95,6 +125,10 @@ export function SnakeTerminal({ onClose }: SnakeTerminalProps) {
         <div className="relative p-6">
           <div className="mb-4 flex items-center justify-between font-mono text-sm text-green-400">
             <span>SCORE: {score.toString().padStart(3, "0")}</span>
+            <div className="flex items-center gap-1 rounded-full bg-green-500/5 px-2 py-1 text-[9px] font-mono text-green-300">
+              <Keyboard className="h-3 w-3" />
+              <span>Arrows / WASD · Space · Esc</span>
+            </div>
             <div className="flex items-center gap-2">
               <Trophy className="h-3 w-3" />
               <span>HI: {highScore.toString().padStart(3, "0")}</span>
@@ -175,8 +209,28 @@ export function SnakeTerminal({ onClose }: SnakeTerminalProps) {
             })}
           </div>
 
-          <div className="mt-4 text-center font-mono text-[10px] text-green-500/50">
-            USE ARROW KEYS TO NAVIGATE
+          <div className="mt-4 text-center font-mono text-[10px] text-green-500/60">
+            {status === "IDLE" && (
+              <>
+                Press <span className="text-green-300">SPACE</span> to start ·
+                Arrows / WASD to move ·{" "}
+                <span className="text-green-300">ESC</span> to close
+              </>
+            )}
+            {status === "PLAYING" && (
+              <>
+                Arrows / WASD to move · After Game Over press{" "}
+                <span className="text-green-300">SPACE</span> to retry ·{" "}
+                <span className="text-green-300">ESC</span> to close
+              </>
+            )}
+            {status === "GAME_OVER" && (
+              <>
+                Game Over · Press <span className="text-green-300">SPACE</span>{" "}
+                to play again · <span className="text-green-300">ESC</span> to
+                close
+              </>
+            )}
           </div>
         </div>
       </div>
