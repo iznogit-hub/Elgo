@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Mail } from "lucide-react";
+import { Send } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SoundToggle } from "@/components/sound-toggle";
 import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
@@ -45,7 +45,7 @@ export function Navbar() {
               onMouseEnter={() => play("hover")}
               aria-label="Contact Page"
             >
-              <Mail className="h-5 w-5 text-foreground" />
+              <Send className="h-5 w-5 text-foreground" />
             </Button>
           </Link>
         </MagneticWrapper>
