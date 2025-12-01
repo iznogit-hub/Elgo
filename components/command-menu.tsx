@@ -15,9 +15,9 @@ import {
   ArrowRight,
   User,
   Home,
-  FileText,
   Volume2,
   VolumeX,
+  Gamepad2,
 } from "lucide-react";
 
 import {
@@ -32,7 +32,11 @@ import {
 import { useSfx } from "@/hooks/use-sfx";
 import { useSound } from "@/components/sound-provider"; // Import global sound state
 
-export function CommandMenu() {
+interface CommandMenuProps {
+  onOpenGame: () => void;
+}
+
+export function CommandMenu({ onOpenGame }: CommandMenuProps) {
   const [open, setOpen] = React.useState(false);
   const { setTheme } = useTheme();
   const { play } = useSfx();
@@ -211,6 +215,15 @@ export function CommandMenu() {
           <CommandSeparator />
 
           <CommandGroup heading="System">
+            {/* ADDED: Game Trigger */}
+            <CommandItem
+              onSelect={() => runCommand(() => onOpenGame())}
+              onMouseEnter={() => play("hover")}
+            >
+              <Gamepad2 className="mr-2 h-4 w-4" />
+              <span>Initialize Snake Protocol</span>
+            </CommandItem>
+
             <CommandItem
               onSelect={() => runCommand(() => window.location.reload())}
               onMouseEnter={() => play("hover")}
