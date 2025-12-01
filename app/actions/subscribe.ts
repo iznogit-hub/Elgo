@@ -27,6 +27,7 @@ export async function subscribe(formData: FormData) {
     }
 
     return { success: true };
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return { error: "Something went wrong. Please try again." };
   }
