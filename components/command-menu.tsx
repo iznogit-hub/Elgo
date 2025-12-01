@@ -111,6 +111,14 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
               <User className="mr-2 h-4 w-4" />
               <span>About Me</span>
             </CommandItem>
+            {/* ADD THIS */}
+            <CommandItem
+              onSelect={() => runCommand(() => router.push("/contact"))}
+              onMouseEnter={() => play("hover")}
+            >
+              <Mail className="mr-2 h-4 w-4" />
+              <span>Contact</span>
+            </CommandItem>
           </CommandGroup>
 
           <CommandSeparator />

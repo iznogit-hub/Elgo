@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import confetti from "canvas-confetti";
+import { Mail } from "lucide-react"; // Import Mail Icon
 import { useSfx } from "@/hooks/use-sfx";
 import { useKonami } from "@/hooks/use-konami";
 
@@ -17,18 +18,16 @@ import { AvatarImage } from "@/components/ui/avatar-image";
 import { Preloader } from "@/components/ui/preloader";
 import { Cursor } from "@/components/ui/cursor";
 import { CommandMenu } from "@/components/command-menu";
-import { SnakeTerminal } from "@/components/snake/snake-terminal";
 import { CommandTrigger } from "@/components/command-trigger";
+import { Button } from "@/components/ui/button"; // Import Button
 
 export default function Home() {
   const [assetsLoaded, setAssetsLoaded] = useState(false);
-  const [isGameOpen, setIsGameOpen] = useState(false); // NEW STATE
   const { play } = useSfx();
 
+  // Konami Code Logic
   useKonami(() => {
     play("success");
-    setIsGameOpen(true);
-
     const duration = 3 * 1000;
     const animationEnd = Date.now() + duration;
     const defaults = {
@@ -37,19 +36,12 @@ export default function Home() {
       ticks: 60,
       zIndex: 99999,
     };
-
     const randomInRange = (min: number, max: number) =>
       Math.random() * (max - min) + min;
 
-    // FIXED: Removed ': any' type annotation.
-    // TypeScript now infers the correct type automatically.
     const interval = setInterval(function () {
       const timeLeft = animationEnd - Date.now();
-
-      if (timeLeft <= 0) {
-        return clearInterval(interval);
-      }
-
+      if (timeLeft <= 0) return clearInterval(interval);
       const particleCount = 50 * (timeLeft / duration);
 
       confetti({
@@ -76,12 +68,10 @@ export default function Home() {
     <main className="flex h-screen w-full flex-col items-center justify-between overflow-hidden bg-background text-foreground selection:bg-primary selection:text-primary-foreground">
       <Cursor />
       <Preloader contentLoaded={assetsLoaded} />
-      <CommandMenu onOpenGame={() => setIsGameOpen(true)} />
-      {/* Render Game Overlay if open */}
-      {isGameOpen && <SnakeTerminal onClose={() => setIsGameOpen(false)} />}
-
+      <CommandMenu />
       <Background />
 
+      {/* --- NAVBAR --- */}
       <nav className="flex w-full items-center justify-between p-6 md:px-12 z-10 shrink-0">
         <div className="flex items-center gap-2">
           <MagneticWrapper strength={0.2}>
@@ -93,8 +83,23 @@ export default function Home() {
 
         <div className="flex items-center gap-2">
           <MagneticWrapper strength={0.6}>
+            <Link href="/contact" onClick={() => play("click")}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative overflow-hidden w-10 h-10 rounded-full hover:bg-muted/50 transition-colors"
+                onMouseEnter={() => play("hover")}
+                aria-label="Contact Page"
+              >
+                <Mail className="h-5 w-5 text-foreground" />
+              </Button>
+            </Link>
+          </MagneticWrapper>
+
+          <MagneticWrapper strength={0.6}>
             <CommandTrigger />
           </MagneticWrapper>
+
           <MagneticWrapper strength={0.6}>
             <SoundToggle />
           </MagneticWrapper>
