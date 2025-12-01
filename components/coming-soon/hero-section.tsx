@@ -6,33 +6,31 @@ import { useGSAP } from "@gsap/react";
 import { NewsletterForm } from "@/components/coming-soon/newsletter-form";
 import { HackerText } from "@/components/ui/hacker-text";
 import { DiscordStatus } from "@/components/coming-soon/discord-status";
+import { useLoadingStatus } from "@/components/loading-context";
 
 gsap.registerPlugin(useGSAP);
 
-interface HeroSectionProps {
-  startAnimation: boolean;
-}
-
-export function HeroSection({ startAnimation }: HeroSectionProps) {
+export function HeroSection() {
   const containerRef = React.useRef<HTMLElement>(null);
+  const { assetsLoaded } = useLoadingStatus();
 
   useGSAP(
     () => {
-      if (!startAnimation) return;
+      if (!assetsLoaded) return;
 
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
       // TIMING CALCULATION:
       // The Preloader curtain reveals the center of the screen around 1.4s.
       // We start the animation slightly after that to ensure visibility.
-      const HERO_DELAY = 1.5;
+      const CURTAIN_LIFT_DELAY = 1.3; // seconds
 
       // 1. Image Fades in Background (if any)
       tl.fromTo(
         ".avatar-layer",
         { opacity: 0, scale: 0.9 },
         { opacity: 1, scale: 1, duration: 1.5, ease: "expo.out" },
-        HERO_DELAY
+        CURTAIN_LIFT_DELAY
       );
 
       // 2. Text Content Slides up
@@ -49,7 +47,7 @@ export function HeroSection({ startAnimation }: HeroSectionProps) {
         "-=1.2"
       );
     },
-    { scope: containerRef, dependencies: [startAnimation] }
+    { scope: containerRef, dependencies: [assetsLoaded] }
   );
 
   return (

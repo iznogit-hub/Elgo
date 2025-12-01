@@ -1,11 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/react";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SoundProvider } from "@/components/sound-provider";
-import { TabManager } from "@/components/ui/tab-manager";
-import { Navbar } from "@/components/navbar"; // Import here
+import { GlobalAppWrapper } from "@/components/global-app-wrapper";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -37,7 +34,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
+return (
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
@@ -49,15 +46,11 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <SoundProvider>
-            <TabManager />
-
-            {/* GLOBAL NAVIGATION BAR */}
-            <Navbar />
-
-            {children}
-
-            <Analytics />
-            <SpeedInsights />
+            
+            {/* WRAPPER: Now contains all overlays (Cursor, Preloader, Navbar, Analytics) */}
+            <GlobalAppWrapper>
+                {children}
+            </GlobalAppWrapper>
           </SoundProvider>
         </ThemeProvider>
       </body>
