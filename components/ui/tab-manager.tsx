@@ -1,22 +1,38 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 
 export function TabManager() {
-  // FIXED: Initialize with empty string to avoid "document is not defined" during SSR
   const originalTitle = useRef("");
+  const pathname = usePathname();
 
   useEffect(() => {
-    // Now we are on the client, so it is safe to capture the title
-    originalTitle.current = document.title;
+    // 1. Logic to generate the title based on the current URL
+    const getPageTitle = () => {
+      if (pathname === "/") return "t7sen | Portfolio";
 
+      // Extract first segment (e.g., "/about" -> "about")
+      const segment = pathname.split("/")[1];
+
+      // Capitalize first letter (e.g., "about" -> "About")
+      const formatted = segment.charAt(0).toUpperCase() + segment.slice(1);
+
+      return `t7sen | ${formatted}`;
+    };
+
+    const systemTitle = getPageTitle();
+
+    // 2. Set the title immediately upon navigation
+    document.title = systemTitle;
+    originalTitle.current = systemTitle;
+
+    // 3. "Away" Status Logic
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        // Capture the latest title before switching away
-        originalTitle.current = document.title;
         document.title = "Signal Lost... 📡";
       } else {
-        // Restore
+        // Restore the calculated page title
         document.title = originalTitle.current;
       }
     };
@@ -25,10 +41,10 @@ export function TabManager() {
 
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      // Safety measure: Restore title if component unmounts
-      document.title = originalTitle.current;
+      // Safety reset
+      document.title = systemTitle;
     };
-  }, []);
+  }, [pathname]); // Re-run this effect every time the URL changes
 
   return null;
 }
