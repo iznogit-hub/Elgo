@@ -2,32 +2,30 @@
 
 import React, { useRef } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
+import { useSfx } from "@/hooks/use-sfx";
 
 gsap.registerPlugin(useGSAP);
 
 interface AvatarImageProps {
   onImageLoad?: () => void;
-  startAnimation: boolean; // Added prop for synchronization
+  startAnimation?: boolean;
 }
 
-export function AvatarImage({ onImageLoad, startAnimation }: AvatarImageProps) {
+export function AvatarImage({
+  onImageLoad,
+  startAnimation = true,
+}: AvatarImageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const { play } = useSfx();
 
   useGSAP(
     () => {
       const container = containerRef.current;
-      if (!container || !startAnimation) return; // Wait for signal
+      if (!container || !startAnimation) return;
 
-      // TIMING CALCULATION:
-      // Preloader Sequence:
-      // 0.0s -> 0.5s: Counter finishes
-      // 0.5s -> 1.0s: Text fades
-      // 1.0s -> 1.8s: Curtain slides up
-      //
-      // We want the avatar (bottom-left) to slide in just as the curtain
-      // lifts past the bottom edge (approx 1.1s mark).
       const DELAY = 1.3;
 
       gsap.fromTo(
@@ -44,9 +42,14 @@ export function AvatarImage({ onImageLoad, startAnimation }: AvatarImageProps) {
       ref={containerRef}
       className="fixed bottom-0 left-0 z-50 hidden md:block opacity-0"
     >
-      <div className="relative h-64 w-[256px]">
+      <Link
+        href="/about"
+        onClick={() => play("click")}
+        onMouseEnter={() => play("hover")}
+        className="relative block h-64 w-[256px] cursor-none magnetic-target transition-transform hover:scale-105 active:scale-95"
+      >
         <Image
-          src="/me.png"
+          src="/Avatar_waving.png"
           alt="Avatar"
           fill
           sizes="(max-width: 768px) 100vw, 256px"
@@ -55,7 +58,7 @@ export function AvatarImage({ onImageLoad, startAnimation }: AvatarImageProps) {
           draggable={false}
           onLoad={onImageLoad}
         />
-      </div>
+      </Link>
     </div>
   );
 }

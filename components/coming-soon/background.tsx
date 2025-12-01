@@ -3,10 +3,25 @@
 export function Background() {
   return (
     <div className="fixed inset-0 -z-50 h-full w-full overflow-hidden bg-background">
-      {/* 1. Technical Grid Layer */}
-      <div className="absolute inset-0 h-full w-full bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-size-[40px_40px] mask-[radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)]" />
+      {/* UPDATED GRID LOGIC:
+                We use 'bg-[linear-gradient(...)]' but applied via a class that respects 
+                Tailwind's theme opacity. 
+                
+                The specific fix:
+                - Light Mode: The lines need to be darker (black/10)
+                - Dark Mode: The lines need to be lighter (white/10)
+                
+                We use the 'dark:' modifier to switch the gradient string.
+            */}
+      <div
+        className="absolute inset-0 h-full w-full 
+                bg-[linear-gradient(to_right,rgba(0,0,0,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.08)_1px,transparent_1px)]
+                dark:bg-[linear-gradient(to_right,rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.08)_1px,transparent_1px)]
+                bg-size-[40px_40px] 
+                mask-[radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)]"
+      />
 
-      {/* 2. Film Grain Layer */}
+      {/* Film Grain */}
       <div className="pointer-events-none absolute inset-0 opacity-[0.03] mix-blend-overlay">
         <div
           className="absolute inset-0 h-full w-full"
@@ -16,7 +31,6 @@ export function Background() {
         />
       </div>
 
-      {/* 3. Ambient Light (Optional: Adds a subtle top-light to make the grid pop) */}
       <div className="absolute left-0 right-0 top-[-10%] h-[500px] w-[500px] rounded-full bg-primary/10 blur-[100px] opacity-20 mx-auto" />
     </div>
   );

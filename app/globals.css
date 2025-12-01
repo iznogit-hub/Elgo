@@ -171,15 +171,6 @@
   }
 }
 
-@keyframes marquee {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-100%);
-  }
-}
-
 /* ADD THIS: Fade In Animation */
 @keyframes fade-in {
   from {
@@ -192,10 +183,21 @@
   }
 }
 
-.animate-marquee {
-  animation: marquee 40s linear infinite; /* Slowed down slightly for elegance */
-}
-
 .animate-fade-in {
   animation: fade-in 1s ease-out forwards;
+}
+
+@keyframes gradient-xy {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-gradient-xy {
+  background-size: 200% 200%;
+  animation: gradient-xy 6s ease infinite;
 }
