@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
   Laptop,
@@ -12,6 +13,11 @@ import {
   Mail,
   RotateCcw,
   ArrowRight,
+  User,
+  Home,
+  FileText,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 
 import {
@@ -22,14 +28,16 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-  CommandShortcut,
 } from "@/components/ui/command";
 import { useSfx } from "@/hooks/use-sfx";
+import { useSound } from "@/components/sound-provider"; // Import global sound state
 
 export function CommandMenu() {
   const [open, setOpen] = React.useState(false);
   const { setTheme } = useTheme();
   const { play } = useSfx();
+  const { isMuted, toggleMute } = useSound(); // Access global mute state
+  const router = useRouter();
 
   // 1. Toggle Event Listener
   React.useEffect(() => {
@@ -70,7 +78,7 @@ export function CommandMenu() {
 
   return (
     <>
-      <div className="fixed bottom-4 right-4 z-50 hidden md:flex items-center gap-2 text-muted-foreground text-xs pointer-events-none">
+      <div className="fixed bottom-4 right-4 z-50 hidden md:flex items-center gap-2 text-muted-foreground text-xs pointer-events-none select-none">
         <span className="bg-muted px-2 py-1 rounded border border-border/50">
           ⌘ K
         </span>
@@ -81,19 +89,36 @@ export function CommandMenu() {
         <CommandList>
           <CommandEmpty>No results found.</CommandEmpty>
 
-          <CommandGroup heading="Actions">
+          <CommandGroup heading="Navigation">
             <CommandItem
-              onSelect={() =>
-                runCommand(() =>
-                  window.open("mailto:contact@t7sen.com", "_self")
-                )
-              }
-              // ADDED: Mouse Hover Sound
+              onSelect={() => runCommand(() => router.push("/"))}
               onMouseEnter={() => play("hover")}
             >
-              <Mail className="mr-2 h-4 w-4" />
-              <span>Send Email</span>
-              <CommandShortcut>↵</CommandShortcut>
+              <Home className="mr-2 h-4 w-4" />
+              <span>Home</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => runCommand(() => router.push("/about"))}
+              onMouseEnter={() => play("hover")}
+            >
+              <User className="mr-2 h-4 w-4" />
+              <span>About Me</span>
+            </CommandItem>
+          </CommandGroup>
+
+          <CommandSeparator />
+
+          <CommandGroup heading="General">
+            <CommandItem
+              onSelect={() => runCommand(() => toggleMute())}
+              onMouseEnter={() => play("hover")}
+            >
+              {isMuted ? (
+                <Volume2 className="mr-2 h-4 w-4" />
+              ) : (
+                <VolumeX className="mr-2 h-4 w-4" />
+              )}
+              <span>{isMuted ? "Unmute Sounds" : "Mute Sounds"}</span>
             </CommandItem>
             <CommandItem
               onSelect={() =>
@@ -105,6 +130,17 @@ export function CommandMenu() {
             >
               <ArrowRight className="mr-2 h-4 w-4" />
               <span>Copy Email</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() =>
+                runCommand(() =>
+                  window.open("mailto:contact@t7sen.com", "_self")
+                )
+              }
+              onMouseEnter={() => play("hover")}
+            >
+              <Mail className="mr-2 h-4 w-4" />
+              <span>Send Email</span>
             </CommandItem>
           </CommandGroup>
 
