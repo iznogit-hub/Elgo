@@ -116,16 +116,28 @@
   * {
     @apply border-border outline-ring/50;
   }
+
+  /* CRITICAL UPDATE: Universal Cursor Hide
+     We use !important to override any library-specific cursor styles 
+     (like 'cursor-pointer' in Radix/Shadcn components)
+  */
+  :root,
+  html,
+  body,
+  *,
+  *::before,
+  *::after {
+    cursor: none !important;
+  }
+
   body {
     @apply bg-background text-foreground;
+    transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
   }
 }
 
-/* ... existing code ... */
-
 /* --- VIEW TRANSITIONS API OVERRIDES --- */
 
-/* 1. Stop all default browser animations */
 ::view-transition-group(root),
 ::view-transition-old(root),
 ::view-transition-new(root) {
@@ -133,45 +145,17 @@
   mix-blend-mode: normal !important;
 }
 
-/* 2. Ensure the "New" state is ALWAYS on top */
 ::view-transition-new(root) {
   z-index: 9999;
-  /* Default to transparent/closed so we can animate it open */
   clip-path: circle(0px at 50% 50%);
 }
 
-/* 3. Ensure the "Old" state sits behind */
 ::view-transition-old(root) {
   z-index: 1;
-  /* Force it to stay visible until covered */
   opacity: 1;
 }
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-    transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
-
-    /* ADD THIS: Hide default cursor on desktop */
-    @media (min-width: 768px) {
-      cursor: none;
-    }
-  }
-
-  /* Ensure links/buttons also hide the cursor */
-  a,
-  button,
-  input {
-    @media (min-width: 768px) {
-      cursor: none;
-    }
-  }
-}
-
-/* ADD THIS: Fade In Animation */
+/* ANIMATIONS */
 @keyframes fade-in {
   from {
     opacity: 0;
