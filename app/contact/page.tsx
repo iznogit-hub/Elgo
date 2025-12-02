@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import Link from "next/link";
-import { ArrowLeft, Wifi } from "lucide-react"; // Added Wifi icon
+import { ArrowLeft, Wifi, Terminal, Cpu } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 
@@ -12,7 +12,7 @@ import { Cursor } from "@/components/ui/cursor";
 import { Button } from "@/components/ui/button";
 import { useSfx } from "@/hooks/use-sfx";
 import { ContactForm } from "@/components/contact/contact-form";
-import { HackerText } from "@/components/ui/hacker-text"; // Added HackerText
+import { HackerText } from "@/components/ui/hacker-text";
 
 gsap.registerPlugin(useGSAP);
 
@@ -24,23 +24,33 @@ export default function ContactPage() {
     () => {
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
+      // 1. Float in the header elements (Abort btn + Status)
       tl.fromTo(
-        ".back-btn",
-        { x: -20, opacity: 0 },
-        { x: 0, opacity: 1, duration: 0.6, delay: 0.2 }
+        ".floating-header",
+        { y: -30, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, delay: 0.2 }
       );
+
+      // 2. Main Title & Form - Reveal from bottom
       tl.fromTo(
-        ".contact-header",
-        { y: 20, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.8 },
-        "-=0.4"
-      );
-      tl.fromTo(
-        ".contact-form",
+        ".floating-content",
         { y: 40, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.8 },
+        { y: 0, opacity: 1, duration: 1, stagger: 0.15 },
         "-=0.6"
       );
+
+      // 3. Background Decor - Subtle drift
+      gsap.to(".decor-item", {
+        y: "20px",
+        duration: 3,
+        repeat: -1,
+        yoyo: true,
+        ease: "sine.inOut",
+        stagger: {
+          amount: 2,
+          from: "random",
+        },
+      });
     },
     { scope: containerRef }
   );
@@ -48,49 +58,90 @@ export default function ContactPage() {
   return (
     <main
       ref={containerRef}
-      className="flex min-h-screen w-full flex-col overflow-y-auto text-foreground selection:bg-primary selection:text-primary-foreground pb-12"
+      className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden text-foreground selection:bg-primary selection:text-primary-foreground"
     >
       <Cursor />
       <CommandMenu />
       <Background />
 
-      <div className="container mx-auto z-10 flex flex-col justify-center px-4 md:px-6 mt-8 max-w-2xl">
-        <div className="back-btn mb-8 opacity-0">
-          <Link href="/" className="cursor-none">
+      {/* --- FLOATING HEADER (Safe Zone) --- */}
+      {/* pt-32 ensures we are well below the fixed Navbar */}
+      <div className="absolute top-0 left-0 right-0 pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
+        {/* ABORT BUTTON */}
+        <div className="floating-header pointer-events-auto">
+          <Link href="/" className="cursor-none" onClick={() => play("click")}>
             <Button
               variant="ghost"
-              className="gap-2 pl-0 hover:bg-transparent hover:text-primary transition-colors cursor-none"
-              onClick={() => play("click")}
+              className="group gap-3 pl-0 hover:bg-transparent hover:text-red-500 transition-colors cursor-none"
+              onMouseEnter={() => play("hover")}
             >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Abort Mission</span>
+              <div className="flex items-center justify-center w-8 h-8 rounded-full border border-muted-foreground/30 group-hover:border-red-500/50 transition-colors">
+                <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+              </div>
+              <div className="flex flex-col items-start">
+                <span className="font-mono text-xs font-bold tracking-widest text-muted-foreground group-hover:text-red-500">
+                  ABORT
+                </span>
+                <span className="text-[10px] text-muted-foreground/50 hidden sm:block">
+                  RETURN_TO_BASE
+                </span>
+              </div>
             </Button>
           </Link>
         </div>
 
-        <div className="contact-header mb-12 space-y-4 text-center opacity-0 flex flex-col items-center">
-          {/* Status Indicator */}
-          <div className="mb-2 flex items-center gap-2 rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 text-[10px] font-mono font-medium text-green-500">
+        {/* CONNECTION STATUS */}
+        <div className="floating-header flex flex-col items-end gap-2">
+          <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 backdrop-blur-sm">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-            <span>UPLINK_SECURE</span>
-            <Wifi className="h-3 w-3 ml-1" />
+            <span className="text-xs font-mono font-bold tracking-wider text-primary">
+              LINK_ACTIVE
+            </span>
+            <Wifi className="h-3 w-3 text-primary" />
           </div>
+          <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground/60">
+            <span>PORT: 443</span>
+            <span>::</span>
+            <span>SECURE</span>
+          </div>
+        </div>
+      </div>
 
-          <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl">
-            <HackerText text="Establish Connection" />
+      {/* --- CENTER STAGE --- */}
+      <div className="w-full max-w-4xl px-6 relative z-10 flex flex-col items-center">
+        {/* Title Section */}
+        <div className="floating-content text-center mb-16 space-y-2">
+          <div className="flex items-center justify-center gap-2 text-primary/60 mb-4">
+            <Terminal className="h-5 w-5" />
+            <span className="font-mono text-sm tracking-[0.2em] uppercase">
+              Incoming Transmission
+            </span>
+          </div>
+          <h1 className="text-5xl md:text-7xl font-black tracking-tighter">
+            <HackerText text="Initialize Contact" />
           </h1>
-          <p className="text-muted-foreground text-lg">
-            Have a project in mind or just want to discuss the simulation?{" "}
-            <br />
-            Send a secure transmission below.
-          </p>
         </div>
 
-        <div className="contact-form opacity-0">
+        {/* The Floating Form */}
+        <div className="floating-content w-full max-w-xl">
           <ContactForm />
+        </div>
+      </div>
+
+      {/* --- AMBIENT DECOR (Floating Code) --- */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-20">
+        <div className="decor-item absolute top-[20%] left-[10%] font-mono text-xs text-primary">
+          {`> ESTABLISHING HANDSHAKE...`}
+        </div>
+        <div className="decor-item absolute top-[60%] right-[15%] font-mono text-xs text-muted-foreground">
+          {`{ "integrity": "verified" }`}
+        </div>
+        <div className="decor-item absolute bottom-[15%] left-[20%] flex items-center gap-2 text-muted-foreground">
+          <Cpu className="h-4 w-4" />
+          <span className="font-mono text-xs">PROCESSING...</span>
         </div>
       </div>
     </main>
