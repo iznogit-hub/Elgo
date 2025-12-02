@@ -6,9 +6,6 @@ import { ArrowLeft, Wifi, Terminal, Cpu } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 
-import { Background } from "@/components/coming-soon/background";
-import { CommandMenu } from "@/components/command-menu";
-import { Cursor } from "@/components/ui/cursor";
 import { Button } from "@/components/ui/button";
 import { useSfx } from "@/hooks/use-sfx";
 import { ContactForm } from "@/components/contact/contact-form";
@@ -60,9 +57,6 @@ export default function ContactPage() {
       ref={containerRef}
       className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden text-foreground selection:bg-primary selection:text-primary-foreground"
     >
-      <Cursor />
-      <CommandMenu />
-      <Background />
 
       {/* --- FLOATING HEADER (Safe Zone) --- */}
       {/* pt-32 ensures we are well below the fixed Navbar */}

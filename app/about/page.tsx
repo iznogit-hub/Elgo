@@ -7,9 +7,6 @@ import { ArrowLeft, Cpu, Globe2, ScanFace, Terminal } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 
-import { Background } from "@/components/coming-soon/background";
-import { CommandMenu } from "@/components/command-menu";
-import { Cursor } from "@/components/ui/cursor";
 import { Button } from "@/components/ui/button";
 import { useSfx } from "@/hooks/use-sfx";
 import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
@@ -85,10 +82,6 @@ export default function AboutPage() {
       ref={containerRef}
       className="relative flex min-h-screen w-full flex-col items-center overflow-hidden text-foreground selection:bg-primary selection:text-primary-foreground pt-32 pb-20 px-6"
     >
-      <Cursor />
-      <CommandMenu />
-      <Background />
-
       {/* --- AMBIENT GLOBE LAYER --- */}
       {/* Placed behind content with low opacity for a holographic effect */}
       <div className="bg-globe fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] opacity-0 pointer-events-none -z-10 mix-blend-screen grayscale">
