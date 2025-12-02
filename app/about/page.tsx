@@ -111,7 +111,7 @@ export default function AboutPage() {
   return (
     <main
       ref={containerRef}
-      className="flex min-h-screen w-full flex-col overflow-y-auto bg-background text-foreground selection:bg-primary selection:text-primary-foreground pb-12"
+      className="flex min-h-screen w-full flex-col overflow-y-auto text-foreground selection:bg-primary selection:text-primary-foreground pb-12"
     >
       <Cursor />
       <CommandMenu />

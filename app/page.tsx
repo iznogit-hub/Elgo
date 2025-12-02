@@ -63,7 +63,7 @@ export default function Home() {
   }, []); // Run once on mount
 
   return (
-    <main className="flex h-screen w-full flex-col items-center justify-between overflow-hidden bg-background text-foreground selection:bg-primary selection:text-primary-foreground">
+    <main className="flex h-screen w-full flex-col items-center justify-between overflow-hidden text-foreground selection:bg-primary selection:text-primary-foreground">
       {/* REMOVED: <Cursor />, <Preloader />, <CommandMenu />, <Background /> */}
 
       {/* Navbar is now in layout, so we don't need the top spacer either, 
