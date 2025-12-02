@@ -4,19 +4,21 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
+  Laptop,
   Moon,
   Sun,
   Github,
   Twitter,
   Linkedin,
   Mail,
-  RotateCcw,
-  ArrowRight,
   User,
   Home,
-  Volume2,
-  VolumeX,
   Gamepad2,
+  Copy,
+  ArrowLeft,
+  Command as CommandIcon,
+  Monitor,
+  Share2,
 } from "lucide-react";
 
 import {
@@ -27,189 +29,205 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
+  CommandShortcut,
 } from "@/components/ui/command";
 import { useSfx } from "@/hooks/use-sfx";
 import { useSound } from "@/components/sound-provider";
 
-// Command Menu Component
 interface CommandMenuProps {
   onOpenGame?: () => void;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function CommandMenu({ onOpenGame }: CommandMenuProps) {
   const [open, setOpen] = React.useState(false);
+  const [activePage, setActivePage] = React.useState("main");
+  // NEW: Track search state to allow manual clearing
+  const [search, setSearch] = React.useState("");
+
   const { setTheme } = useTheme();
   const { play } = useSfx();
   const { isMuted, toggleMute } = useSound();
   const router = useRouter();
 
+  // Reset page AND search when closing
+  React.useEffect(() => {
+    if (!open) {
+      setTimeout(() => {
+        setActivePage("main");
+        setSearch(""); // Clear search on close
+      }, 300);
+    }
+  }, [open]);
+
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        if (!open) play("click");
         setOpen((open) => !open);
+        if (!open) play("click");
+      }
+      if (e.key === "Backspace" && activePage !== "main" && open && !search) {
+        e.preventDefault();
+        setSearch(""); // Ensure clear
+        setActivePage("main");
+        play("hover");
       }
     };
 
-    // NEW: Listen for custom event from Navbar button
     const openHandler = () => {
-      if (!open) play("click");
       setOpen(true);
+      play("click");
     };
 
     document.addEventListener("keydown", down);
-    window.addEventListener("open-command-menu", openHandler); // Add Listener
+    window.addEventListener("open-command-menu", openHandler);
 
     return () => {
       document.removeEventListener("keydown", down);
-      window.removeEventListener("open-command-menu", openHandler); // Cleanup
+      window.removeEventListener("open-command-menu", openHandler);
     };
-  }, [open, play]);
-
-  // ... (Keep existing keyboard navigation useEffect) ...
-  React.useEffect(() => {
-    if (!open) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowUp" || e.key === "ArrowDown") play("hover");
-      if (e.key === "Enter") play("click");
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, play]);
+  }, [open, activePage, play, search]);
 
   const runCommand = React.useCallback(
     (command: () => void) => {
       play("success");
       setOpen(false);
+      setSearch(""); // Clear search on execution
       command();
     },
     [play]
   );
 
+  const navigateTo = (page: string) => {
+    play("click");
+    setSearch(""); // CRITICAL: Clear search so the new page isn't filtered
+    setActivePage(page);
+  };
+
+  const copyUrl = () => {
+    navigator.clipboard.writeText(window.location.href);
+    play("success");
+    setOpen(false);
+    setSearch("");
+  };
+
+  const handleLaunchGame = () => {
+    if (onOpenGame) onOpenGame();
+    window.dispatchEvent(new Event("open-snake-game"));
+    play("success");
+    setOpen(false);
+    setSearch("");
+  };
+
   return (
-    <>
-      <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput placeholder="Type a command or search..." />
-        <CommandList>
-          <CommandEmpty>No results found.</CommandEmpty>
+    <CommandDialog open={open} onOpenChange={setOpen} className="cursor-none">
+      <div className="flex items-center border-b border-border/40 px-3">
+        {activePage === "main" ? (
+          <CommandIcon className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+        ) : (
+          <ArrowLeft
+            className="mr-2 h-4 w-4 shrink-0 cursor-pointer hover:text-primary transition-colors"
+            onClick={() => {
+              setActivePage("main");
+              setSearch("");
+            }}
+          />
+        )}
+        <CommandInput
+          placeholder={
+            activePage === "main"
+              ? "Type a command or search..."
+              : `Searching ${activePage}...`
+          }
+          // CONTROLLED INPUT
+          value={search}
+          onValueChange={setSearch}
+          className="border-none focus:ring-0"
+        />
+      </div>
 
-          <CommandGroup heading="Navigation">
-            <CommandItem
-              onSelect={() => runCommand(() => router.push("/"))}
-              onMouseEnter={() => play("hover")}
-            >
-              <Home className="mr-2 h-4 w-4" />
-              <span>Home</span>
-            </CommandItem>
-            <CommandItem
-              onSelect={() => runCommand(() => router.push("/about"))}
-              onMouseEnter={() => play("hover")}
-            >
-              <User className="mr-2 h-4 w-4" />
-              <span>About Me</span>
-            </CommandItem>
-            {/* ADD THIS */}
-            <CommandItem
-              onSelect={() => runCommand(() => router.push("/contact"))}
-              onMouseEnter={() => play("hover")}
-            >
-              <Mail className="mr-2 h-4 w-4" />
-              <span>Contact</span>
-            </CommandItem>
-          </CommandGroup>
+      <CommandList className="h-[300px] overflow-y-auto overflow-x-hidden scrollbar-none">
+        <CommandEmpty>No results found.</CommandEmpty>
 
-          <CommandSeparator />
+        {activePage === "main" && (
+          <>
+            <CommandGroup heading="Suggestions">
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/contact"))}
+                onMouseEnter={() => play("hover")}
+              >
+                <Mail className="mr-2 h-4 w-4" />
+                <span>Contact Me</span>
+                <CommandShortcut>C</CommandShortcut>
+              </CommandItem>
+              <CommandItem
+                onSelect={() => navigateTo("theme")}
+                onMouseEnter={() => play("hover")}
+              >
+                <Laptop className="mr-2 h-4 w-4" />
+                <span>Change Theme...</span>
+              </CommandItem>
+              <CommandItem
+                onSelect={handleLaunchGame}
+                onMouseEnter={() => play("hover")}
+              >
+                <Gamepad2 className="mr-2 h-4 w-4" />
+                <span>Play Snake</span>
+                <CommandShortcut>G</CommandShortcut>
+              </CommandItem>
+            </CommandGroup>
 
-          <CommandGroup heading="General">
-            <CommandItem
-              onSelect={() => runCommand(() => toggleMute())}
-              onMouseEnter={() => play("hover")}
-            >
-              {isMuted ? (
-                <Volume2 className="mr-2 h-4 w-4" />
-              ) : (
-                <VolumeX className="mr-2 h-4 w-4" />
-              )}
-              <span>{isMuted ? "Unmute Sounds" : "Mute Sounds"}</span>
-            </CommandItem>
-            <CommandItem
-              onSelect={() =>
-                runCommand(() =>
-                  navigator.clipboard.writeText("contact@t7sen.com")
-                )
-              }
-              onMouseEnter={() => play("hover")}
-            >
-              <ArrowRight className="mr-2 h-4 w-4" />
-              <span>Copy Email</span>
-            </CommandItem>
-            <CommandItem
-              onSelect={() =>
-                runCommand(() =>
-                  window.open("mailto:contact@t7sen.com", "_self")
-                )
-              }
-              onMouseEnter={() => play("hover")}
-            >
-              <Mail className="mr-2 h-4 w-4" />
-              <span>Send Email</span>
-            </CommandItem>
-          </CommandGroup>
+            <CommandSeparator />
 
-          <CommandSeparator />
+            <CommandGroup heading="Navigation">
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/"))}
+                onMouseEnter={() => play("hover")}
+              >
+                <Home className="mr-2 h-4 w-4" />
+                <span>Home</span>
+              </CommandItem>
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/about"))}
+                onMouseEnter={() => play("hover")}
+              >
+                <User className="mr-2 h-4 w-4" />
+                <span>About</span>
+              </CommandItem>
+            </CommandGroup>
 
-          <CommandGroup heading="Socials">
-            <CommandItem
-              onSelect={() =>
-                runCommand(() =>
-                  window.open("https://github.com/t7sen", "_blank")
-                )
-              }
-              onMouseEnter={() => play("hover")}
-            >
-              <Github className="mr-2 h-4 w-4" />
-              <span>GitHub</span>
-            </CommandItem>
-            <CommandItem
-              onSelect={() =>
-                runCommand(() =>
-                  window.open("https://linkedin.com/in/t7sen", "_blank")
-                )
-              }
-              onMouseEnter={() => play("hover")}
-            >
-              <Linkedin className="mr-2 h-4 w-4" />
-              <span>LinkedIn</span>
-            </CommandItem>
-            <CommandItem
-              onSelect={() =>
-                runCommand(() =>
-                  window.open("https://twitter.com/t7sen", "_blank")
-                )
-              }
-              onMouseEnter={() => play("hover")}
-            >
-              <Twitter className="mr-2 h-4 w-4" />
-              <span>Twitter</span>
-            </CommandItem>
-          </CommandGroup>
+            <CommandGroup heading="Utilities">
+              <CommandItem
+                onSelect={copyUrl}
+                onMouseEnter={() => play("hover")}
+              >
+                <Copy className="mr-2 h-4 w-4" />
+                <span>Copy Current URL</span>
+              </CommandItem>
+              <CommandItem
+                onSelect={toggleMute}
+                onMouseEnter={() => play("hover")}
+              >
+                {isMuted ? (
+                  <Monitor className="mr-2 h-4 w-4" />
+                ) : (
+                  <Monitor className="mr-2 h-4 w-4 text-muted-foreground" />
+                )}
+                <span>{isMuted ? "Unmute Sfx" : "Mute Sfx"}</span>
+              </CommandItem>
+              <CommandItem
+                onSelect={() => navigateTo("socials")}
+                onMouseEnter={() => play("hover")}
+              >
+                <Share2 className="mr-2 h-4 w-4" />
+                <span>Socials...</span>
+              </CommandItem>
+            </CommandGroup>
+          </>
+        )}
 
-          <CommandSeparator />
-
-          <CommandGroup heading="System">
-            <CommandItem
-              onSelect={() =>
-                runCommand(() =>
-                  window.dispatchEvent(new Event("open-snake-game"))
-                )
-              }
-              onMouseEnter={() => play("hover")}
-            >
-              <Gamepad2 className="mr-2 h-4 w-4" />
-              <span>Initialize Snake Protocol</span>
-            </CommandItem>
+        {activePage === "theme" && (
+          <CommandGroup heading="Theme">
             <CommandItem
               onSelect={() => runCommand(() => setTheme("light"))}
               onMouseEnter={() => play("hover")}
@@ -225,15 +243,79 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
               <span>Dark Mode</span>
             </CommandItem>
             <CommandItem
-              onSelect={() => runCommand(() => window.location.reload())}
+              onSelect={() => runCommand(() => setTheme("system"))}
               onMouseEnter={() => play("hover")}
             >
-              <RotateCcw className="mr-2 h-4 w-4" />
-              <span>Reboot System</span>
+              <Laptop className="mr-2 h-4 w-4" />
+              <span>System</span>
             </CommandItem>
           </CommandGroup>
-        </CommandList>
-      </CommandDialog>
-    </>
+        )}
+
+        {activePage === "socials" && (
+          <CommandGroup heading="Connect">
+            <CommandItem
+              onSelect={() =>
+                runCommand(() =>
+                  window.open("https://github.com/t7sen", "_blank")
+                )
+              }
+              onMouseEnter={() => play("hover")}
+            >
+              <Github className="mr-2 h-4 w-4" />
+              <span>GitHub</span>
+              <CommandShortcut>↵</CommandShortcut>
+            </CommandItem>
+            <CommandItem
+              onSelect={() =>
+                runCommand(() =>
+                  window.open("https://linkedin.com/in/t7sen", "_blank")
+                )
+              }
+              onMouseEnter={() => play("hover")}
+            >
+              <Linkedin className="mr-2 h-4 w-4" />
+              <span>LinkedIn</span>
+              <CommandShortcut>↵</CommandShortcut>
+            </CommandItem>
+            <CommandItem
+              onSelect={() =>
+                runCommand(() =>
+                  window.open("https://twitter.com/t7sen", "_blank")
+                )
+              }
+              onMouseEnter={() => play("hover")}
+            >
+              <Twitter className="mr-2 h-4 w-4" />
+              <span>Twitter</span>
+              <CommandShortcut>↵</CommandShortcut>
+            </CommandItem>
+            <CommandItem
+              onSelect={() =>
+                runCommand(() =>
+                  window.open("mailto:contact@t7sen.com", "_self")
+                )
+              }
+              onMouseEnter={() => play("hover")}
+            >
+              <Mail className="mr-2 h-4 w-4" />
+              <span>Email</span>
+            </CommandItem>
+          </CommandGroup>
+        )}
+      </CommandList>
+
+      <div className="border-t border-border/40 p-2 px-4 flex items-center justify-between">
+        <span className="text-[10px] text-muted-foreground font-mono">
+          Tip: Press <kbd className="font-bold">Backspace</kbd> to go back
+        </span>
+        <div className="flex items-center gap-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+          <span className="text-[10px] text-muted-foreground font-mono">
+            SYSTEM_ONLINE
+          </span>
+        </div>
+      </div>
+    </CommandDialog>
   );
 }
