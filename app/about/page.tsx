@@ -3,86 +3,31 @@
 import React, { useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, Mail, Github, Linkedin } from "lucide-react";
+import { ArrowLeft, Cpu, Globe2, ScanFace, Terminal } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 
 import { Background } from "@/components/coming-soon/background";
-import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
 import { CommandMenu } from "@/components/command-menu";
 import { Cursor } from "@/components/ui/cursor";
 import { Button } from "@/components/ui/button";
 import { useSfx } from "@/hooks/use-sfx";
-import { cn } from "@/lib/utils";
-import { Globe } from "@/components/ui/globe";
+import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
 import { HackerText } from "@/components/ui/hacker-text";
+import { Globe } from "@/components/ui/globe";
 
 gsap.registerPlugin(useGSAP);
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function TechMap() {
-  return (
-    <div className="absolute inset-0 opacity-100 dark:opacity-80">
-      <svg
-        className="h-full w-full"
-        viewBox="0 0 400 200"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <pattern
-          id="dot-pattern"
-          x="0"
-          y="0"
-          width="8"
-          height="8"
-          patternUnits="userSpaceOnUse"
-        >
-          <circle cx="1" cy="1" r="1" className="fill-foreground/50" />
-        </pattern>
-        <path
-          d="M50 60 C50 60 70 40 90 60 C110 80 130 50 150 70 C170 90 200 40 220 50 C240 60 260 30 300 50 C340 70 360 40 370 50 V150 H50 Z"
-          fill="url(#dot-pattern)"
-          className="opacity-60"
-        />
-        <rect
-          x="0"
-          y="0"
-          width="400"
-          height="200"
-          fill="url(#dot-pattern)"
-          className="opacity-10"
-        />
-      </svg>
-      <div className="absolute top-[45%] left-[58%] flex items-center justify-center">
-        <div className="absolute h-3 w-3 rounded-full bg-primary animate-ping opacity-75" />
-        <div className="relative h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_10px_rgba(var(--primary),1)]" />
-      </div>
-    </div>
-  );
-}
-
-interface BentoCardProps {
-  children: React.ReactNode;
-  className?: string;
-  noHover?: boolean;
-}
-
-function BentoCard({ children, className, noHover = false }: BentoCardProps) {
-  const { play } = useSfx();
-  return (
-    <div
-      onMouseEnter={() => !noHover && play("hover")}
-      className={cn(
-        "bento-card relative overflow-hidden rounded-3xl border border-border/40 bg-background/60 p-6 backdrop-blur-md transition-all duration-500",
-        !noHover &&
-          "hover:border-border/80 hover:shadow-2xl hover:-translate-y-1",
-        className
-      )}
-    >
-      {children}
-    </div>
-  );
-}
+const TECH_STACK = [
+  { n: "Next.js", i: "nextdotjs" },
+  { n: "React", i: "react" },
+  { n: "TypeScript", i: "typescript" },
+  { n: "Tailwind", i: "tailwindcss" },
+  { n: "Node.js", i: "nodedotjs" },
+  { n: "PostgreSQL", i: "postgresql" },
+  { n: "Docker", i: "docker" },
+  { n: "Three.js", i: "threedotjs" },
+];
 
 export default function AboutPage() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -92,18 +37,45 @@ export default function AboutPage() {
     () => {
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
+      // 1. Header Elements
       tl.fromTo(
-        ".back-btn",
-        { x: -20, opacity: 0 },
-        { x: 0, opacity: 1, duration: 0.6, delay: 0.2 }
+        ".floating-header",
+        { y: -30, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, delay: 0.2 }
       );
 
+      // 2. Profile & Bio
       tl.fromTo(
-        ".bento-card",
-        { y: 50, opacity: 0, scale: 0.95 },
-        { y: 0, opacity: 1, scale: 1, duration: 0.8, stagger: 0.1 },
-        "-=0.4"
+        ".float-profile",
+        { scale: 0.9, opacity: 0, y: 20 },
+        { scale: 1, opacity: 1, y: 0, duration: 1 },
+        "-=0.6"
       );
+
+      // 3. Tech Stack Items (Staggered)
+      tl.fromTo(
+        ".tech-item",
+        { opacity: 0, x: -20 },
+        { opacity: 1, x: 0, duration: 0.6, stagger: 0.05 },
+        "-=0.5"
+      );
+
+      // 4. Globe Fade In
+      // UPDATED: Reduced opacity to 0.25 to prevent text interference
+      gsap.to(".bg-globe", { opacity: 0.25, duration: 2, delay: 0.5 });
+
+      // 5. Continuous Drift for Tech Items
+      gsap.to(".tech-item", {
+        y: "10px",
+        duration: 2,
+        repeat: -1,
+        yoyo: true,
+        ease: "sine.inOut",
+        stagger: {
+          amount: 1.5,
+          from: "random",
+        },
+      });
     },
     { scope: containerRef }
   );
@@ -111,203 +83,152 @@ export default function AboutPage() {
   return (
     <main
       ref={containerRef}
-      className="flex min-h-screen w-full flex-col overflow-y-auto text-foreground selection:bg-primary selection:text-primary-foreground pb-12"
+      className="relative flex min-h-screen w-full flex-col items-center overflow-hidden text-foreground selection:bg-primary selection:text-primary-foreground pt-32 pb-20 px-6"
     >
       <Cursor />
       <CommandMenu />
       <Background />
 
-      <div className="container mx-auto z-10 flex flex-col justify-center px-4 md:px-6 mt-8 max-w-5xl">
-        <div className="back-btn mb-8 opacity-0">
-          <Link href="/" className="cursor-none">
+      {/* --- AMBIENT GLOBE LAYER --- */}
+      {/* Placed behind content with low opacity for a holographic effect */}
+      <div className="bg-globe fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] opacity-0 pointer-events-none -z-10 mix-blend-screen grayscale">
+        <Globe />
+      </div>
+
+      {/* --- FLOATING HEADER --- */}
+      <div className="absolute top-0 left-0 right-0 pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
+        {/* ABORT BUTTON */}
+        <div className="floating-header pointer-events-auto">
+          <Link href="/" className="cursor-none" onClick={() => play("click")}>
             <Button
               variant="ghost"
-              className="gap-2 pl-0 hover:bg-transparent hover:text-primary transition-colors cursor-none"
-              onClick={() => play("click")}
+              className="group gap-3 pl-0 hover:bg-transparent hover:text-red-500 transition-colors cursor-none"
+              onMouseEnter={() => play("hover")}
             >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Back to Orbit</span>
+              <div className="flex items-center justify-center w-8 h-8 rounded-full border border-muted-foreground/30 group-hover:border-red-500/50 transition-colors">
+                <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+              </div>
+              <div className="flex flex-col items-start">
+                <span className="font-mono text-xs font-bold tracking-widest text-muted-foreground group-hover:text-red-500">
+                  ABORT
+                </span>
+                <span className="text-[10px] text-muted-foreground/50 hidden sm:block">
+                  RETURN_TO_ORBIT
+                </span>
+              </div>
             </Button>
           </Link>
         </div>
 
-        {/* BENTO GRID */}
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 auto-rows-[180px]">
-          {/* 1. PROFILE CARD (Top Left - 2x2) */}
-          <BentoCard
-            className="md:col-span-2 md:row-span-2 p-0 flex flex-col opacity-0 group"
-            noHover
-          >
-            {/* Header Banner with Animated Gradient */}
-            <div className="h-28 w-full relative overflow-hidden">
-              <div className="absolute inset-0 bg-linear-to-r from-violet-500/20 via-purple-500/20 to-blue-500/20 animate-gradient-xy" />
-              <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 grayscale" />
-            </div>
+        {/* PROFILE STATUS */}
+        <div className="floating-header flex flex-col items-end gap-2">
+          <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 backdrop-blur-sm">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+            </span>
+            <span className="text-xs font-mono font-bold tracking-wider text-primary">
+              ID_VERIFIED
+            </span>
+            <ScanFace className="h-3 w-3 text-primary" />
+          </div>
+          <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground/60">
+            <span>LOC: JEDDAH</span>
+            <span>::</span>
+            <span>KSA</span>
+          </div>
+        </div>
+      </div>
 
-            <div className="px-6 pb-6 flex flex-col grow relative">
-              {/* Avatar - Magnetic & Floating */}
-              <div className="-mt-14 mb-4 relative z-10 w-fit">
-                <MagneticWrapper strength={0.3}>
-                  <div className="h-28 w-28 rounded-full border-[6px] border-background overflow-hidden bg-background shadow-xl cursor-none magnetic-target group-hover:scale-105 transition-transform duration-500">
-                    {/* NOTE: Update src="/me.png" when your new image is ready */}
-                    <Image
-                      src="/Avatar.png"
-                      alt="Avatar"
-                      width={112}
-                      height={112}
-                      className="object-cover h-full w-full scale-110"
-                    />
-                  </div>
-                </MagneticWrapper>
+      {/* --- MAIN CONTENT --- */}
+      <div className="relative z-10 w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-16 md:gap-8 items-center mt-8 md:mt-20">
+        {/* LEFT COLUMN: IDENTITY */}
+        <div className="float-profile flex flex-col items-center md:items-start text-center md:text-left space-y-8">
+          {/* Avatar Container */}
+          <MagneticWrapper strength={0.2}>
+            <div className="relative group">
+              <div className="absolute -inset-4 bg-primary/20 rounded-full blur-xl opacity-0 group-hover:opacity-50 transition-opacity duration-500" />
+              <div className="relative h-40 w-40 rounded-full overflow-hidden border-2 border-primary/20 shadow-2xl">
+                <Image
+                  src="/Avatar.png"
+                  alt="Avatar"
+                  width={160}
+                  height={160}
+                  className="object-cover h-full w-full scale-110"
+                  priority
+                />
               </div>
-
-              <div className="space-y-1">
-                <h2 className="text-4xl font-bold tracking-tight">
-                  <HackerText text="t7sen" />
-                </h2>
-                <p className="text-primary font-mono text-sm tracking-wide">
-                  FULL_STACK_ARCHITECT
-                </p>
-              </div>
-
-              <p className="mt-4 text-sm leading-relaxed text-muted-foreground/90 max-w-md font-medium">
-                Crafting digital reality through code. <br />
-                Specialized in <span className="text-foreground">
-                  Next.js
-                </span>, <span className="text-foreground">WebGL</span>, and{" "}
-                <span className="text-foreground">Interaction Design</span>.
-              </p>
-
-              <div className="mt-auto pt-6 flex flex-wrap gap-3">
-                {/* REMOVED: Resume Button */}
-
-                {/* Status Badge */}
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/5 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                  Online & Ready
-                </div>
+              {/* Floating Badge */}
+              <div className="absolute -bottom-2 -right-2 bg-background border border-border px-3 py-1 rounded-full text-[10px] font-mono font-bold shadow-lg">
+                v3.0
               </div>
             </div>
-          </BentoCard>
+          </MagneticWrapper>
 
-          {/* 2. LOCATION (Live 3D Globe) */}
-          <BentoCard className="md:col-span-1 md:row-span-1 flex flex-col justify-end p-0 overflow-hidden opacity-0 relative group min-h-[180px]">
-            {/* Visual Container */}
-            <div className="absolute inset-0 z-0 opacity-60 transition-opacity group-hover:opacity-100">
-              {/* FIXED CONTAINER:
-                   1. 'w-full h-full': Fills the card.
-                   2. 'flex items-center': Centers the globe.
-                   3. Removed transforms: Keeping it simple ensures visibility.
+          <div className="space-y-4">
+            <h1 className="text-5xl md:text-7xl font-black tracking-tighter">
+              <HackerText text="t7sen" />
+            </h1>
+            <div className="flex items-center gap-3 justify-center md:justify-start text-primary/80 font-mono text-sm tracking-widest uppercase">
+              <Terminal className="h-4 w-4" />
+              <span>Full_Stack_Architect</span>
+            </div>
+            <p className="text-muted-foreground text-lg leading-relaxed max-w-md">
+              Crafting digital reality through code. Specialized in
+              high-performance web graphics, interaction design, and scalable
+              architecture.
+            </p>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: ARSENAL (The Floating Cloud) */}
+        <div className="relative flex flex-col gap-8">
+          {/* Header - UPDATED: Increased contrast (text-primary) */}
+          <div className="float-profile flex items-center gap-2 text-primary font-mono text-xs tracking-widest uppercase mb-4 md:mb-0">
+            <Cpu className="h-4 w-4" />
+            <span>Active_Arsenal</span>
+            <div className="h-px bg-primary/20 grow ml-4 opacity-50" />
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
+            {TECH_STACK.map((tech) => (
+              <div key={tech.n} className="tech-item group">
+                {/* UPDATED: Added 'bg-background/40' and 'backdrop-blur-md'
+                  This creates the "Glass Capsule" look that solves the readability issue
                 */}
-              <div className="w-full h-full flex items-center justify-center">
-                <Globe />
-              </div>
-            </div>
-
-            {/* Overlay Text */}
-            {/* 'pointer-events-none' ensures clicks pass through to the globe for dragging */}
-            <div className="relative z-10 p-6 bg-linear-to-t from-background/90 via-background/40 to-transparent pointer-events-none">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                <p className="text-xs font-mono text-primary">LIVE_UPLINK</p>
-              </div>
-              <p className="font-bold text-lg">Jeddah, KSA</p>
-            </div>
-          </BentoCard>
-
-          {/* 3. ARSENAL (1x2 TALL) */}
-          <BentoCard className="md:col-span-1 md:row-span-3 flex flex-col gap-4 opacity-0">
-            <div className="flex items-center justify-between border-b border-border/40 pb-2">
-              <h3 className="font-semibold text-muted-foreground uppercase tracking-widest text-xs">
-                Arsenal
-              </h3>
-              <span className="text-xs text-muted-foreground/50">v1.0</span>
-            </div>
-            {/* UPDATED: grid-cols-1 to stack items vertically so names fit */}
-            <div className="grid grid-cols-1 gap-2 grow content-start overflow-y-auto pr-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              {[
-                { n: "React", i: "react" },
-                { n: "Next.js", i: "nextdotjs" },
-                { n: "TypeScript", i: "typescript" },
-                { n: "Tailwind", i: "tailwindcss" },
-                { n: "Node.js", i: "nodedotjs" },
-                { n: "PostgreSQL", i: "postgresql" },
-                { n: "Docker", i: "docker" },
-                { n: "Figma", i: "figma" },
-                { n: "Git", i: "git" },
-                { n: "Redis", i: "redis" },
-                { n: "Python", i: "python" },
-                { n: "Three.js", i: "threedotjs" },
-              ].map((t) => (
-                <div
-                  key={t.n}
-                  className="flex items-center gap-3 rounded-md bg-muted/30 p-3 transition-colors hover:bg-muted cursor-none group"
-                >
-                  {/* REVERTED TO IMG TAG TO FIX BROKEN ICONS */}
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-white/5 bg-background/40 backdrop-blur-md hover:border-primary/30 hover:bg-primary/5 transition-all duration-300">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={`https://cdn.simpleicons.org/${t.i}`}
-                    alt={t.n}
-                    className="h-5 w-5 opacity-60 group-hover:opacity-100 transition-opacity dark:invert"
+                    src={`https://cdn.simpleicons.org/${tech.i}`}
+                    alt={tech.n}
+                    className="h-6 w-6 opacity-60 group-hover:opacity-100 transition-opacity dark:invert"
                   />
-                  <span className="text-sm font-medium opacity-80 group-hover:opacity-100">
-                    {t.n}
-                  </span>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold opacity-80 group-hover:opacity-100 group-hover:text-primary transition-all">
+                      {tech.n}
+                    </span>
+                    <span className="text-[10px] font-mono text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 duration-300">
+                      LOADED
+                    </span>
+                  </div>
                 </div>
-              ))}
-            </div>
-          </BentoCard>
-
-          {/* 4. SOCIAL: GITHUB (1x1) */}
-          <Link
-            href="https://github.com/t7sen"
-            target="_blank"
-            className="contents cursor-none"
-            onClick={() => play("click")}
-          >
-            <BentoCard className="md:col-span-1 md:row-span-1 flex flex-col items-center justify-center gap-4 group hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black opacity-0 cursor-none magnetic-target transition-all">
-              <Github className="h-10 w-10 opacity-70 group-hover:opacity-100 transition-opacity" />
-              <span className="font-bold text-lg">GitHub</span>
-            </BentoCard>
-          </Link>
-
-          {/* 5. SOCIAL: LINKEDIN (1x1) */}
-          <Link
-            href="https://linkedin.com/in/t7sen"
-            target="_blank"
-            className="contents cursor-none"
-            onClick={() => play("click")}
-          >
-            <BentoCard className="md:col-span-1 md:row-span-1 flex flex-col items-center justify-center gap-4 group hover:bg-[#0077b5] hover:text-white opacity-0 cursor-none magnetic-target transition-all">
-              <Linkedin className="h-10 w-10 opacity-70 group-hover:opacity-100 transition-opacity" />
-              <span className="font-bold text-lg">LinkedIn</span>
-            </BentoCard>
-          </Link>
-
-          {/* 6. CONTACT (Wide 2x1) */}
-          <Link
-            href="mailto:contact@t7sen.com"
-            className="contents cursor-none"
-            onClick={() => play("click")}
-          >
-            <BentoCard className="md:col-span-2 md:row-span-1 flex items-center justify-between px-8 hover:border-primary/50 hover:bg-primary/5 transition-colors opacity-0 cursor-none magnetic-target group">
-              <div className="flex flex-col">
-                <span className="font-bold text-xl group-hover:text-primary transition-colors">
-                  Let&apos;s build together
-                </span>
-                <span className="text-sm opacity-60 group-hover:opacity-100">
-                  contact@t7sen.com
-                </span>
               </div>
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Mail className="h-6 w-6 text-primary" />
-              </div>
-            </BentoCard>
-          </Link>
+            ))}
+          </div>
+
+          {/* Decorative Code Block - UPDATED: Added glass background */}
+          <div className="tech-item mt-8 p-4 rounded-lg border-l-2 border-primary/30 bg-background/30 backdrop-blur-sm font-mono text-[10px] text-muted-foreground/80 leading-loose opacity-80 hover:opacity-100 transition-opacity select-none">
+            <p>{`> locating_modules... OK`}</p>
+            <p>{`> initializing_renderer... OK`}</p>
+            <p>{`> loading_assets... 100%`}</p>
+            <span className="animate-pulse text-primary">{`> system_ready_`}</span>
+          </div>
         </div>
+      </div>
+
+      {/* --- FOOTER LOCATION MARKER --- */}
+      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-30 pointer-events-none mix-blend-difference">
+        <Globe2 className="h-12 w-12 animate-[spin_10s_linear_infinite]" />
       </div>
     </main>
   );
