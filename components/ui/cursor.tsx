@@ -32,7 +32,7 @@ export function Cursor() {
 
       // 1. MOVEMENT
       const onMouseMove = (e: MouseEvent) => {
-        // Safety: If the element we are tracking was removed from DOM, release it.
+        // Safety: Release if element removed
         if (hoverTarget.current && !hoverTarget.current.isConnected) {
           hoverTarget.current = null;
         }
@@ -119,12 +119,9 @@ export function Cursor() {
     { scope: cursorRef }
   );
 
-  // --- FORCE RESET ON NAVIGATION ---
+  // FORCE RESET ON NAVIGATION
   useEffect(() => {
-    // 1. Release target
     hoverTarget.current = null;
-
-    // 2. Force visual reset immediately
     if (cursorRef.current) {
       cursorRef.current.classList.remove("locked");
 
@@ -137,7 +134,7 @@ export function Cursor() {
         overwrite: "auto",
       });
     }
-  }, [pathname]); // Runs on every page change
+  }, [pathname]);
 
   return (
     <div className="pointer-events-none fixed inset-0 z-9999 hidden md:block">
