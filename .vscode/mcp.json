@@ -1,8 +1,0 @@
-{
-  "servers": {
-    "Sentry": {
-      "url": "https://mcp.sentry.dev/mcp/t7sen-c0/portfolio",
-      "type": "http"
-    }
-  }
-}
