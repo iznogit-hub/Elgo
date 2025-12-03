@@ -17,7 +17,7 @@ interface SoundContextType {
   toggleMute: () => void;
 }
 
-// STRICT TYPING: Extend the Window interface to include the Webkit prefix
+// Helper to support Safari's webkitAudioContext
 interface WindowWithWebkit extends Window {
   webkitAudioContext: typeof AudioContext;
 }
@@ -29,6 +29,7 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
   const isMutedRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
 
+  // 1. Load Mute Preference
   useEffect(() => {
     const stored = localStorage.getItem("sound-muted");
     if (stored) {
@@ -37,15 +38,44 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
       setIsMuted(val);
       isMutedRef.current = val;
     }
+  }, []);
 
-    // Type-safe fallback for Safari
-    const AudioContextClass =
-      window.AudioContext ||
-      (window as unknown as WindowWithWebkit).webkitAudioContext;
+  // 2. Initialize Audio Context ONLY on user interaction
+  useEffect(() => {
+    const initAudio = () => {
+      // If already initialized, stop listening
+      if (audioContextRef.current) return;
 
-    if (AudioContextClass) {
-      audioContextRef.current = new AudioContextClass();
-    }
+      const AudioContextClass =
+        window.AudioContext ||
+        (window as unknown as WindowWithWebkit).webkitAudioContext;
+
+      if (AudioContextClass) {
+        const ctx = new AudioContextClass();
+        audioContextRef.current = ctx;
+
+        // Immediately resume if suspended (browsers often start them suspended)
+        if (ctx.state === "suspended") {
+          ctx.resume().catch(() => {});
+        }
+      }
+
+      // Cleanup listeners once initialized
+      window.removeEventListener("click", initAudio);
+      window.removeEventListener("keydown", initAudio);
+    };
+
+    // Listen for the first interaction
+    window.addEventListener("click", initAudio);
+    window.addEventListener("keydown", initAudio);
+
+    return () => {
+      window.removeEventListener("click", initAudio);
+      window.removeEventListener("keydown", initAudio);
+      if (audioContextRef.current) {
+        audioContextRef.current.close().catch(() => {});
+      }
+    };
   }, []);
 
   const toggleMute = useCallback(() => {
@@ -58,10 +88,12 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const play = useCallback((type: SoundType) => {
+    // Return early if muted OR if AudioContext hasn't been initialized yet.
     if (isMutedRef.current || !audioContextRef.current) return;
 
     const ctx = audioContextRef.current;
 
+    // Double check state to ensure it plays
     if (ctx.state === "suspended") {
       ctx.resume().catch(() => {});
     }
@@ -74,6 +106,7 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
 
     const now = ctx.currentTime;
 
+    // Sound Profiles
     if (type === "hover") {
       oscillator.type = "sine";
       oscillator.frequency.setValueAtTime(800, now);
