@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Analytics } from "@vercel/analytics/react"; // Global service
-import { SpeedInsights } from "@vercel/speed-insights/next"; // Global service
 import { Cursor } from "@/components/ui/cursor"; // Global overlay
 import { Preloader } from "@/components/ui/preloader"; // Global overlay
 import { CommandMenu } from "@/components/command-menu"; // Global overlay
@@ -46,8 +44,6 @@ export function GlobalAppWrapper({ children }: { children: React.ReactNode }) {
         {children}
       </LoadingContext.Provider>
       {/* Vercel Analytics (Always at the bottom of the body) */}
-      <Analytics />
-      <SpeedInsights />
     </>
   );
 }
