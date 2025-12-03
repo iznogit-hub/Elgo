@@ -3,7 +3,7 @@
 import * as React from "react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
-import { NewsletterForm } from "@/components/home/newsletter-form";
+import { DonationButton } from "@/components/home/donation-button";
 import { HackerText } from "@/components/ui/hacker-text";
 import { DiscordStatus } from "@/components/home/discord-status";
 import { useLoadingStatus } from "@/components/loading-context";
@@ -86,7 +86,7 @@ export function HeroSection() {
         </p>
 
         <div className="hero-animate opacity-0 w-full flex justify-center">
-          <NewsletterForm />
+          <DonationButton />
         </div>
       </div>
     </section>
