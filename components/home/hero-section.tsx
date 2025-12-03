@@ -3,9 +3,9 @@
 import * as React from "react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
-import { NewsletterForm } from "@/components/coming-soon/newsletter-form";
+import { NewsletterForm } from "@/components/home/newsletter-form";
 import { HackerText } from "@/components/ui/hacker-text";
-import { DiscordStatus } from "@/components/coming-soon/discord-status";
+import { DiscordStatus } from "@/components/home/discord-status";
 import { useLoadingStatus } from "@/components/loading-context";
 
 gsap.registerPlugin(useGSAP);

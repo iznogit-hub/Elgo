@@ -5,8 +5,8 @@ import confetti from "canvas-confetti";
 import { useSfx } from "@/hooks/use-sfx";
 import { useKonami } from "@/hooks/use-konami";
 
-import { HeroSection } from "@/components/coming-soon/hero-section";
-import { SocialLinks } from "@/components/coming-soon/social-links";
+import { HeroSection } from "@/components/home/hero-section";
+import { SocialLinks } from "@/components/home/social-links";
 import { SnakeTerminal } from "@/components/snake/snake-terminal";
 
 export default function Home() {
