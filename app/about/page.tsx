@@ -59,7 +59,6 @@ export default function AboutPage() {
       );
 
       // 4. Globe Fade In
-      // UPDATED: Reduced opacity to 0.25 to prevent text interference
       gsap.to(".bg-globe", { opacity: 0.25, duration: 2, delay: 0.5 });
 
       // 5. Continuous Drift for Tech Items
@@ -81,14 +80,13 @@ export default function AboutPage() {
   return (
     <main
       ref={containerRef}
-      className="relative flex min-h-screen w-full flex-col items-center overflow-hidden text-foreground selection:bg-primary selection:text-primary-foreground pt-32 pb-20 px-6"
+      // UPDATED: pt-24 on mobile, pt-32 on md
+      className="relative flex min-h-screen w-full flex-col items-center overflow-hidden text-foreground selection:bg-primary selection:text-primary-foreground pt-24 md:pt-32 pb-20 px-6"
     >
       {/* --- AMBIENT GLOBE LAYER --- */}
       <div
         className={cn(
           "bg-globe fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] opacity-0 pointer-events-none -z-10",
-          // Light Mode: Multiply (Dark globe on white bg) + Grayscale for clean look
-          // Dark Mode: Screen (Light globe on black bg)
           "mix-blend-multiply dark:mix-blend-screen grayscale"
         )}
       >
@@ -96,7 +94,8 @@ export default function AboutPage() {
       </div>
 
       {/* --- FLOATING HEADER --- */}
-      <div className="absolute top-0 left-0 right-0 pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
+      {/* UPDATED: pt-24 on mobile, pt-32 on md */}
+      <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
         {/* ABORT BUTTON */}
         <div className="floating-header pointer-events-auto">
           <Link href="/" className="cursor-none" onClick={() => play("click")}>
@@ -158,7 +157,6 @@ export default function AboutPage() {
                   priority
                 />
               </div>
-              {/* Floating Badge */}
               <div className="absolute -bottom-2 -right-2 bg-background border border-border px-3 py-1 rounded-full text-[10px] font-mono font-bold shadow-lg">
                 v3.0
               </div>
@@ -181,9 +179,8 @@ export default function AboutPage() {
           </div>
         </div>
 
-        {/* RIGHT COLUMN: ARSENAL (The Floating Cloud) */}
+        {/* RIGHT COLUMN: ARSENAL */}
         <div className="relative flex flex-col gap-8">
-          {/* Header - UPDATED: Increased contrast (text-primary) */}
           <div className="float-profile flex items-center gap-2 text-primary font-mono text-xs tracking-widest uppercase mb-4 md:mb-0">
             <Cpu className="h-4 w-4" />
             <span>Active_Arsenal</span>
@@ -193,9 +190,6 @@ export default function AboutPage() {
           <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
             {TECH_STACK.map((tech) => (
               <div key={tech.n} className="tech-item group">
-                {/* UPDATED: Added 'bg-background/40' and 'backdrop-blur-md'
-                  This creates the "Glass Capsule" look that solves the readability issue
-                */}
                 <div className="flex items-center gap-3 p-3 rounded-lg border border-white/5 bg-background/40 backdrop-blur-md hover:border-primary/30 hover:bg-primary/5 transition-all duration-300">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -216,7 +210,6 @@ export default function AboutPage() {
             ))}
           </div>
 
-          {/* Decorative Code Block - UPDATED: Added glass background */}
           <div className="tech-item mt-8 p-4 rounded-lg border-l-2 border-primary/30 bg-background/30 backdrop-blur-sm font-mono text-[10px] text-muted-foreground/80 leading-loose opacity-80 hover:opacity-100 transition-opacity select-none">
             <p>{`> locating_modules... OK`}</p>
             <p>{`> initializing_renderer... OK`}</p>
@@ -226,7 +219,6 @@ export default function AboutPage() {
         </div>
       </div>
 
-      {/* --- FOOTER LOCATION MARKER --- */}
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-30 pointer-events-none mix-blend-difference">
         <Globe2 className="h-12 w-12 animate-[spin_10s_linear_infinite]" />
       </div>

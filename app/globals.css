@@ -117,22 +117,21 @@
     @apply border-border outline-ring/50;
   }
 
-  /* CRITICAL UPDATE: Universal Cursor Hide
-     We use !important to override any library-specific cursor styles 
-     (like 'cursor-pointer' in Radix/Shadcn components)
-  */
-  :root,
-  html,
-  body,
-  *,
-  *::before,
-  *::after {
-    cursor: none !important;
-  }
-
   body {
     @apply bg-background text-foreground;
     transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
+  }
+
+  /* UPDATED: Only hide the cursor on larger screens where the custom cursor exists */
+  @media (min-width: 768px) {
+    :root,
+    html,
+    body,
+    *,
+    *::before,
+    *::after {
+      cursor: none !important;
+    }
   }
 }
 

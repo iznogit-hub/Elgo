@@ -21,14 +21,12 @@ export default function ContactPage() {
     () => {
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
-      // 1. Float in the header elements (Abort btn + Status)
       tl.fromTo(
         ".floating-header",
         { y: -30, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, delay: 0.2 }
       );
 
-      // 2. Main Title & Form - Reveal from bottom
       tl.fromTo(
         ".floating-content",
         { y: 40, opacity: 0 },
@@ -36,7 +34,6 @@ export default function ContactPage() {
         "-=0.6"
       );
 
-      // 3. Background Decor - Subtle drift
       gsap.to(".decor-item", {
         y: "20px",
         duration: 3,
@@ -55,12 +52,13 @@ export default function ContactPage() {
   return (
     <main
       ref={containerRef}
-      className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden text-foreground selection:bg-primary selection:text-primary-foreground"
+      // FIXED: Switched to justify-start for mobile to control spacing manually,
+      // and min-h-[100dvh] for better mobile browser support.
+      className="relative flex min-h-dvh w-full flex-col items-center justify-start md:justify-center overflow-hidden text-foreground selection:bg-primary selection:text-primary-foreground"
     >
-
       {/* --- FLOATING HEADER (Safe Zone) --- */}
-      {/* pt-32 ensures we are well below the fixed Navbar */}
-      <div className="absolute top-0 left-0 right-0 pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
+      {/* Kept absolute but adjusted padding for mobile breathing room */}
+      <div className="absolute top-0 left-0 right-0 pt-28 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
         {/* ABORT BUTTON */}
         <div className="floating-header pointer-events-auto">
           <Link href="/" className="cursor-none" onClick={() => play("click")}>
@@ -105,28 +103,32 @@ export default function ContactPage() {
       </div>
 
       {/* --- CENTER STAGE --- */}
-      <div className="w-full max-w-4xl px-6 relative z-10 flex flex-col items-center">
+      {/* FIXED: Added mt-48 to push content down on mobile (clearing the header). 
+          Reset to mt-0 on desktop where justify-center takes over. */}
+      <div className="w-full max-w-4xl px-6 relative z-10 flex flex-col items-center mt-48 md:mt-0">
         {/* Title Section */}
-        <div className="floating-content text-center mb-16 space-y-2">
-          <div className="flex items-center justify-center gap-2 text-primary/60 mb-4">
-            <Terminal className="h-5 w-5" />
-            <span className="font-mono text-sm tracking-[0.2em] uppercase">
+        <div className="floating-content text-center mb-8 md:mb-16 space-y-2">
+          <div className="flex items-center justify-center gap-2 text-primary/60 mb-2 md:mb-4">
+            <Terminal className="h-4 w-4 md:h-5 md:w-5" />
+            <span className="font-mono text-xs md:text-sm tracking-[0.2em] uppercase">
               Incoming Transmission
             </span>
           </div>
-          <h1 className="text-5xl md:text-7xl font-black tracking-tighter">
+          {/* Scaled down font size for mobile */}
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tighter">
             <HackerText text="Initialize Contact" />
           </h1>
         </div>
 
         {/* The Floating Form */}
-        <div className="floating-content w-full max-w-xl">
+        <div className="floating-content w-full max-w-xl pb-10 md:pb-0">
           <ContactForm />
         </div>
       </div>
 
       {/* --- AMBIENT DECOR (Floating Code) --- */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-20">
+      {/* FIXED: Hidden on mobile to prevent clutter/overlap */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-20 hidden md:block">
         <div className="decor-item absolute top-[20%] left-[10%] font-mono text-xs text-primary">
           {`> ESTABLISHING HANDSHAKE...`}
         </div>

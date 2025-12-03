@@ -29,7 +29,7 @@ const TOTAL_STEPS = 3;
 
 export function ContactForm() {
   const [currentStep, setCurrentStep] = React.useState(0);
-  const [direction, setDirection] = React.useState(1); // 1 for next, -1 for back
+  const [direction, setDirection] = React.useState(1);
   const [isSubmitted, setIsSubmitted] = React.useState(false);
   const [serverError, setServerError] = React.useState<string | null>(null);
 
@@ -40,7 +40,7 @@ export function ContactForm() {
   const form = useForm<ContactFormValues>({
     resolver: zodResolver(contactSchema),
     defaultValues: { name: "", email: "", message: "" },
-    mode: "onChange", // Real-time validation for better UX
+    mode: "onChange",
   });
 
   const {
@@ -50,12 +50,9 @@ export function ContactForm() {
     formState: { errors, isSubmitting },
   } = form;
 
-  // Handle Entry Animations when step changes
   useGSAP(
     () => {
       if (isSubmitted || !stepRef.current) return;
-
-      // Reset position for entrance
       gsap.fromTo(
         stepRef.current,
         { x: direction * 50, opacity: 0 },
@@ -65,7 +62,6 @@ export function ContactForm() {
     { scope: containerRef, dependencies: [currentStep, isSubmitted] }
   );
 
-  // Handle Success View Animation
   useGSAP(
     () => {
       if (isSubmitted) {
@@ -80,19 +76,14 @@ export function ContactForm() {
     { scope: containerRef, dependencies: [isSubmitted] }
   );
 
-  // Navigation Logic
   const handleNext = async () => {
     let isValid = false;
-
-    // Validate only the current field
     if (currentStep === 0) isValid = await trigger("name");
     if (currentStep === 1) isValid = await trigger("email");
 
     if (isValid) {
       play("click");
       setDirection(1);
-
-      // Animate Out
       gsap.to(stepRef.current, {
         x: -50,
         opacity: 0,
@@ -101,15 +92,13 @@ export function ContactForm() {
         onComplete: () => setCurrentStep((prev) => prev + 1),
       });
     } else {
-      play("click"); // Feedback for error (maybe add error sound later)
+      play("click");
     }
   };
 
   const handleBack = () => {
     play("click");
     setDirection(-1);
-
-    // Animate Out (Reverse)
     gsap.to(stepRef.current, {
       x: 50,
       opacity: 0,
@@ -119,7 +108,6 @@ export function ContactForm() {
     });
   };
 
-  // Submission Logic
   async function onSubmit(data: ContactFormValues) {
     setServerError(null);
     play("click");
@@ -140,7 +128,6 @@ export function ContactForm() {
     }
   }
 
-  // Handle "Enter" key for non-textarea inputs
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && currentStep < TOTAL_STEPS - 1) {
       e.preventDefault();
@@ -152,14 +139,15 @@ export function ContactForm() {
     return (
       <div
         ref={containerRef}
-        className="flex flex-col items-center justify-center p-12 text-center border border-green-500/30 bg-green-500/5 rounded-2xl backdrop-blur-md min-h-[400px]"
+        // FIXED: Reduced min-height on mobile
+        className="flex flex-col items-center justify-center p-8 md:p-12 text-center border border-green-500/30 bg-green-500/5 rounded-2xl backdrop-blur-md min-h-[300px] md:min-h-[400px]"
       >
         <div className="success-view">
-          <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
-          <h3 className="text-2xl font-bold text-green-500">
+          <CheckCircle2 className="h-12 w-12 md:h-16 md:w-16 text-green-500 mx-auto mb-4" />
+          <h3 className="text-xl md:text-2xl font-bold text-green-500">
             Transmission Received
           </h3>
-          <p className="text-muted-foreground mt-2">
+          <p className="text-sm md:text-base text-muted-foreground mt-2">
             I will decrypt your message and respond shortly.
           </p>
           <Button
@@ -181,10 +169,11 @@ export function ContactForm() {
   return (
     <div
       ref={containerRef}
-      className="w-full max-w-lg mx-auto min-h-[400px] flex flex-col justify-center"
+      // FIXED: Adjusted min-height for mobile
+      className="w-full max-w-lg mx-auto min-h-[350px] md:min-h-[400px] flex flex-col justify-center"
     >
       {/* Progress Indicator */}
-      <div className="mb-8 flex items-center justify-between px-1">
+      <div className="mb-6 md:mb-8 flex items-center justify-between px-1">
         <div className="flex gap-2">
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
             <div
@@ -196,7 +185,7 @@ export function ContactForm() {
             />
           ))}
         </div>
-        <span className="text-xs font-mono text-muted-foreground">
+        <span className="text-[10px] md:text-xs font-mono text-muted-foreground">
           STEP {currentStep + 1}/{TOTAL_STEPS}
         </span>
       </div>
@@ -212,7 +201,7 @@ export function ContactForm() {
               <Input
                 {...register("name")}
                 placeholder="John Doe"
-                className="bg-background/50 border-white/10 focus:border-primary/50 transition-all text-lg h-12"
+                className="bg-background/50 border-white/10 focus:border-primary/50 transition-all text-base md:text-lg h-12"
                 onKeyDown={handleKeyDown}
                 autoFocus
                 onMouseEnter={() => play("hover")}
@@ -234,7 +223,7 @@ export function ContactForm() {
               <Input
                 {...register("email")}
                 placeholder="john@example.com"
-                className="bg-background/50 border-white/10 focus:border-primary/50 transition-all text-lg h-12"
+                className="bg-background/50 border-white/10 focus:border-primary/50 transition-all text-base md:text-lg h-12"
                 onKeyDown={handleKeyDown}
                 autoFocus
                 onMouseEnter={() => play("hover")}
@@ -256,7 +245,7 @@ export function ContactForm() {
               <Textarea
                 {...register("message")}
                 placeholder="Project details, ideas, or just saying hello..."
-                className="min-h-[150px] bg-background/50 border-white/10 focus:border-primary/50 transition-all text-base resize-none"
+                className="min-h-[120px] md:min-h-[150px] bg-background/50 border-white/10 focus:border-primary/50 transition-all text-base resize-none"
                 autoFocus
                 onMouseEnter={() => play("hover")}
               />
@@ -297,7 +286,7 @@ export function ContactForm() {
               <Button
                 type="button"
                 onClick={handleNext}
-                className="w-full gap-2 cursor-none magnetic-target hover:scale-[1.02] transition-transform text-base h-11"
+                className="w-full gap-2 cursor-none magnetic-target hover:scale-[1.02] transition-transform text-sm md:text-base h-11"
                 onMouseEnter={() => play("hover")}
               >
                 <span>CONTINUE</span>
@@ -307,7 +296,7 @@ export function ContactForm() {
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full gap-2 cursor-none magnetic-target hover:scale-[1.02] transition-transform text-base h-11"
+                className="w-full gap-2 cursor-none magnetic-target hover:scale-[1.02] transition-transform text-sm md:text-base h-11"
                 onClick={() => play("click")}
                 onMouseEnter={() => play("hover")}
               >

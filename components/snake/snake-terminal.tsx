@@ -1,7 +1,16 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
-import { X, RefreshCcw, Trophy, Keyboard } from "lucide-react";
+import {
+  X,
+  RefreshCcw,
+  Trophy,
+  Keyboard,
+  ChevronUp,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { useSnakeGame } from "@/hooks/use-snake-game";
@@ -94,6 +103,16 @@ export function SnakeTerminal({ onClose }: SnakeTerminalProps) {
     };
   }, [changeDirection, onClose, status, startGame, play]);
 
+  // Touch/Click Control Handlers
+  const handleControl = (dir: "UP" | "DOWN" | "LEFT" | "RIGHT") => {
+    play("click");
+    // If game hasn't started, start it on first move
+    if (status === "IDLE") {
+      startGame();
+    }
+    changeDirection(dir);
+  };
+
   return (
     <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div
@@ -122,10 +141,10 @@ export function SnakeTerminal({ onClose }: SnakeTerminalProps) {
         </div>
 
         {/* Game Area */}
-        <div className="relative p-6">
-          <div className="mb-4 flex items-center justify-between font-mono text-sm text-green-400">
+        <div className="relative p-6 flex flex-col items-center">
+          <div className="w-full mb-4 flex items-center justify-between font-mono text-sm text-green-400">
             <span>SCORE: {score.toString().padStart(3, "0")}</span>
-            <div className="flex items-center gap-1 rounded-full bg-green-500/5 px-2 py-1 text-[9px] font-mono text-green-300">
+            <div className="hidden sm:flex items-center gap-1 rounded-full bg-green-500/5 px-2 py-1 text-[9px] font-mono text-green-300">
               <Keyboard className="h-3 w-3" />
               <span>Arrows / WASD · Space · Esc</span>
             </div>
@@ -137,7 +156,7 @@ export function SnakeTerminal({ onClose }: SnakeTerminalProps) {
 
           {/* The Grid */}
           <div
-            className="relative mx-auto aspect-square w-full max-w-[400px] border border-green-500/30 bg-black/50"
+            className="relative mx-auto aspect-square w-full max-w-[360px] border border-green-500/30 bg-black/50"
             style={{
               display: "grid",
               gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)`,
@@ -146,8 +165,8 @@ export function SnakeTerminal({ onClose }: SnakeTerminalProps) {
           >
             {/* Overlay States */}
             {status === "IDLE" && (
-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/80 text-center">
-                <p className="mb-4 font-mono text-green-500">
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/80 text-center p-4">
+                <p className="mb-4 font-mono text-green-500 text-lg">
                   READY PLAYER ONE?
                 </p>
                 <Button
@@ -163,7 +182,7 @@ export function SnakeTerminal({ onClose }: SnakeTerminalProps) {
             )}
 
             {status === "GAME_OVER" && (
-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/80 text-center">
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/80 text-center p-4">
                 <p className="mb-2 font-mono text-xl font-bold text-red-500">
                   GAME OVER
                 </p>
@@ -209,7 +228,46 @@ export function SnakeTerminal({ onClose }: SnakeTerminalProps) {
             })}
           </div>
 
-          <div className="mt-4 text-center font-mono text-[10px] text-green-500/60">
+          {/* MOBILE CONTROLS (Visible on small screens) */}
+          <div className="mt-6 grid grid-cols-3 gap-2 sm:hidden w-full max-w-[200px]">
+            <div />
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-12 w-12 border-green-500/30 bg-green-500/5 text-green-500 active:bg-green-500 active:text-black"
+              onClick={() => handleControl("UP")}
+            >
+              <ChevronUp className="h-6 w-6" />
+            </Button>
+            <div />
+
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-12 w-12 border-green-500/30 bg-green-500/5 text-green-500 active:bg-green-500 active:text-black"
+              onClick={() => handleControl("LEFT")}
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-12 w-12 border-green-500/30 bg-green-500/5 text-green-500 active:bg-green-500 active:text-black"
+              onClick={() => handleControl("DOWN")}
+            >
+              <ChevronDown className="h-6 w-6" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-12 w-12 border-green-500/30 bg-green-500/5 text-green-500 active:bg-green-500 active:text-black"
+              onClick={() => handleControl("RIGHT")}
+            >
+              <ChevronRight className="h-6 w-6" />
+            </Button>
+          </div>
+
+          <div className="mt-4 text-center font-mono text-[10px] text-green-500/60 hidden sm:block">
             {status === "IDLE" && (
               <>
                 Press <span className="text-green-300">SPACE</span> to start ·

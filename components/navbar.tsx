@@ -14,7 +14,7 @@ export function Navbar() {
   const { play } = useSfx();
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex w-full items-center justify-between p-6 md:px-12 pointer-events-none">
+    <nav className="fixed top-0 left-0 right-0 z-50 flex w-full items-center justify-between p-4 md:p-6 md:px-12 pointer-events-none">
       <div className="flex items-center gap-2 pointer-events-auto">
         <MagneticWrapper strength={0.2}>
           <Link
