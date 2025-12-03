@@ -14,23 +14,28 @@ export function HeroSection() {
   const containerRef = React.useRef<HTMLElement>(null);
   const { assetsLoaded } = useLoadingStatus();
 
+  // Track the loading state at the moment of mounting.
+  // If assetsLoaded is ALREADY true when we mount, it means we navigated here
+  // from another page (no preloader), so we should skip the long delay.
+  const wasLoadedOnMount = React.useRef(assetsLoaded);
+
   useGSAP(
     () => {
       if (!assetsLoaded) return;
 
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
-      // TIMING CALCULATION:
-      // The Preloader curtain reveals the center of the screen around 1.4s.
-      // We start the animation slightly after that to ensure visibility.
-      const CURTAIN_LIFT_DELAY = 1.3; // seconds
+      // DYNAMIC TIMING:
+      // Initial Load (Preloader active): Wait 1.3s for curtain to lift.
+      // Navigation (Preloader done): Wait only 0.1s for smooth entry.
+      const startDelay = wasLoadedOnMount.current ? 0.1 : 1.3;
 
       // 1. Image Fades in Background (if any)
       tl.fromTo(
         ".avatar-layer",
         { opacity: 0, scale: 0.9 },
         { opacity: 1, scale: 1, duration: 1.5, ease: "expo.out" },
-        CURTAIN_LIFT_DELAY
+        startDelay
       );
 
       // 2. Text Content Slides up

@@ -15,11 +15,6 @@ export function Navbar() {
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex w-full items-center justify-between p-6 md:px-12 pointer-events-none">
-      {/* pointer-events-none on wrapper allows clicking through the empty space 
-         pointer-events-auto on elements re-enables interaction
-      */}
-
-      {/* Left: Logo */}
       <div className="flex items-center gap-2 pointer-events-auto">
         <MagneticWrapper strength={0.2}>
           <Link
@@ -28,14 +23,16 @@ export function Navbar() {
             className="block"
             onClick={() => play("click")}
           >
-            <Logo className="h-8 w-auto text-foreground transition-transform hover:scale-105" />
+            {/* ADDED ID HERE for Preloader tracking */}
+            <Logo
+              id="navbar-logo"
+              className="h-8 w-auto text-foreground transition-transform hover:scale-105"
+            />
           </Link>
         </MagneticWrapper>
       </div>
 
-      {/* Right: Controls */}
       <div className="flex items-center gap-2 pointer-events-auto">
-        {/* Contact Page Button */}
         <MagneticWrapper strength={0.6}>
           <Link href="/contact" onClick={() => play("click")}>
             <Button
