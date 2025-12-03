@@ -2,12 +2,14 @@
 
 import React, { useEffect, useRef } from "react";
 import createGlobe from "cobe";
+import { useTheme } from "next-themes";
 
 export function Globe() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pointerInteracting = useRef(false);
   const pointerInteractionMovement = useRef(0);
   const phiRef = useRef(3.5);
+  const { resolvedTheme } = useTheme();
 
   useEffect(() => {
     let width = 0;
@@ -22,23 +24,32 @@ export function Globe() {
 
     if (!canvasRef.current) return;
 
+    // CONFIGURATION BASED ON THEME
+    const isLight = resolvedTheme === "light";
+
+    // Light Mode: Dark Globe (0.3), No Glow (or dark glow), Blue/Cyan Markers
+    // Dark Mode: Light Globe (0.3), White Glow (1), Cyan Markers
+    const baseColor = isLight ? [0.2, 0.2, 0.2] : [0.3, 0.3, 0.3];
+    const glowColor = isLight ? [0.8, 0.8, 0.8] : [1, 1, 1];
+    const markerColor = isLight ? [0, 0.6, 0.9] : [0.1, 0.8, 1];
+
     const globe = createGlobe(canvasRef.current, {
       devicePixelRatio: 2,
-      width: 600 * 2,
-      height: 600 * 2,
+      width: width * 2,
+      height: width * 2,
       phi: 0,
       theta: 0.2,
-      dark: 1,
+      dark: isLight ? 0 : 1, // 0 = Light Mode rendering logic in Cobe
       diffuse: 1.2,
       mapSamples: 16000,
       mapBrightness: 6,
-      baseColor: [0.3, 0.3, 0.3],
-      markerColor: [0.1, 0.8, 1],
-      glowColor: [1, 1, 1],
+      baseColor: baseColor as [number, number, number],
+      markerColor: markerColor as [number, number, number],
+      glowColor: glowColor as [number, number, number],
       markers: [{ location: [21.5433, 39.1728], size: 0.1 }],
       onRender: (state) => {
         if (!pointerInteracting.current) {
-          phiRef.current += 0.001;
+          phiRef.current += 0.003; // Slightly faster rotation
         }
         state.phi = phiRef.current;
         state.width = width * 2;
@@ -56,7 +67,7 @@ export function Globe() {
       globe.destroy();
       window.removeEventListener("resize", onResize);
     };
-  }, []);
+  }, [resolvedTheme]); // Re-run when theme changes
 
   return (
     <div className="absolute inset-0 w-full h-full flex items-center justify-center">
@@ -65,15 +76,12 @@ export function Globe() {
         onPointerDown={(e) => {
           pointerInteracting.current = true;
           pointerInteractionMovement.current = e.clientX;
-          // REMOVED: style.cursor = 'grabbing'
         }}
         onPointerUp={() => {
           pointerInteracting.current = false;
-          // REMOVED: style.cursor = 'grab'
         }}
         onPointerOut={() => {
           pointerInteracting.current = false;
-          // REMOVED: style.cursor = 'grab'
         }}
         onMouseMove={(e) => {
           if (pointerInteracting.current) {
@@ -96,7 +104,6 @@ export function Globe() {
           maxWidth: "100%",
           aspectRatio: 1,
         }}
-        // UPDATED: 'cursor-none' hides the default arrow/hand
         className="cursor-none opacity-0 transition-opacity duration-1000"
       />
     </div>

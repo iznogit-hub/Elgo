@@ -8,27 +8,16 @@ import { cn } from "@/lib/utils";
 export function Background() {
   const containerRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
-  const spotlightRef = useRef<HTMLDivElement>(null);
 
   useGSAP(
     () => {
       const container = containerRef.current;
       const grid = gridRef.current;
-      const spotlight = spotlightRef.current;
 
-      if (!container || !grid || !spotlight) return;
+      if (!container || !grid) return;
 
-      // 1. Setup GSAP quickSetter/quickTo for high performance
-      // These functions are optimized for frequent updates (like mousemove)
-      const xToSpotlight = gsap.quickTo(spotlight, "x", {
-        duration: 0.2,
-        ease: "power3.out",
-      });
-      const yToSpotlight = gsap.quickTo(spotlight, "y", {
-        duration: 0.2,
-        ease: "power3.out",
-      });
-
+      // Parallax Grid Movement (Preserved)
+      // We kept this as it adds depth without the "flashlight" feel
       const xToGrid = gsap.quickTo(grid, "x", {
         duration: 0.6,
         ease: "power2.out",
@@ -38,26 +27,11 @@ export function Background() {
         ease: "power2.out",
       });
 
-      // 2. Initial Center Position
-      const onResize = () => {
-        const { innerWidth, innerHeight } = window;
-        xToSpotlight(innerWidth / 2);
-        yToSpotlight(innerHeight / 2);
-      };
-      window.addEventListener("resize", onResize);
-      onResize(); // Init
-
-      // 3. Mouse Movement Handler
       const handleMouseMove = (e: MouseEvent) => {
         const { clientX, clientY } = e;
         const { innerWidth, innerHeight } = window;
 
-        // Move spotlight to mouse position
-        xToSpotlight(clientX);
-        yToSpotlight(clientY);
-
-        // Parallax Effect: Move grid opposite to mouse
-        // "20" determines the strength of the parallax (lower = stronger)
+        // Calculate parallax offset from center
         const xOffset = (clientX - innerWidth / 2) / -25;
         const yOffset = (clientY - innerHeight / 2) / -25;
 
@@ -69,7 +43,6 @@ export function Background() {
 
       return () => {
         window.removeEventListener("mousemove", handleMouseMove);
-        window.removeEventListener("resize", onResize);
       };
     },
     { scope: containerRef }
@@ -81,37 +54,29 @@ export function Background() {
       className="fixed inset-0 -z-50 h-full w-full overflow-hidden bg-background"
     >
       {/* LAYER 1: The Parallax Grid 
-        We apply the pattern here. It is larger than the screen (110%) to prevent
-        gaps appearing at the edges during movement.
+          - Restored the 'mask' property to create the "Dark to Light" fade.
+          - Maintained the high-contrast grid lines for Light Mode visibility.
       */}
       <div
         ref={gridRef}
         className={cn(
           "absolute -inset-[10%] w-[120%] h-[120%] opacity-40 will-change-transform",
-          // Light Mode Grid: Darker lines
-          "bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)]",
+          // Light Mode Grid: Darker lines for visibility
+          "bg-[linear-gradient(to_right,rgba(0,0,0,0.3)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.3)_1px,transparent_1px)]",
           // Dark Mode Grid: Lighter lines
           "dark:bg-[linear-gradient(to_right,#ffffff12_1px,transparent_1px),linear-gradient(to_bottom,#ffffff12_1px,transparent_1px)]",
-          "bg-size-[40px_40px]"
+          "bg-size-[40px_40px]",
+          // RESTORED: The gradient mask (Fade out from top-center)
+          "mask-[radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)]"
         )}
       />
 
-      {/* LAYER 2: The Spotlight Overlay 
-        This div sits on top and follows the mouse. It uses a radial gradient 
-        to "reveal" the area underneath while darkening the rest slightly.
+      {/* LAYER 2: Static Top Glow (Restored)
+          This replaces the "flashlight" with a stable ambient light source at the top.
       */}
-      <div
-        ref={spotlightRef}
-        className="pointer-events-none absolute -top-[250px] -left-[250px] h-[500px] w-[500px] will-change-transform"
-        style={{
-          background:
-            "radial-gradient(circle closest-side, rgba(var(--primary), 0.15), transparent)",
-        }}
-      />
+      <div className="absolute left-0 right-0 top-[-10%] h-[500px] w-[500px] rounded-full bg-primary/10 blur-[100px] opacity-20 mx-auto pointer-events-none" />
 
-      {/* LAYER 3: Film Grain Texture 
-        Kept from original design for that "architect/technical" feel.
-      */}
+      {/* LAYER 3: Film Grain Texture */}
       <div className="pointer-events-none absolute inset-0 opacity-[0.03] mix-blend-overlay">
         <div
           className="absolute inset-0 h-full w-full"
@@ -121,9 +86,7 @@ export function Background() {
         />
       </div>
 
-      {/* LAYER 4: Vignette
-        Softens the edges of the screen to focus attention on the center.
-      */}
+      {/* LAYER 4: Vignette */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.2)_100%)] dark:bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)]" />
     </div>
   );
