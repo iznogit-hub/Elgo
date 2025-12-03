@@ -6,7 +6,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next"; // Global service
 import { Cursor } from "@/components/ui/cursor"; // Global overlay
 import { Preloader } from "@/components/ui/preloader"; // Global overlay
 import { CommandMenu } from "@/components/command-menu"; // Global overlay
-import { Background } from "@/components/coming-soon/background"; // Global overlay
+import { Background } from "@/components/ui/background"; // Global overlay
 import { AvatarImage } from "@/components/ui/avatar-image"; // Global asset tracker
 import { Navbar } from "@/components/navbar"; // Global navigation
 import { LoadingContext } from "@/components/loading-context"; // Loading context

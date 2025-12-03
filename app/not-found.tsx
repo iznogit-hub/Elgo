@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { AlertTriangle, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Background } from "@/components/coming-soon/background";
+import { Background } from "@/components/ui/background";
 import { Cursor } from "@/components/ui/cursor";
 
 export default function NotFound() {
