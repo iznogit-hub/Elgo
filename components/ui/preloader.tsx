@@ -296,7 +296,7 @@ export function Preloader({ contentLoaded }: PreloaderProps) {
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 z-[99999] flex items-center justify-center"
+      className="fixed inset-0 z-99999 flex items-center justify-center"
     >
       <div
         ref={bgRef}
@@ -321,7 +321,7 @@ export function Preloader({ contentLoaded }: PreloaderProps) {
 
         <div
           ref={uiRef}
-          className="flex flex-col items-center gap-4 min-w-[240px]"
+          className="flex flex-col items-center gap-4 min-w-60"
         >
           <div className="w-full h-px bg-muted/20 overflow-hidden relative">
             <div
