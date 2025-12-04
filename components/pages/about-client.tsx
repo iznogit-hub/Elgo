@@ -35,14 +35,12 @@ export function AboutClient() {
     () => {
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
-      // 1. Header Elements
       tl.fromTo(
         ".floating-header",
         { y: -30, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, delay: 0.2 }
       );
 
-      // 2. Profile & Bio
       tl.fromTo(
         ".float-profile",
         { scale: 0.9, opacity: 0, y: 20 },
@@ -50,7 +48,6 @@ export function AboutClient() {
         "-=0.6"
       );
 
-      // 3. Tech Stack Items (Staggered)
       tl.fromTo(
         ".tech-item",
         { opacity: 0, x: -20 },
@@ -58,10 +55,8 @@ export function AboutClient() {
         "-=0.5"
       );
 
-      // 4. Globe Fade In
       gsap.to(".bg-globe", { opacity: 0.25, duration: 2, delay: 0.5 });
 
-      // 5. Continuous Drift for Tech Items
       gsap.to(".tech-item", {
         y: "10px",
         duration: 2,
@@ -80,10 +75,8 @@ export function AboutClient() {
   return (
     <main
       ref={containerRef}
-      // UPDATED: pt-24 on mobile, pt-32 on md
       className="relative flex min-h-screen w-full flex-col items-center overflow-hidden text-foreground selection:bg-primary selection:text-primary-foreground pt-24 md:pt-32 pb-20 px-6"
     >
-      {/* --- AMBIENT GLOBE LAYER --- */}
       <div
         className={cn(
           "bg-globe fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] opacity-0 pointer-events-none -z-10",
@@ -93,10 +86,7 @@ export function AboutClient() {
         <Globe />
       </div>
 
-      {/* --- FLOATING HEADER --- */}
-      {/* UPDATED: pt-24 on mobile, pt-32 on md */}
       <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
-        {/* ABORT BUTTON */}
         <div className="floating-header pointer-events-auto">
           <Link href="/" className="cursor-none" onClick={() => play("click")}>
             <Button
@@ -119,7 +109,6 @@ export function AboutClient() {
           </Link>
         </div>
 
-        {/* PROFILE STATUS */}
         <div className="floating-header flex flex-col items-end gap-2">
           <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 backdrop-blur-sm">
             <span className="relative flex h-2 w-2">
@@ -139,11 +128,8 @@ export function AboutClient() {
         </div>
       </div>
 
-      {/* --- MAIN CONTENT --- */}
       <div className="relative z-10 w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-16 md:gap-8 items-center mt-8 md:mt-20">
-        {/* LEFT COLUMN: IDENTITY */}
         <div className="float-profile flex flex-col items-center md:items-start text-center md:text-left space-y-8">
-          {/* Avatar Container */}
           <MagneticWrapper strength={0.2}>
             <div className="relative group">
               <div className="absolute -inset-4 bg-primary/20 rounded-full blur-xl opacity-0 group-hover:opacity-50 transition-opacity duration-500" />
@@ -169,17 +155,17 @@ export function AboutClient() {
             </h1>
             <div className="flex items-center gap-3 justify-center md:justify-start text-primary/80 font-mono text-sm tracking-widest uppercase">
               <Terminal className="h-4 w-4" />
-              <span>Full_Stack_Architect</span>
+              <span>Sec_Ops // Frontend</span>
             </div>
             <p className="text-muted-foreground text-lg leading-relaxed max-w-md">
-              Crafting digital reality through code. Specialized in
-              high-performance web graphics, interaction design, and scalable
-              architecture.
+              I merge the precision of Cyber Security with the creativity of
+              Frontend Engineering. With extensive coding experience and a
+              competitive drive that places me in the top 0.1% of gamers, I
+              build secure, responsive, and winning digital solutions.
             </p>
           </div>
         </div>
 
-        {/* RIGHT COLUMN: ARSENAL */}
         <div className="relative flex flex-col gap-8">
           <div className="float-profile flex items-center gap-2 text-primary font-mono text-xs tracking-widest uppercase mb-4 md:mb-0">
             <Cpu className="h-4 w-4" />
@@ -202,7 +188,7 @@ export function AboutClient() {
                       {tech.n}
                     </span>
                     <span className="text-[10px] font-mono text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 duration-300">
-                      LOADED
+                      READY
                     </span>
                   </div>
                 </div>
@@ -211,10 +197,10 @@ export function AboutClient() {
           </div>
 
           <div className="tech-item mt-8 p-4 rounded-lg border-l-2 border-primary/30 bg-background/30 backdrop-blur-sm font-mono text-[10px] text-muted-foreground/80 leading-loose opacity-80 hover:opacity-100 transition-opacity select-none">
-            <p>{`> locating_modules... OK`}</p>
-            <p>{`> initializing_renderer... OK`}</p>
-            <p>{`> loading_assets... 100%`}</p>
-            <span className="animate-pulse text-primary">{`> system_ready_`}</span>
+            <p>{`> initializing_security_protocols... OK`}</p>
+            <p>{`> scanning_threat_vectors... NONE`}</p>
+            <p>{`> optimizing_performance... MAX`}</p>
+            <span className="animate-pulse text-primary">{`> player_status: TOP_0.1%`}</span>
           </div>
         </div>
       </div>

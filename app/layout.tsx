@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://t7sen.com"),
   title: {
-    default: "T7SEN | Software Architect",
+    default: "T7SEN | SEC_OPS // Frontend",
     template: "%s | T7SEN",
   },
   description:
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: "https://t7sen.com",
-    title: "T7SEN | Software Architect",
+    title: "t7sen | Cyber Developer",
     description:
       "Crafting digital reality through code. Specialized in high-performance web graphics and scalable architecture.",
     siteName: "T7SEN Portfolio",
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "T7SEN | Software Architect",
+    title: "t7sen | Cyber Developer",
     description:
       "Crafting digital reality through code. Specialized in high-performance web graphics and scalable architecture.",
     images: ["/opengraph-image"],

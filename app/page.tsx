@@ -1,8 +1,8 @@
-import {HomeClient} from "@/components/pages/home-client";
+import { HomeClient } from "@/components/pages/home-client";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "T7SEN | Software Architect", // Explicit title for Home
+  title: "t7sen | Cyber Developer", // Explicit title for Home
 };
 
 export default function HomePage() {
