@@ -9,6 +9,7 @@ import { AvatarImage } from "@/components/ui/avatar-image"; // Global asset trac
 import { Navbar } from "@/components/navbar"; // Global navigation
 import { LoadingContext } from "@/components/loading-context"; // Loading context
 import { TabManager } from "./ui/tab-manager"; // Global overlay
+import { SoundPrompter } from "./ui/sound-prompter";
 
 // This component manages all client-side global state and persistent overlays.
 export function GlobalAppWrapper({ children }: { children: React.ReactNode }) {
@@ -31,6 +32,7 @@ export function GlobalAppWrapper({ children }: { children: React.ReactNode }) {
       <Cursor />
       <Background />
       <Preloader contentLoaded={assetsLoaded} />
+      <SoundPrompter />
       <CommandMenu onOpenGame={() => console.log("Game launch called...")} />
       <Navbar />
       <TabManager />
