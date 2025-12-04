@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "cdn.discordapp.com",
       },
+      {
+        protocol: "https",
+        hostname: "cdn.simpleicons.org",
+      },
     ],
   },
   async headers() {
@@ -17,15 +21,25 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "X-Content-Type-Options",
-            value: "nosniff", 
+            value: "nosniff",
           },
           {
             key: "X-Frame-Options",
-            value: "DENY", 
+            value: "DENY",
           },
           {
             key: "Referrer-Policy",
             value: "strict-origin-when-cross-origin",
+          },
+          {
+            key: "Content-Security-Policy",
+            value:
+              "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://cdn.discordapp.com https://cdn.simpleicons.org; font-src 'self' data:; connect-src 'self' https://*.sentry.io https://api.lanyard.rest wss://api.lanyard.rest; frame-ancestors 'none'; base-uri 'self'; form-action 'self';",
+          },
+          {
+            key: "Permissions-Policy",
+            value:
+              "camera=(), microphone=(), geolocation=(), browsing-topics=()",
           },
         ],
       },
