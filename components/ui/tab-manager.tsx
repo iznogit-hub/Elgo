@@ -8,31 +8,24 @@ export function TabManager() {
   const pathname = usePathname();
 
   useEffect(() => {
-    // 1. Logic to generate the title based on the current URL
-    const getPageTitle = () => {
-      if (pathname === "/") return "t7sen | Portfolio";
+    // 1. On mount/navigation, grab the current title immediately
+    // (It might still be the old one for a few milliseconds)
+    if (document.title) {
+      originalTitle.current = document.title;
+    }
 
-      // Extract first segment (e.g., "/about" -> "about")
-      const segment = pathname.split("/")[1];
+    // 2. Wait for Next.js to finish setting the NEW page title
+    // We capture it so we can restore it if the user tabs away and comes back
+    const timer = setTimeout(() => {
+      originalTitle.current = document.title;
+    }, 200); // Increased to 200ms to ensure we catch the update
 
-      // Capitalize first letter (e.g., "about" -> "About")
-      const formatted = segment.charAt(0).toUpperCase() + segment.slice(1);
-
-      return `t7sen | ${formatted}`;
-    };
-
-    const systemTitle = getPageTitle();
-
-    // 2. Set the title immediately upon navigation
-    document.title = systemTitle;
-    originalTitle.current = systemTitle;
-
-    // 3. "Away" Status Logic
     const handleVisibilityChange = () => {
       if (document.hidden) {
+        // User left the tab
         document.title = "Signal Lost... 📡";
       } else {
-        // Restore the calculated page title
+        // User came back: Restore the correct page title we captured
         document.title = originalTitle.current;
       }
     };
@@ -40,11 +33,12 @@ export function TabManager() {
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
+      clearTimeout(timer);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      // Safety reset
-      document.title = systemTitle;
+      // CRITICAL FIX: Removed the line that reset document.title.
+      // We let Next.js handle the title update for the new route.
     };
-  }, [pathname]); // Re-run this effect every time the URL changes
+  }, [pathname]);
 
   return null;
 }

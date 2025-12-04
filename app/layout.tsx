@@ -16,16 +16,59 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("http://localhost:3000"),
-  title: "t7sen | Portfolio",
-  description: "Something amazing is being built.",
+  metadataBase: new URL("https://t7sen.com"),
+  title: {
+    default: "T7SEN | Software Architect",
+    template: "%s | T7SEN",
+  },
+  description:
+    "Software Architect and Developer specializing in high-performance web applications, scalable systems, and immersive digital experiences.",
+  keywords: [
+    "Software Architect",
+    "Full Stack Developer",
+    "Next.js",
+    "React",
+    "TypeScript",
+    "Portfolio",
+    "Cyberpunk Design",
+  ],
+  authors: [{ name: "T7SEN", url: "https://t7sen.com" }],
+  creator: "T7SEN",
   openGraph: {
-    title: "t7sen | Portfolio",
-    description: "Something amazing is being built.",
-    url: "https://t7sen.com",
-    siteName: "t7sen",
-    locale: "en_US",
     type: "website",
+    locale: "en_US",
+    url: "https://t7sen.com",
+    title: "T7SEN | Software Architect",
+    description:
+      "Crafting digital reality through code. Specialized in high-performance web graphics and scalable architecture.",
+    siteName: "T7SEN Portfolio",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "T7SEN Portfolio",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "T7SEN | Software Architect",
+    description:
+      "Crafting digital reality through code. Specialized in high-performance web graphics and scalable architecture.",
+    images: ["/opengraph-image"],
+    creator: "@T7SEN", // Replace with your actual handle if different
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
 };
 
@@ -34,7 +77,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-return (
+  return (
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
@@ -46,11 +89,8 @@ return (
           disableTransitionOnChange
         >
           <SoundProvider>
-            
             {/* WRAPPER: Now contains all overlays (Cursor, Preloader, Navbar, Analytics) */}
-            <GlobalAppWrapper>
-                {children}
-            </GlobalAppWrapper>
+            <GlobalAppWrapper>{children}</GlobalAppWrapper>
           </SoundProvider>
         </ThemeProvider>
       </body>
