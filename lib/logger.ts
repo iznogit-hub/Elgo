@@ -1,12 +1,19 @@
-import pino from "pino";
-
-const logger = pino({
-  level: process.env.LOG_LEVEL || "info",
-  // REMOVED: The 'transport' configuration block.
-  // This removes the worker thread dependency that was causing the crash.
-  base: {
-    env: process.env.NODE_ENV,
+const logger = {
+  info: (obj: object, msg?: string) => {
+    if (process.env.NODE_ENV !== "test") {
+      console.log(JSON.stringify({ level: "info", msg, ...obj }));
+    }
   },
-});
+  warn: (obj: object, msg?: string) => {
+    if (process.env.NODE_ENV !== "test") {
+      console.warn(JSON.stringify({ level: "warn", msg, ...obj }));
+    }
+  },
+  error: (obj: object, msg?: string) => {
+    if (process.env.NODE_ENV !== "test") {
+      console.error(JSON.stringify({ level: "error", msg, ...obj }));
+    }
+  },
+};
 
 export default logger;
