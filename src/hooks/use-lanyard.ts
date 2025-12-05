@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LanyardData, LanyardMessage } from "@/types/lanyard";
+import { LanyardData, LanyardMessage } from "@/app/types/lanyard";
 
 const LANYARD_WS = "wss://api.lanyard.rest/socket";
 

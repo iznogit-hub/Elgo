@@ -17,7 +17,7 @@ export async function sendMessage(formData: FormData) {
   // 1. Rate Limit
   try {
     await checkRateLimit(ip);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error: unknown) {
     logger.warn({ ip, userAgent }, "Rate limit exceeded");
     return { error: "Too many requests. Please try again later." };

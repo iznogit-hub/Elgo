@@ -319,10 +319,7 @@ export function Preloader({ contentLoaded }: PreloaderProps) {
           </div>
         </div>
 
-        <div
-          ref={uiRef}
-          className="flex flex-col items-center gap-4 min-w-60"
-        >
+        <div ref={uiRef} className="flex flex-col items-center gap-4 min-w-60">
           <div className="w-full h-px bg-muted/20 overflow-hidden relative">
             <div
               className="absolute left-0 top-0 h-full bg-primary transition-all duration-200 ease-linear shadow-[0_0_15px_rgba(var(--primary),0.5)]"
