@@ -22,7 +22,7 @@ const TECH_STACK = [
   { n: "TypeScript", i: "typescript" },
   { n: "Tailwind", i: "tailwindcss" },
   { n: "Node.js", i: "nodedotjs" },
-  { n: "PostgreSQL", i: "postgresql" },
+  { n: "MongoDB", i: "mongodb" },
   { n: "Docker", i: "docker" },
   { n: "Three.js", i: "threedotjs" },
 ];
@@ -55,8 +55,6 @@ export function AboutClient() {
         "-=0.5"
       );
 
-      // UPDATED: Globe Expansion Animation
-      // Starts small (scale: 0.5) and expands to full size while fading in.
       gsap.fromTo(
         ".bg-globe",
         { scale: 0.5, opacity: 0 },
@@ -65,7 +63,7 @@ export function AboutClient() {
           opacity: 0.25,
           duration: 2.5,
           delay: 0.5,
-          ease: "expo.out", // 'expo.out' gives a nice "pop" then slow settle
+          ease: "expo.out",
         }
       );
 
@@ -193,7 +191,11 @@ export function AboutClient() {
                   <img
                     src={`https://cdn.simpleicons.org/${tech.i}`}
                     alt={tech.n}
-                    className="h-6 w-6 opacity-60 group-hover:opacity-100 transition-opacity dark:invert"
+                    className={cn(
+                      "h-6 w-6 opacity-60 group-hover:opacity-100 transition-opacity",
+                      (tech.n === "Next.js" || tech.n === "Three.js") &&
+                        "dark:invert"
+                    )}
                   />
                   <div className="flex flex-col">
                     <span className="text-sm font-bold opacity-80 group-hover:opacity-100 group-hover:text-primary transition-all">
