@@ -24,14 +24,12 @@ export function Globe() {
 
     if (!canvasRef.current) return;
 
-    // CONFIGURATION BASED ON THEME
     const isLight = resolvedTheme === "light";
 
-    // Light Mode: Dark Globe (0.3), No Glow (or dark glow), Blue/Cyan Markers
-    // Dark Mode: Light Globe (0.3), White Glow (1), Cyan Markers
+    // Colors
     const baseColor = isLight ? [0.2, 0.2, 0.2] : [0.3, 0.3, 0.3];
     const glowColor = isLight ? [0.8, 0.8, 0.8] : [1, 1, 1];
-    const markerColor = isLight ? [0, 0.6, 0.9] : [0.1, 0.8, 1];
+    const markerColor = [0.6, 0.2, 1];
 
     const globe = createGlobe(canvasRef.current, {
       devicePixelRatio: 2,
@@ -39,17 +37,20 @@ export function Globe() {
       height: width * 2,
       phi: 0,
       theta: 0.2,
-      dark: isLight ? 0 : 1, // 0 = Light Mode rendering logic in Cobe
+      dark: isLight ? 0 : 1,
       diffuse: 1.2,
       mapSamples: 16000,
       mapBrightness: 6,
       baseColor: baseColor as [number, number, number],
       markerColor: markerColor as [number, number, number],
       glowColor: glowColor as [number, number, number],
-      markers: [{ location: [21.5433, 39.1728], size: 0.1 }],
+      markers: [
+        { location: [21.5433, 39.1728], size: 0.1 },
+        { location: [21.5433, 39.1728], size: 0.2 },
+      ],
       onRender: (state) => {
         if (!pointerInteracting.current) {
-          phiRef.current += 0.003; // Slightly faster rotation
+          phiRef.current += 0.003;
         }
         state.phi = phiRef.current;
         state.width = width * 2;
@@ -67,7 +68,7 @@ export function Globe() {
       globe.destroy();
       window.removeEventListener("resize", onResize);
     };
-  }, [resolvedTheme]); // Re-run when theme changes
+  }, [resolvedTheme]);
 
   return (
     <div className="absolute inset-0 w-full h-full flex items-center justify-center">

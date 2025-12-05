@@ -55,7 +55,19 @@ export function AboutClient() {
         "-=0.5"
       );
 
-      gsap.to(".bg-globe", { opacity: 0.25, duration: 2, delay: 0.5 });
+      // UPDATED: Globe Expansion Animation
+      // Starts small (scale: 0.5) and expands to full size while fading in.
+      gsap.fromTo(
+        ".bg-globe",
+        { scale: 0.5, opacity: 0 },
+        {
+          scale: 1,
+          opacity: 0.25,
+          duration: 2.5,
+          delay: 0.5,
+          ease: "expo.out", // 'expo.out' gives a nice "pop" then slow settle
+        }
+      );
 
       gsap.to(".tech-item", {
         y: "10px",
@@ -80,7 +92,7 @@ export function AboutClient() {
       <div
         className={cn(
           "bg-globe fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] opacity-0 pointer-events-none -z-10",
-          "mix-blend-multiply dark:mix-blend-screen grayscale"
+          "mix-blend-multiply dark:mix-blend-screen"
         )}
       >
         <Globe />
