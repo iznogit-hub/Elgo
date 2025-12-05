@@ -52,13 +52,13 @@ export function ContactClient() {
   return (
     <main
       ref={containerRef}
-      // FIXED: Switched to justify-start for mobile to control spacing manually,
-      // and min-h-[100dvh] for better mobile browser support.
-      className="relative flex min-h-dvh w-full flex-col items-center justify-start md:justify-center overflow-hidden text-foreground selection:bg-primary selection:text-primary-foreground"
+      // UPDATED:
+      // 1. min-h-[100dvh]: Fixes centering issues on mobile browsers with address bars.
+      // 2. py-20: Slightly reduced mobile padding to allow better centering on small screens.
+      className="relative flex min-h-dvh w-full flex-col items-center justify-center md:justify-start overflow-x-hidden text-foreground selection:bg-primary selection:text-primary-foreground py-20 md:py-32"
     >
-      {/* --- FLOATING HEADER (Safe Zone) --- */}
-      {/* Kept absolute but adjusted padding for mobile breathing room */}
-      <div className="absolute top-0 left-0 right-0 pt-28 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
+      {/* --- FLOATING HEADER --- */}
+      <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
         {/* ABORT BUTTON */}
         <div className="floating-header pointer-events-auto">
           <Link href="/" className="cursor-none" onClick={() => play("click")}>
@@ -103,9 +103,7 @@ export function ContactClient() {
       </div>
 
       {/* --- CENTER STAGE --- */}
-      {/* FIXED: Added mt-48 to push content down on mobile (clearing the header). 
-          Reset to mt-0 on desktop where justify-center takes over. */}
-      <div className="w-full max-w-4xl px-6 relative z-10 flex flex-col items-center mt-48 md:mt-0">
+      <div className="w-full max-w-4xl px-6 relative z-10 flex flex-col items-center mt-0 md:mt-20">
         {/* Title Section */}
         <div className="floating-content text-center mb-8 md:mb-16 space-y-2">
           <div className="flex items-center justify-center gap-2 text-primary/60 mb-2 md:mb-4">
@@ -114,7 +112,6 @@ export function ContactClient() {
               Incoming Transmission
             </span>
           </div>
-          {/* Scaled down font size for mobile */}
           <h1 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tighter">
             <HackerText text="Initialize Contact" />
           </h1>
@@ -126,8 +123,7 @@ export function ContactClient() {
         </div>
       </div>
 
-      {/* --- AMBIENT DECOR (Floating Code) --- */}
-      {/* FIXED: Hidden on mobile to prevent clutter/overlap */}
+      {/* --- AMBIENT DECOR --- */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-20 hidden md:block">
         <div className="decor-item absolute top-[20%] left-[10%] font-mono text-xs text-primary">
           {`> ESTABLISHING HANDSHAKE...`}

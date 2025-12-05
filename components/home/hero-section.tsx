@@ -48,7 +48,11 @@ export function HeroSection() {
   return (
     <section
       ref={containerRef}
-      className="relative flex min-h-[80vh] w-full flex-col items-center justify-center overflow-hidden px-4 py-12"
+      // UPDATED:
+      // min-h-[60vh] for mobile ensures it takes up decent space.
+      // md:min-h-0 removes the forcing of 80vh on desktop, allowing it to fit in the flex container without scrolling.
+      // md:h-auto lets the content determine height, centered by the parent.
+      className="relative flex min-h-[60vh] md:min-h-0 md:h-auto w-full flex-col items-center justify-center overflow-hidden px-4 py-12"
     >
       <div className="avatar-layer absolute inset-0 z-0 flex items-center justify-center opacity-0">
         <div className="relative h-full w-full max-w-[1000px] opacity-90" />

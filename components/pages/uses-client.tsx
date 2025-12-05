@@ -70,41 +70,33 @@ export function UsesClient() {
     () => {
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
-      // 1. Entrance: Header
       tl.fromTo(
         ".floating-header",
-        { y: -20, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.5, stagger: 0.1, delay: 0.1 }
+        { y: -30, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, delay: 0.2 }
       );
 
-      // 2. Entrance: Title/Left Column
-      // Starts overlapping with header
       tl.fromTo(
         ".uses-intro",
-        { y: 20, opacity: 0, scale: 0.98 },
-        { y: 0, opacity: 1, scale: 1, duration: 0.5 },
-        "-=0.3"
+        { scale: 0.9, opacity: 0, y: 20 },
+        { scale: 1, opacity: 1, y: 0, duration: 1 },
+        "-=0.6"
       );
 
-      // 3. Entrance: Grid Cards
-      // "<" ensures this starts EXACTLY when the previous animation (.uses-intro) starts
-      // This forces parallel execution
       tl.fromTo(
         ".uses-grid-card",
-        { y: 30, opacity: 0, scale: 0.95 },
-        { y: 0, opacity: 1, scale: 1, duration: 0.5, stagger: 0.06 },
-        "<"
+        { opacity: 0, x: -20 },
+        { opacity: 1, x: 0, duration: 0.6, stagger: 0.05 },
+        "<+=0.1"
       );
 
-      // 4. Decor
       tl.fromTo(
         ".decor-item",
         { opacity: 0 },
         { opacity: 1, duration: 1 },
-        "-=0.3"
+        "-=0.5"
       );
 
-      // 5. Continuous Floating (Apply to both Intro and Grid)
       gsap.to([".uses-intro", ".uses-grid-card"], {
         y: "10px",
         duration: 3,
@@ -117,7 +109,6 @@ export function UsesClient() {
         },
       });
 
-      // 6. Decor Floating
       gsap.to(".decor-item", {
         y: "15px",
         duration: 4,
@@ -136,7 +127,9 @@ export function UsesClient() {
   return (
     <main
       ref={containerRef}
-      className="relative flex h-screen w-full flex-col items-center justify-center overflow-hidden text-foreground selection:bg-primary selection:text-primary-foreground px-6"
+      // UPDATED: Changed h-screen to min-h-screen, removed overflow-hidden (used overflow-x-hidden)
+      // Added py-32 to handle top/bottom spacing on scrollable screens
+      className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-x-hidden text-foreground selection:bg-primary selection:text-primary-foreground px-6 py-32"
     >
       {/* --- Floating Header --- */}
       <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-30">
@@ -194,9 +187,9 @@ export function UsesClient() {
       </div>
 
       {/* --- Main Content --- */}
-      <div className="relative z-10 w-full max-w-6xl flex flex-col justify-center h-full pt-20">
+      {/* UPDATED: Changed pt-20 to pt-10 to allow flex justify-center to work better on small screens */}
+      <div className="relative z-10 w-full max-w-6xl flex flex-col justify-center h-full pt-10">
         <div className="flex flex-col md:flex-row gap-8 md:gap-16 items-center justify-center">
-          {/* Left Column: Title & Description */}
           <div className="w-full md:w-1/3 space-y-6 text-center md:text-left uses-intro opacity-0">
             <div className="space-y-2">
               <h1 className="text-5xl md:text-7xl font-black tracking-tighter">
@@ -211,23 +204,18 @@ export function UsesClient() {
             </p>
           </div>
 
-          {/* Right Column: The Grid */}
           <div className="w-full md:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-4">
             {USES_DATA.map((section) => (
               <div
                 key={section.category}
                 className={cn(
                   "uses-grid-card group relative overflow-hidden rounded-xl border border-white/5 bg-linear-to-br from-white/5 to-white/0 backdrop-blur-md p-5 opacity-0",
-                  // CRITICAL FIX: Replaced 'transition-all' with specific properties.
-                  // This prevents CSS from fighting GSAP's transform/opacity animations.
                   "transition-[border-color,box-shadow,background-color] duration-500",
                   "hover:border-primary/30 hover:shadow-[0_0_30px_-10px_rgba(var(--primary),0.2)]"
                 )}
               >
-                {/* Tech Pattern Overlay */}
                 <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0)_50%,rgba(0,0,0,0.2)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-size-[100%_2px,3px_100%] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
-                {/* Section Header */}
                 <div className="flex items-center gap-3 mb-4 text-primary relative z-10">
                   <div className="p-1.5 rounded-md bg-primary/10 group-hover:bg-primary/20 transition-colors">
                     <section.icon className="h-4 w-4" />
@@ -238,7 +226,6 @@ export function UsesClient() {
                   <div className="h-px bg-primary/20 grow" />
                 </div>
 
-                {/* Items List */}
                 <ul className="space-y-3 relative z-10">
                   {section.items.map((item) => (
                     <li
