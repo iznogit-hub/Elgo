@@ -10,6 +10,21 @@ Sentry.init({
   // Add optional integrations for additional features
   integrations: [
     Sentry.replayIntegration(),
+    Sentry.feedbackIntegration({
+      // OPTIONAL: Customize the look to match your site
+      colorScheme: "dark", // Forces dark mode to match your aesthetic
+      triggerLabel: "Report a Bug", // Text on the button
+      formTitle: "System Issue Report", // Title inside the modal
+      submitBtnLabel: "Send Report",
+
+      // Auto-inject the floating button
+      autoInject: true,
+
+      // Require email so you can reply to them
+      isEmailRequired: true,
+    }),
+    // send console.log, console.warn, and console.error calls as logs to Sentry
+    Sentry.consoleLoggingIntegration({ levels: ["log", "warn", "error"] }),
   ],
 
   // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
