@@ -1,0 +1,16 @@
+name: Cleanup Preview
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  cleanup_preview:
+    runs-on: ubuntu-latest
+    name: Cleanup Preview App
+    steps:
+      - name: Delete Preview App
+        uses: digitalocean/app_action/delete@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          from_pr_preview: true

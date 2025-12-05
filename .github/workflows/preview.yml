@@ -1,0 +1,22 @@
+name: Deploy Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  deploy_preview:
+    runs-on: ubuntu-latest
+    name: Deploy Preview App
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy Preview
+        uses: digitalocean/app_action/deploy@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          # This tells DO to treat this as a temporary PR app
+          deploy_pr_preview: true
+          # Optional: print logs to GitHub Actions for debugging
+          print_build_logs: true
