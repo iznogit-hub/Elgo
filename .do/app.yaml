@@ -28,19 +28,19 @@ services:
         value: re_D4w2NNid_LMa8UpQkzJD7vumGK3wcFMwn
       - key: SENTRY_AUTH_TOKEN
         scope: RUN_AND_BUILD_TIME
-        value: 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
+        value: ${SENTRY_AUTH_TOKEN}
       - key: PORT
         scope: RUN_AND_BUILD_TIME
         value: "8080"
       - key: UPSTASH_REDIS_REST_TOKEN
         scope: RUN_AND_BUILD_TIME
-        value: AazNAQIncDIwZmE3NjdmNTFjZTg0MzM3ODMyNmNmZTY2NGE2OTQ3OHAyNDQyMzc
+        value: ${UPSTASH_REDIS_REST_TOKEN}
       - key: UPSTASH_REDIS_REST_URL
         scope: RUN_AND_BUILD_TIME
-        value: https://tender-panda-44237.upstash.io
+        value: ${UPSTASH_REDIS_REST_URL}
       - key: UPSTASH_REDIS_URL
         scope: RUN_AND_BUILD_TIME
-        value: rediss://default:AazNAQIncDIwZmE3NjdmNTFjZTg0MzM3ODMyNmNmZTY2NGE2OTQ3OHAyNDQyMzc@tender-panda-44237.upstash.io:6379
+        value: ${UPSTASH_REDIS_URL}
       - key: NODE_ENV
         scope: RUN_AND_BUILD_TIME
         value: production
