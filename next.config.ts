@@ -34,7 +34,7 @@ const nextConfig: NextConfig = {
           {
             key: "Content-Security-Policy",
             value:
-              "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: https://cdn.discordapp.com https://cdn.simpleicons.org; font-src 'self' data:; connect-src 'self' https://*.sentry.io https://api.lanyard.rest wss://api.lanyard.rest; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self';",
+              "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' blob: data: https://cdn.discordapp.com https://cdn.simpleicons.org; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.sentry.io https://api.lanyard.rest wss://api.lanyard.rest; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self';",
           },
           {
             key: "Permissions-Policy",

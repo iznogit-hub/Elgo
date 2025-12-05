@@ -18,7 +18,6 @@ export function useLanyard(discordId: string) {
 
       socket.onopen = () => {
         setIsConnected(true);
-        console.log("Lanyard WS Connected");
       };
 
       socket.onmessage = (event) => {
@@ -26,19 +25,23 @@ export function useLanyard(discordId: string) {
 
         switch (message.op) {
           case 1: // Hello - Send Identify and start heartbeat
-            // Send Identify
-            socket?.send(
-              JSON.stringify({
-                op: 2,
-                d: { subscribe_to_id: discordId },
-              })
-            );
+            // Send Identify safely
+            if (socket?.readyState === WebSocket.OPEN) {
+              socket.send(
+                JSON.stringify({
+                  op: 2,
+                  d: { subscribe_to_id: discordId },
+                })
+              );
+            }
 
             // Start Heartbeat (every 30s)
             // @ts-expect-error - The message.d for OP 1 has a heartbeat_interval
             const interval = message.d.heartbeat_interval || 30000;
             heartbeatInterval = setInterval(() => {
-              socket?.send(JSON.stringify({ op: 3 }));
+              if (socket?.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ op: 3 }));
+              }
             }, interval);
             break;
 
