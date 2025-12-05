@@ -19,6 +19,7 @@ import {
   Command as CommandIcon,
   Monitor,
   Share2,
+  PcCase,
 } from "lucide-react";
 
 import {
@@ -41,7 +42,6 @@ interface CommandMenuProps {
 export function CommandMenu({ onOpenGame }: CommandMenuProps) {
   const [open, setOpen] = React.useState(false);
   const [activePage, setActivePage] = React.useState("main");
-  // NEW: Track search state to allow manual clearing
   const [search, setSearch] = React.useState("");
 
   const { setTheme } = useTheme();
@@ -49,12 +49,11 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
   const { isMuted, toggleMute } = useSound();
   const router = useRouter();
 
-  // Reset page AND search when closing
   React.useEffect(() => {
     if (!open) {
       setTimeout(() => {
         setActivePage("main");
-        setSearch(""); // Clear search on close
+        setSearch("");
       }, 300);
     }
   }, [open]);
@@ -68,7 +67,7 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
       }
       if (e.key === "Backspace" && activePage !== "main" && open && !search) {
         e.preventDefault();
-        setSearch(""); // Ensure clear
+        setSearch("");
         setActivePage("main");
         play("hover");
       }
@@ -92,7 +91,7 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
     (command: () => void) => {
       play("success");
       setOpen(false);
-      setSearch(""); // Clear search on execution
+      setSearch("");
       command();
     },
     [play]
@@ -100,7 +99,7 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
 
   const navigateTo = (page: string) => {
     play("click");
-    setSearch(""); // CRITICAL: Clear search so the new page isn't filtered
+    setSearch("");
     setActivePage(page);
   };
 
@@ -139,7 +138,6 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
               ? "Type a command or search..."
               : `Searching ${activePage}...`
           }
-          // CONTROLLED INPUT
           value={search}
           onValueChange={setSearch}
           className="border-none focus:ring-0"
@@ -193,6 +191,13 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
               >
                 <User className="mr-2 h-4 w-4" />
                 <span>About</span>
+              </CommandItem>
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/uses"))}
+                onMouseEnter={() => play("hover")}
+              >
+                <PcCase className="mr-2 h-4 w-4" />
+                <span>Uses</span>
               </CommandItem>
             </CommandGroup>
 
