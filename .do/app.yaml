@@ -25,7 +25,7 @@ services:
     envs:
       - key: RESEND_API_KEY
         scope: RUN_AND_BUILD_TIME
-        value: re_D4w2NNid_LMa8UpQkzJD7vumGK3wcFMwn
+        value: ${RESEND_API_KEY}
       - key: SENTRY_AUTH_TOKEN
         scope: RUN_AND_BUILD_TIME
         value: ${SENTRY_AUTH_TOKEN}
