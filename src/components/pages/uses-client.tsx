@@ -10,6 +10,7 @@ import {
   PcCase,
   Cpu,
   Activity,
+  Zap,
 } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -113,7 +114,10 @@ export function UsesClient() {
           repeat: -1,
           yoyo: true,
           ease: "sine.inOut",
-          stagger: { amount: 2, from: "random" },
+          stagger: {
+            amount: 2,
+            from: "random",
+          },
         });
 
         gsap.to(".decor-item", {
@@ -122,7 +126,10 @@ export function UsesClient() {
           repeat: -1,
           yoyo: true,
           ease: "sine.inOut",
-          stagger: { amount: 3, from: "random" },
+          stagger: {
+            amount: 3,
+            from: "random",
+          },
         });
       }
     },
@@ -132,8 +139,6 @@ export function UsesClient() {
   return (
     <main
       ref={containerRef}
-      // UPDATED: Changed h-screen to min-h-screen, removed overflow-hidden (used overflow-x-hidden)
-      // Added py-32 to handle top/bottom spacing on scrollable screens
       className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-x-hidden text-foreground selection:bg-primary selection:text-primary-foreground px-6 py-32"
     >
       {/* --- Floating Header --- */}
@@ -153,7 +158,7 @@ export function UsesClient() {
                   ABORT
                 </span>
                 <span className="text-[10px] text-muted-foreground/50 hidden sm:block">
-                  RJ-45_DISCONNECT
+                  RETURN_TO_BASE
                 </span>
               </div>
             </Button>
@@ -169,6 +174,12 @@ export function UsesClient() {
             <span className="text-xs font-mono font-bold tracking-wider text-primary">
               SYSTEM_ZYGOTE
             </span>
+            <Zap className="h-3 w-3 text-primary" />
+          </div>
+          <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground/60">
+            <span>KERNEL: 6.8.0</span>
+            <span>::</span>
+            <span>STABLE</span>
           </div>
         </div>
       </div>
@@ -192,7 +203,6 @@ export function UsesClient() {
       </div>
 
       {/* --- Main Content --- */}
-      {/* UPDATED: Changed pt-20 to pt-10 to allow flex justify-center to work better on small screens */}
       <div className="relative z-10 w-full max-w-6xl flex flex-col justify-center h-full pt-10">
         <div className="flex flex-col md:flex-row gap-8 md:gap-16 items-center justify-center">
           <div className="w-full md:w-1/3 space-y-6 text-center md:text-left uses-intro opacity-0">

@@ -116,7 +116,7 @@ export function AboutClient() {
                   ABORT
                 </span>
                 <span className="text-[10px] text-muted-foreground/50 hidden sm:block">
-                  RETURN_TO_ORBIT
+                  RETURN_TO_BASE
                 </span>
               </div>
             </Button>
