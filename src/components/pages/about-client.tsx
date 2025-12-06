@@ -13,19 +13,9 @@ import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
 import { HackerText } from "@/components/ui/hacker-text";
 import { Globe } from "@/components/ui/globe";
 import { cn } from "@/lib/utils";
+import { TECH_STACK } from "@/data/about";
 
 gsap.registerPlugin(useGSAP);
-
-const TECH_STACK = [
-  { n: "Next.js", i: "nextdotjs" },
-  { n: "React", i: "react" },
-  { n: "TypeScript", i: "typescript" },
-  { n: "Tailwind", i: "tailwindcss" },
-  { n: "Node.js", i: "nodedotjs" },
-  { n: "MongoDB", i: "mongodb" },
-  { n: "Docker", i: "docker" },
-  { n: "Three.js", i: "threedotjs" },
-];
 
 export function AboutClient() {
   const containerRef = useRef<HTMLDivElement>(null);

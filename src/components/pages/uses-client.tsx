@@ -2,16 +2,7 @@
 
 import React, { useRef } from "react";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  Keyboard,
-  Terminal,
-  Layers,
-  PcCase,
-  Cpu,
-  Activity,
-  Zap,
-} from "lucide-react";
+import { ArrowLeft, Cpu, Activity, Zap } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
@@ -21,48 +12,9 @@ import { useSfx } from "@/hooks/use-sfx";
 import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
 import { HackerText } from "@/components/ui/hacker-text";
 import { cn } from "@/lib/utils";
+import { USES_DATA } from "@/data/uses";
 
 gsap.registerPlugin(useGSAP);
-
-const USES_DATA = [
-  {
-    category: "Workstation",
-    icon: PcCase,
-    items: [
-      { name: "Custom Rig", desc: "i5-14600K & 4060 Ti. 32GB." },
-      { name: "LG UltraGear", desc: "240Hz. Frames win games." },
-      { name: "Samsung Monitor", desc: "120Hz. The sidekick." },
-    ],
-  },
-  {
-    category: "Peripherals",
-    icon: Keyboard,
-    items: [
-      { name: "Wooting 80HE", desc: "Rapid trigger. Legal cheats." },
-      { name: "Razer Viper V3 Pro", desc: "54g wireless aimbot." },
-      { name: "HyperX QuadCast 2 S", desc: "Crystal clear rage." },
-      { name: "Logitech G PRO X", desc: "Noise cancelling bliss." },
-    ],
-  },
-  {
-    category: "Development",
-    icon: Terminal,
-    items: [
-      { name: "VS Code", desc: "With Github Dark theme" },
-      { name: "Warp", desc: "Rust-based terminal" },
-      { name: "Figma", desc: "For system design" },
-    ],
-  },
-  {
-    category: "Stack",
-    icon: Layers,
-    items: [
-      { name: "Next.js", desc: "The React Framework" },
-      { name: "Tailwind CSS", desc: "Utility-first styling" },
-      { name: "TypeScript", desc: "Strict typing always" },
-    ],
-  },
-];
 
 export function UsesClient() {
   const containerRef = useRef<HTMLDivElement>(null);
