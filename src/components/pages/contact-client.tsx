@@ -114,7 +114,7 @@ export function ContactClient() {
 
       {/* --- CENTER STAGE --- */}
       {/* UPDATED: Added 'pt-32 md:pt-0' and 'mt-0 md:mt-auto md:mb-auto' to vertically center ONLY on desktop, but flow naturally on mobile */}
-      <div className="w-full max-w-4xl px-6 relative z-10 flex flex-col items-center pt-32 md:pt-0 md:justify-center md:min-h-dvh">
+      <div className="w-full max-w-4xl px-6 relative z-10 flex flex-col items-center pt-48 md:pt-0 md:justify-center md:min-h-dvh">
         {/* Title Section */}
         <div className="floating-content text-center mb-8 md:mb-16 space-y-2">
           <div className="flex items-center justify-center gap-2 text-primary/60 mb-2 md:mb-4">
