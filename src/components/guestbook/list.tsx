@@ -20,7 +20,7 @@ export async function GuestbookList() {
   }
 
   return (
-    <ScrollArea className="h-[400px] w-full max-w-lg rounded-md border border-border/40 bg-background/20 backdrop-blur-sm p-4">
+    <ScrollArea className="h-full w-full max-w-lg rounded-md border border-border/40 bg-background/20 backdrop-blur-sm p-4">
       <div className="flex flex-col gap-4">
         {entries.map((entry, i) => (
           <div

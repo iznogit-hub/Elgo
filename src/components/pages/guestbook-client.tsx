@@ -39,7 +39,7 @@ export function GuestbookClient({ children }: { children: React.ReactNode }) {
         ".gb-item",
         { y: 20, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.8, stagger: 0.15 },
-        "-=0.6" // Slight overlap with header animation
+        "-=0.6"
       );
     },
     { scope: containerRef, dependencies: [prefersReducedMotion] }
@@ -48,11 +48,14 @@ export function GuestbookClient({ children }: { children: React.ReactNode }) {
   return (
     <main
       ref={containerRef}
-      className="flex min-h-screen flex-col items-center pt-24 pb-20 px-6 overflow-hidden relative"
+      // UPDATED:
+      // 1. 'min-h-dvh' by default (mobile scrolls), 'md:h-dvh' on desktop (fixed app-like).
+      // 2. 'md:overflow-hidden' restricts scrolling only on desktop.
+      className="flex min-h-dvh md:h-dvh w-full flex-col items-center md:overflow-hidden relative"
     >
-      {/* --- FLOATING HEADER --- */}
-      <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
-        {/* ABORT BUTTON */}
+      {/* --- FLOATING HEADER (Absolute) --- */}
+      {/* UPDATED: Reduced padding 'pt-20' on mobile */}
+      <div className="absolute top-0 left-0 right-0 pt-20 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
         <div className="floating-header pointer-events-auto">
           <Link href="/" className="cursor-none" onClick={() => play("click")}>
             <Button
@@ -68,14 +71,13 @@ export function GuestbookClient({ children }: { children: React.ReactNode }) {
                   ABORT
                 </span>
                 <span className="text-[10px] text-muted-foreground/50 hidden sm:block">
-                  RETURN_TO_BASE
+                  RETURN_TO_ROOT
                 </span>
               </div>
             </Button>
           </Link>
         </div>
 
-        {/* STATUS PILL */}
         <div className="floating-header flex flex-col items-end gap-2">
           <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 backdrop-blur-sm">
             <span className="relative flex h-2 w-2">
@@ -95,32 +97,42 @@ export function GuestbookClient({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* --- MAIN CONTENT --- */}
-      {/* Added mt-20 to account for the floating header spacing on desktop */}
-      <div className="z-10 w-full max-w-2xl flex flex-col items-center gap-8 mt-12 md:mt-20">
-        {/* Header */}
-        <div className="gb-item text-center space-y-4 opacity-0">
-          <h1 className="text-4xl md:text-6xl font-black tracking-tighter">
+      {/* --- MAIN CONTENT LAYOUT --- */}
+      {/* UPDATED:
+          1. Changed 'h-full' to 'h-auto md:h-full' so mobile height is determined by content.
+          2. Reduced 'pt-32' to 'pt-28' on mobile.
+          3. Reduced 'gap-6' to 'gap-4' on mobile.
+      */}
+      <div className="z-10 w-full max-w-2xl flex flex-col items-center gap-4 md:gap-6 mt-0 h-auto md:h-full pt-28 md:pt-32 pb-6 px-6 grow">
+        
+        {/* Header Section (Fixed Height) */}
+        <div className="gb-item text-center space-y-2 shrink-0 opacity-0">
+          <h1 className="text-4xl md:text-5xl font-black tracking-tighter">
             <HackerText text="Guestbook" />
           </h1>
-          <p className="text-muted-foreground max-w-[400px] mx-auto">
-            Leave your mark on the digital ledger. <br />
+          <p className="text-muted-foreground text-sm max-w-[400px] mx-auto">
+            Leave your mark on the digital ledger. 
+            <br />
             Data is persisted via Redis.
           </p>
         </div>
 
-        {/* Form Container */}
-        <div className="gb-item w-full flex justify-center opacity-0">
+        {/* Form Container (Fixed Height) */}
+        <div className="gb-item w-full flex justify-center shrink-0 opacity-0">
           <GuestbookForm />
         </div>
 
         {/* Divider */}
-        <div className="gb-item w-full opacity-0">
-          <div className="h-px bg-linear-to-r from-transparent via-border to-transparent my-4" />
+        <div className="gb-item w-full shrink-0 opacity-0">
+          <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
         </div>
 
-        {/* List Container (Passed from Server) */}
-        <div className="gb-item w-full flex justify-center opacity-0">
+        {/* List Container (Flexible Height) */}
+        {/* UPDATED: 
+            On Mobile: 'h-[400px]' gives it a fixed minimum height so it doesn't collapse.
+            On Desktop: 'md:h-auto md:flex-1' allows it to fill remaining space.
+        */}
+        <div className="gb-item w-full h-[400px] md:h-auto md:flex-1 md:min-h-0 flex justify-center opacity-0">
           {children}
         </div>
       </div>

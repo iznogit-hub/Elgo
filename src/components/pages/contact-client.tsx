@@ -44,14 +44,14 @@ export function ContactClient() {
       );
 
       if (!prefersReducedMotion) {
-        gsap.to(".decor-item", {
-          y: "20px",
-          duration: 3,
-          repeat: -1,
-          yoyo: true,
-          ease: "sine.inOut",
+      gsap.to(".decor-item", {
+        y: "20px",
+        duration: 3,
+        repeat: -1,
+        yoyo: true,
+        ease: "sine.inOut",
           stagger: { amount: 2, from: "random" },
-        });
+      });
       }
     },
     { scope: containerRef, dependencies: [prefersReducedMotion] }
@@ -61,12 +61,14 @@ export function ContactClient() {
     <main
       ref={containerRef}
       // UPDATED:
-      // 1. min-h-[100dvh]: Fixes centering issues on mobile browsers with address bars.
-      // 2. py-20: Slightly reduced mobile padding to allow better centering on small screens.
-      className="relative flex min-h-dvh w-full flex-col items-center justify-center md:justify-start overflow-x-hidden text-foreground selection:bg-primary selection:text-primary-foreground py-20 md:py-32"
+      // 1. Removed 'justify-center'.
+      // 2. Added 'justify-start'.
+      // 3. Changed 'py-20' to 'pb-10' to prevent bottom cutoff.
+      className="relative flex min-h-dvh w-full flex-col items-center justify-start overflow-x-hidden text-foreground selection:bg-primary selection:text-primary-foreground pb-10"
     >
       {/* --- FLOATING HEADER --- */}
-      <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
+      {/* UPDATED: Reduced padding 'pt-20' on mobile to save vertical space */}
+      <div className="absolute top-0 left-0 right-0 pt-20 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
         {/* ABORT BUTTON */}
         <div className="floating-header pointer-events-auto">
           <Link href="/" className="cursor-none" onClick={() => play("click")}>
@@ -111,7 +113,8 @@ export function ContactClient() {
       </div>
 
       {/* --- CENTER STAGE --- */}
-      <div className="w-full max-w-4xl px-6 relative z-10 flex flex-col items-center mt-0 md:mt-20">
+      {/* UPDATED: Added 'pt-32 md:pt-0' and 'mt-0 md:mt-auto md:mb-auto' to vertically center ONLY on desktop, but flow naturally on mobile */}
+      <div className="w-full max-w-4xl px-6 relative z-10 flex flex-col items-center pt-32 md:pt-0 md:justify-center md:min-h-dvh">
         {/* Title Section */}
         <div className="floating-content text-center mb-8 md:mb-16 space-y-2">
           <div className="flex items-center justify-center gap-2 text-primary/60 mb-2 md:mb-4">
