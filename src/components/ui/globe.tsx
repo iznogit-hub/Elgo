@@ -31,41 +31,54 @@ export function Globe() {
     const glowColor = isLight ? [0.8, 0.8, 0.8] : [1, 1, 1];
     const markerColor = [0.6, 0.2, 1];
 
-    const globe = createGlobe(canvasRef.current, {
-      devicePixelRatio: 2,
-      width: width * 2,
-      height: width * 2,
-      phi: 0,
-      theta: 0.2,
-      dark: isLight ? 0 : 1,
-      diffuse: 1.2,
-      mapSamples: 16000,
-      mapBrightness: 6,
-      baseColor: baseColor as [number, number, number],
-      markerColor: markerColor as [number, number, number],
-      glowColor: glowColor as [number, number, number],
-      markers: [
-        { location: [21.5433, 39.1728], size: 0.1 },
-        { location: [21.5433, 39.1728], size: 0.2 },
-      ],
-      onRender: (state) => {
-        if (!pointerInteracting.current) {
-          phiRef.current += 0.003;
-        }
-        state.phi = phiRef.current;
-        state.width = width * 2;
-        state.height = width * 2;
-      },
-    });
+    let globe: ReturnType<typeof createGlobe> | null = null;
 
-    setTimeout(() => {
-      if (canvasRef.current) {
-        canvasRef.current.style.opacity = "1";
-      }
-    });
+    // FIX: Wrap initialization in try/catch to prevent crashes in CI/No-WebGL envs
+    try {
+      globe = createGlobe(canvasRef.current, {
+        devicePixelRatio: 2,
+        width: width * 2,
+        height: width * 2,
+        phi: 0,
+        theta: 0.2,
+        dark: isLight ? 0 : 1,
+        diffuse: 1.2,
+        mapSamples: 16000,
+        mapBrightness: 6,
+        baseColor: baseColor as [number, number, number],
+        markerColor: markerColor as [number, number, number],
+        glowColor: glowColor as [number, number, number],
+        markers: [
+          { location: [21.5433, 39.1728], size: 0.1 },
+          { location: [21.5433, 39.1728], size: 0.2 },
+        ],
+        onRender: (state) => {
+          if (!pointerInteracting.current) {
+            phiRef.current += 0.003;
+          }
+          state.phi = phiRef.current;
+          state.width = width * 2;
+          state.height = width * 2;
+        },
+      });
+
+      // Only fade in if initialization succeeded
+      setTimeout(() => {
+        if (canvasRef.current) {
+          canvasRef.current.style.opacity = "1";
+        }
+      });
+    } catch (e) {
+      console.warn(
+        "WebGL failed to initialize (likely CI or low-spec env):",
+        e
+      );
+      // Optional: Hide canvas if failed
+      if (canvasRef.current) canvasRef.current.style.display = "none";
+    }
 
     return () => {
-      globe.destroy();
+      if (globe) globe.destroy();
       window.removeEventListener("resize", onResize);
     };
   }, [resolvedTheme]);
