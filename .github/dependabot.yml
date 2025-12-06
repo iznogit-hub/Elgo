@@ -1,6 +1,5 @@
 version: 2
 updates:
-  # 1. NPM Dependencies (Weekly)
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
@@ -9,10 +8,8 @@ updates:
       time: "09:00"
       timezone: "Etc/UTC"
 
-    # ⚡ Strategy: Grouping reduces noise significantly
     groups:
-      # Group 1: Core Framework (Next.js & React)
-      # These often need to be updated together to avoid version conflicts
+      # Group 1: Core Framework
       framework:
         patterns:
           - "next"
@@ -20,8 +17,7 @@ updates:
           - "react-dom"
           - "eslint-config-next"
 
-      # Group 2: UI & Styling (Tailwind, Radix, Lucide)
-      # Visual updates usually go together
+      # Group 2: UI & Forms (Added react-hook-form)
       ui:
         patterns:
           - "tailwindcss"
@@ -32,9 +28,10 @@ updates:
           - "clsx"
           - "tailwind-merge"
           - "cobe"
+          - "react-hook-form" # <-- Added explicit match
+          - "@hookform/*" # <-- Future proofing
 
-      # Group 3: Testing & Linting (Dev Dependencies)
-      # Low risk, can usually be merged in bulk
+      # Group 3: Testing & Dev Tools
       testing:
         patterns:
           - "eslint"
@@ -42,18 +39,21 @@ updates:
           - "@playwright/*"
           - "typescript"
           - "@types/*"
+          - "@axe-core/*"
 
-    # Limit open PRs to prevent flooding if you go on vacation
+      # Group 4: The Catch-All (IMPORTANT)
+      # This grabs anything that didn't match the above rules
+      # like 'baseline-browser-mapping', 'zod', 'resend', etc.
+      others:
+        patterns:
+          - "*"
+
     open-pull-requests-limit: 10
-
-    # Keep commit history clean and semantic
     commit-message:
       prefix: "chore"
       prefix-development: "chore"
       include: "scope"
 
-  # 2. GitHub Actions (Monthly)
-  # Updates the workflows themselves (e.g., actions/checkout@v4)
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
