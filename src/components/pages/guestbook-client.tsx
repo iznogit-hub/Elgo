@@ -124,7 +124,7 @@ export function GuestbookClient({ children }: { children: React.ReactNode }) {
 
         {/* Divider */}
         <div className="gb-item w-full shrink-0 opacity-0">
-          <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+          <div className="h-px bg-linear-to-r from-transparent via-border to-transparent" />
         </div>
 
         {/* List Container (Flexible Height) */}
