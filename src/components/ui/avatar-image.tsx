@@ -38,7 +38,8 @@ export function AvatarImage({
   );
 
   return (
-    <div
+    <aside
+      aria-label="Avatar Image"
       ref={containerRef}
       // UPDATED CLASS:
       // 'hidden' by default
@@ -64,6 +65,6 @@ export function AvatarImage({
           onLoad={onImageLoad}
         />
       </Link>
-    </div>
+    </aside>
   );
 }

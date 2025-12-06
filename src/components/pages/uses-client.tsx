@@ -176,7 +176,7 @@ export function UsesClient() {
             </span>
             <Zap className="h-3 w-3 text-primary" />
           </div>
-          <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground/60">
+          <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
             <span>KERNEL: 6.8.0</span>
             <span>::</span>
             <span>STABLE</span>

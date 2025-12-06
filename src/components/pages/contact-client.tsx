@@ -102,7 +102,7 @@ export function ContactClient() {
             </span>
             <Wifi className="h-3 w-3 text-primary" />
           </div>
-          <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground/60">
+          <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
             <span>PORT: 443</span>
             <span>::</span>
             <span>SECURE</span>

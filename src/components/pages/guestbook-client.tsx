@@ -87,7 +87,7 @@ export function GuestbookClient({ children }: { children: React.ReactNode }) {
             </span>
             <Database className="h-3 w-3 text-primary" />
           </div>
-          <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground/60">
+          <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
             <span>NODE: REDIS</span>
             <span>::</span>
             <span>WRITE_OK</span>

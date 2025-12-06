@@ -294,7 +294,10 @@ export function Preloader({ contentLoaded }: PreloaderProps) {
   if (isClosed) return null;
 
   return (
-    <div
+    // CHANGED: div -> aside, added aria-label
+    <aside
+      aria-hidden="true"
+      aria-label="Startup Sequence"
       ref={containerRef}
       className="fixed inset-0 z-99999 flex items-center justify-center"
     >
@@ -304,15 +307,9 @@ export function Preloader({ contentLoaded }: PreloaderProps) {
       />
 
       <div className="relative z-50 flex flex-col items-center gap-10 w-full">
-        {/* LAYOUT FIX: 
-           We wrap the logo in a 'placeholder' div that maintains the space in the flow
-           even when the inner 'logoWrapper' becomes position: fixed.
-        */}
         <div className="relative flex items-center justify-center h-32 w-auto aspect-[464.22/442.36]">
           <div
             ref={logoWrapperRef}
-            // 'w-full h-full' ensures it fills the placeholder initially.
-            // When fixed, GSAP locks the width/height to pixels, so it won't stretch.
             className="relative flex items-center justify-center w-full h-full text-foreground"
           >
             <Logo outline className="w-full h-full" />
@@ -334,6 +331,6 @@ export function Preloader({ contentLoaded }: PreloaderProps) {
           </div>
         </div>
       </div>
-    </div>
+    </aside>
   );
 }

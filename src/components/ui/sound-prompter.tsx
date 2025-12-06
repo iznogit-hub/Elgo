@@ -54,8 +54,8 @@ export function SoundPrompter() {
   if (!isVisible) return null;
 
   return (
-    <div
-      ref={containerRef}
+    <aside
+      aria-label="Sound Controls"
       className={cn(
         // Base Layout (Mobile)
         "fixed z-90 pointer-events-none select-none",
@@ -95,6 +95,6 @@ export function SoundPrompter() {
           </div>
         </div>
       </div>
-    </div>
+    </aside>
   );
 }
