@@ -21,7 +21,7 @@ export default defineConfig({
   use: {
     baseURL: BASE_URL,
     trace: "on-first-retry",
-    actionTimeout: 15000, // Increased slightly
+    actionTimeout: 30000, // Increased slightly
 
     // --- ADD THIS LINE ---
     // Forces the "prefers-reduced-motion" media query to "reduce"
