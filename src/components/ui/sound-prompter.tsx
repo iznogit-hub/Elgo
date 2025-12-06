@@ -56,6 +56,7 @@ export function SoundPrompter() {
   return (
     <aside
       aria-label="Sound Controls"
+      ref={containerRef}
       className={cn(
         // Base Layout (Mobile)
         "fixed z-90 pointer-events-none select-none",

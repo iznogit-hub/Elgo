@@ -214,7 +214,7 @@ export function AboutClient() {
             ))}
           </div>
 
-          <div className="tech-item mt-8 p-4 rounded-lg border-l-2 border-primary/30 bg-background/30 backdrop-blur-sm font-mono text-[10px] text-muted-foreground/80 leading-loose opacity-80 hover:opacity-100 transition-opacity select-none">
+          <div className="tech-item mt-8 p-4 rounded-lg border-l-2 border-primary/30 bg-background/30 backdrop-blur-sm font-mono text-[10px] text-muted-foreground/80 leading-loose opacity-0 hover:opacity-100 transition-opacity select-none">
             <p>{`> initializing_security_protocols... OK`}</p>
             <p>{`> scanning_threat_vectors... NONE`}</p>
             <p>{`> optimizing_performance... MAX`}</p>
