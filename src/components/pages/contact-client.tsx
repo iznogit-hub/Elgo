@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, Wifi, Terminal, Cpu } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
+import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 
 import { Button } from "@/components/ui/button";
 import { useSfx } from "@/hooks/use-sfx";
@@ -16,9 +17,17 @@ gsap.registerPlugin(useGSAP);
 export function ContactClient() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { play } = useSfx();
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   useGSAP(
     () => {
+      if (prefersReducedMotion) {
+        gsap.set(".floating-header", { y: 0, opacity: 1 });
+        gsap.set(".floating-content", { y: 0, opacity: 1 });
+        gsap.set(".decor-item", { y: 0 }); // Static position
+        return;
+      }
+
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
       tl.fromTo(
@@ -34,19 +43,18 @@ export function ContactClient() {
         "-=0.6"
       );
 
-      gsap.to(".decor-item", {
-        y: "20px",
-        duration: 3,
-        repeat: -1,
-        yoyo: true,
-        ease: "sine.inOut",
-        stagger: {
-          amount: 2,
-          from: "random",
-        },
-      });
+      if (!prefersReducedMotion) {
+        gsap.to(".decor-item", {
+          y: "20px",
+          duration: 3,
+          repeat: -1,
+          yoyo: true,
+          ease: "sine.inOut",
+          stagger: { amount: 2, from: "random" },
+        });
+      }
     },
-    { scope: containerRef }
+    { scope: containerRef, dependencies: [prefersReducedMotion] }
   );
 
   return (

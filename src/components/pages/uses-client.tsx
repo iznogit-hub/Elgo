@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
+import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 
 import { Button } from "@/components/ui/button";
 import { useSfx } from "@/hooks/use-sfx";
@@ -65,9 +66,17 @@ const USES_DATA = [
 export function UsesClient() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { play } = useSfx();
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   useGSAP(
     () => {
+      if (prefersReducedMotion) {
+        gsap.set(".floating-header", { y: 0, opacity: 1 });
+        gsap.set(".uses-intro", { scale: 1, opacity: 1, y: 0 });
+        gsap.set(".uses-grid-card", { opacity: 1, x: 0 });
+        gsap.set(".decor-item", { opacity: 1, y: 0 }); // Ensure y is 0
+        return;
+      }
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
       tl.fromTo(
@@ -97,31 +106,27 @@ export function UsesClient() {
         "-=0.5"
       );
 
-      gsap.to([".uses-intro", ".uses-grid-card"], {
-        y: "10px",
-        duration: 3,
-        repeat: -1,
-        yoyo: true,
-        ease: "sine.inOut",
-        stagger: {
-          amount: 2,
-          from: "random",
-        },
-      });
+      if (!prefersReducedMotion) {
+        gsap.to([".uses-intro", ".uses-grid-card"], {
+          y: "10px",
+          duration: 3,
+          repeat: -1,
+          yoyo: true,
+          ease: "sine.inOut",
+          stagger: { amount: 2, from: "random" },
+        });
 
-      gsap.to(".decor-item", {
-        y: "15px",
-        duration: 4,
-        repeat: -1,
-        yoyo: true,
-        ease: "sine.inOut",
-        stagger: {
-          amount: 3,
-          from: "random",
-        },
-      });
+        gsap.to(".decor-item", {
+          y: "15px",
+          duration: 4,
+          repeat: -1,
+          yoyo: true,
+          ease: "sine.inOut",
+          stagger: { amount: 3, from: "random" },
+        });
+      }
     },
-    { scope: containerRef }
+    { scope: containerRef, dependencies: [prefersReducedMotion] }
   );
 
   return (

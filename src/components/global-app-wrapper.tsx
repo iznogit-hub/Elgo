@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import confetti from "canvas-confetti";
 import { useSfx } from "@/hooks/use-sfx";
 import { useKonami } from "@/hooks/use-konami";
+import { gsap } from "gsap";
 
 import { Cursor } from "@/components/ui/cursor";
 import { Preloader } from "@/components/ui/preloader";
@@ -20,6 +21,31 @@ export function GlobalAppWrapper({ children }: { children: React.ReactNode }) {
   const [assetsLoaded, setAssetsLoaded] = useState(false);
   const [isGameOpen, setIsGameOpen] = useState(false);
   const { play } = useSfx();
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    const handleMotionChange = (e: MediaQueryListEvent | MediaQueryList) => {
+      if (e.matches) {
+        // Force all GSAP animations to complete almost instantly
+        gsap.globalTimeline.timeScale(100);
+
+        // Force disable CSS animations via the DOM
+        document.documentElement.classList.add("reduce-motion");
+      } else {
+        // Restore normal speed
+        gsap.globalTimeline.timeScale(1);
+        document.documentElement.classList.remove("reduce-motion");
+      }
+    };
+
+    // Initialize
+    handleMotionChange(mediaQuery);
+
+    // Listen for system changes
+    mediaQuery.addEventListener("change", handleMotionChange);
+    return () => mediaQuery.removeEventListener("change", handleMotionChange);
+  }, []);
 
   // --- GAME LOGIC (MOVED FROM HOME) ---
   const konamiAction = useCallback(() => {

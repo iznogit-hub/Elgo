@@ -34,6 +34,9 @@ export function AboutClient() {
   useGSAP(
     () => {
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+      const isReduced = window.matchMedia(
+        "(prefers-reduced-motion: reduce)"
+      ).matches;
 
       tl.fromTo(
         ".floating-header",
@@ -66,18 +69,19 @@ export function AboutClient() {
           ease: "expo.out",
         }
       );
-
-      gsap.to(".tech-item", {
-        y: "10px",
-        duration: 2,
-        repeat: -1,
-        yoyo: true,
-        ease: "sine.inOut",
-        stagger: {
-          amount: 1.5,
-          from: "random",
-        },
-      });
+      if (!isReduced) {
+        gsap.to(".tech-item", {
+          y: "10px",
+          duration: 2,
+          repeat: -1, // <--- This property creates the infinite loop
+          yoyo: true,
+          ease: "sine.inOut",
+          stagger: {
+            amount: 1.5,
+            from: "random",
+          },
+        });
+      }
     },
     { scope: containerRef }
   );
