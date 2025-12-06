@@ -1,0 +1,53 @@
+name: 🐛 System Malfunction
+description: Report a bug or system failure.
+title: "[BUG]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### ⚠️ System Malfunction Report
+        Please describe the anomaly encountered in the system.
+
+  - type: input
+    id: environment
+    attributes:
+      label: Execution Environment
+      description: OS, Browser Version, or Device.
+      placeholder: e.g. Windows 11, Chrome 120, Mobile
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction Protocol
+      description: Steps to reproduce the glitch.
+      placeholder: |
+        1. Navigate to '...'
+        2. Click on '...'
+        3. Scroll down to '...'
+        4. See error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What was the intended system output?
+      placeholder: The modal should close when clicking the backdrop.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity Level
+      options:
+        - "CRITICAL: System Crash"
+        - "HIGH: Broken Feature"
+        - "MEDIUM: Visual Glitch"
+        - "LOW: Typo / Minor"
+    validations:
+      required: true

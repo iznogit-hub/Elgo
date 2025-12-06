@@ -1,0 +1,36 @@
+name: 🚀 Feature Uplink
+description: Propose a new module or enhancement.
+title: "[FEAT]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 📡 Feature Uplink Proposal
+        Submit your schematic for system enhancement.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Module Description
+      description: What is the new feature?
+      placeholder: I want to add a new 'Konami Code' effect that triggers a matrix rain...
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: Is this related to a problem?
+      placeholder: The current home page feels too static...
+    validations:
+      required: false
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe your ideal solution.
+    validations:
+      required: true
