@@ -116,13 +116,13 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
       oscillator.start(now);
       oscillator.stop(now + 0.05);
     } else if (type === "click") {
-      oscillator.type = "square";
-      oscillator.frequency.setValueAtTime(150, now);
-      oscillator.frequency.exponentialRampToValueAtTime(0.01, now + 0.1);
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(800, now);
+      oscillator.frequency.exponentialRampToValueAtTime(100, now + 0.03);
       gainNode.gain.setValueAtTime(0.1, now);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
       oscillator.start(now);
-      oscillator.stop(now + 0.1);
+      oscillator.stop(now + 0.03);
     } else if (type === "success") {
       const notes = [440, 554, 659];
       notes.forEach((freq, i) => {
