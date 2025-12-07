@@ -134,7 +134,7 @@ export default function NotFound() {
       <div className="z-10 flex flex-col items-center justify-center relative w-full max-w-4xl px-4">
         {/* THE FRACTURE TYPOGRAPHY (FIXED) */}
         {/* 'relative' allows the container to size itself based on the 'invisible' ghost text */}
-        <div className="relative font-black text-[12rem] md:text-[20rem] leading-none tracking-tighter select-none">
+        <div className="relative font-black text-[25vw] md:text-[20rem] leading-none tracking-tighter select-none">
           {/* 1. GHOST LAYER (Invisible, but sets the size) */}
           <div className="invisible" aria-hidden="true">
             404
