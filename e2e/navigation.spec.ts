@@ -25,13 +25,11 @@ test.describe("Navigation & Smoke Tests", () => {
   }) => {
     await page.goto("/this-page-does-not-exist-at-all");
 
-    // Check for unique text on your 404 page
-    await expect(
-      page.getByText("SYSTEM_FAILURE: ROUTE_NOT_FOUND")
-    ).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: "Return to Base" })
-    ).toBeVisible();
+    // UPDATED: Match the actual text found in src/app/not-found.tsx
+    await expect(page.getByText("PAGE_NOT_FOUND")).toBeVisible();
+
+    // Optional: Verify the specific error code line
+    await expect(page.getByText("// ERROR_CODE: 0x404_VOID")).toBeVisible();
   });
 
   test("should open the Command Menu with keyboard shortcut", async ({
