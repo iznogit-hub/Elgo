@@ -2,7 +2,7 @@
 
 import React, { useRef } from "react";
 import Link from "next/link";
-import { ArrowLeft, Database } from "lucide-react";
+import { ArrowLeft, Database, Server } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
@@ -38,6 +38,26 @@ export function GuestbookClient({ children }: { children: React.ReactNode }) {
         { y: 0, opacity: 1, duration: 0.8, stagger: 0.15 },
         "-=0.6"
       );
+      tl.fromTo(
+        ".decor-item",
+        { opacity: 0 },
+        { opacity: 1, duration: 1 },
+        "-=0.5"
+      );
+
+      if (!prefersReducedMotion) {
+        gsap.to(".decor-item", {
+          y: "15px",
+          duration: 4,
+          repeat: -1,
+          yoyo: true,
+          ease: "sine.inOut",
+          stagger: {
+            amount: 3,
+            from: "random",
+          },
+        });
+      }
     },
     { scope: containerRef, dependencies: [prefersReducedMotion] }
   );
@@ -86,6 +106,24 @@ export function GuestbookClient({ children }: { children: React.ReactNode }) {
             <span>::</span>
             <span>WRITE_OK</span>
           </div>
+        </div>
+      </div>
+
+      {/* --- Ambient Decor (Guestbook) --- */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-20 hidden md:block z-0">
+        <div className="decor-item absolute top-[18%] left-[6%] font-mono text-xs text-primary/60 opacity-0">
+          {`> ACCESSING_ARCHIVES...`}
+        </div>
+        <div className="decor-item absolute top-[35%] right-[8%] font-mono text-xs text-muted-foreground/60 opacity-0">
+          {`{ "persistence": "true" }`}
+        </div>
+        <div className="decor-item absolute bottom-[15%] left-[12%] flex items-center gap-2 text-muted-foreground/60 opacity-0">
+          <Database className="h-4 w-4" />
+          <span className="font-mono text-xs">DB_LATENCY: 12ms</span>
+        </div>
+        <div className="decor-item absolute bottom-[25%] right-[15%] flex items-center gap-2 text-primary/40 opacity-0">
+          <Server className="h-4 w-4" />
+          <span className="font-mono text-xs">SYNC_STATUS: COMPLETE</span>
         </div>
       </div>
 
