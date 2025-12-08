@@ -1,17 +1,35 @@
 "use client";
 
+import React, { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Send, User, PcCase, Book, LayoutDashboard } from "lucide-react";
+import {
+  Send,
+  User,
+  PcCase,
+  Book,
+  LayoutDashboard,
+  Menu,
+  X,
+  Search,
+  Github,
+  Twitter,
+  Linkedin,
+} from "lucide-react";
+import { gsap } from "gsap";
+import { useGSAP } from "@gsap/react";
+
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SoundToggle } from "@/components/sound-toggle";
 import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
 import { CommandTrigger } from "@/components/command-trigger";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/ui/logo";
+import { HackerText } from "@/components/ui/hacker-text";
 import { useSfx } from "@/hooks/use-sfx";
 import { cn } from "@/lib/utils";
 
+// --- Configuration ---
 const NAV_ITEMS = [
   { name: "About", href: "/about", icon: User },
   { name: "Uses", href: "/uses", icon: PcCase },
@@ -20,77 +38,330 @@ const NAV_ITEMS = [
   { name: "Contact", href: "/contact", icon: Send },
 ];
 
+const SOCIALS = [
+  { icon: Github, href: "https://github.com/t7sen" },
+  { icon: Twitter, href: "https://twitter.com/t7sen" },
+  { icon: Linkedin, href: "https://linkedin.com/in/t7sen" },
+];
+
 export function Navbar() {
   const { play } = useSfx();
   const pathname = usePathname();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [hoveredPath, setHoveredPath] = useState<string | null>(null);
+
+  // Refs for GSAP
+  const containerRef = useRef<HTMLElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const timeline = useRef<gsap.core.Timeline | null>(null);
+
+  // Determine the text to display in the dynamic label
+  const activeItem = NAV_ITEMS.find((item) => item.href === pathname);
+  const hoveredItem = NAV_ITEMS.find((item) => item.href === hoveredPath);
+
+  // Logic: Hovered Item > Active Item > "Home" (if on root) > "Terminal" (fallback)
+  let displayName = "TERMINAL";
+  if (hoveredPath === "/") {
+    displayName = "HOME";
+  } else if (hoveredItem) {
+    displayName = hoveredItem.name.toUpperCase();
+  } else if (pathname === "/") {
+    displayName = "HOME";
+  } else if (activeItem) {
+    displayName = activeItem.name.toUpperCase();
+  }
+
+  // 1. Setup Animation Timeline (Once)
+  useGSAP(
+    () => {
+      if (!mobileMenuRef.current) return;
+
+      timeline.current = gsap.timeline({ paused: true });
+
+      timeline.current.to(mobileMenuRef.current, {
+        autoAlpha: 1,
+        duration: 0.3,
+        ease: "power2.inOut",
+      });
+
+      timeline.current.fromTo(
+        ".mobile-nav-item",
+        { y: 20, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.4,
+          stagger: 0.05,
+          ease: "back.out(1.2)",
+        },
+        "-=0.1"
+      );
+    },
+    { scope: containerRef }
+  );
+
+  // 2. Control Animation based on State
+  useEffect(() => {
+    if (timeline.current) {
+      if (isMobileMenuOpen) {
+        timeline.current.play();
+      } else {
+        timeline.current.reverse();
+      }
+    }
+  }, [isMobileMenuOpen]);
+
+  // 3. Close on Route Change
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
+
+  // 4. Lock Body Scroll
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isMobileMenuOpen]);
+
+  const handleMobileSearch = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsMobileMenuOpen(false);
+    setTimeout(() => {
+      window.dispatchEvent(new Event("open-command-menu"));
+    }, 300);
+  };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex w-full items-center justify-between p-4 md:p-6 md:px-12 pointer-events-none">
-      {/* Left: Logo */}
-      <div className="pointer-events-auto">
-        <MagneticWrapper strength={0.2}>
-          <Link
-            href="/"
-            aria-label="Home"
-            className="block"
-            onClick={() => play("click")}
-          >
-            <Logo
-              id="navbar-logo"
-              className="h-8 w-auto text-foreground transition-transform hover:scale-105"
-            />
-          </Link>
-        </MagneticWrapper>
-      </div>
-
-      {/* Right: Floating Dock */}
-      <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-border/40 bg-background/60 p-1.5 backdrop-blur-md shadow-lg shadow-black/5">
-        {/* Navigation Links */}
-        <div className="flex items-center">
-          {NAV_ITEMS.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <MagneticWrapper key={item.href} strength={0.6}>
-                <Link href={item.href} onClick={() => play("click")}>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn(
-                      "relative overflow-hidden rounded-full transition-all duration-300",
-                      isActive
-                        ? "bg-primary/10 text-primary hover:bg-primary/20"
-                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                    )}
-                    onMouseEnter={() => play("hover")}
-                    aria-label={item.name}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    {isActive && (
-                      <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary animate-pulse" />
-                    )}
-                  </Button>
-                </Link>
-              </MagneticWrapper>
-            );
-          })}
+    <nav ref={containerRef}>
+      {/* --- TOP BAR (FIXED) --- */}
+      <div className="fixed top-0 left-0 right-0 z-50 flex w-full items-center justify-between p-4 md:p-6 md:px-12 pointer-events-none">
+        {/* Left: Logo */}
+        <div className="pointer-events-auto z-50">
+          <MagneticWrapper strength={0.2}>
+            <Link
+              href="/"
+              aria-label="Home"
+              className="block"
+              onClick={() => {
+                play("click");
+                setIsMobileMenuOpen(false);
+              }}
+              onMouseEnter={() => setHoveredPath("/")}
+              onMouseLeave={() => setHoveredPath(null)}
+            >
+              <Logo
+                id="navbar-logo"
+                className="h-8 w-auto text-foreground transition-transform hover:scale-105"
+              />
+            </Link>
+          </MagneticWrapper>
         </div>
 
-        {/* Divider */}
-        <div className="h-6 w-px bg-border/50 mx-1" />
+        {/* Right: Desktop Dock (Hidden on Mobile) */}
+        <div
+          className={cn(
+            "hidden md:flex pointer-events-auto items-center gap-2 rounded-full border border-border/40 p-1.5 backdrop-blur-md shadow-lg shadow-black/5",
+            // UPDATED: Adaptive Backgrounds
+            // Light Mode: White with 60% opacity (Clean Glass)
+            // Dark Mode: Neutral-950 with 60% opacity (Dark Glass)
+            "bg-white/60 dark:bg-neutral-950/60"
+          )}
+        >
+          {/* 1. Page Name Indicator (Left) */}
+          <div className="hidden lg:flex items-center justify-center min-w-[100px] overflow-hidden px-2">
+            <HackerText
+              key={displayName}
+              text={displayName}
+              className="text-xs font-mono font-bold tracking-widest text-muted-foreground whitespace-nowrap"
+              speed={40}
+            />
+          </div>
 
-        {/* Utilities */}
-        <div className="flex items-center gap-1">
-          <MagneticWrapper strength={0.6}>
-            <CommandTrigger />
-          </MagneticWrapper>
+          <div className="h-6 w-px bg-border/50 mx-1 hidden lg:block" />
 
-          <MagneticWrapper strength={0.6}>
-            <SoundToggle />
-          </MagneticWrapper>
+          {/* 2. Navigation Links (Middle) */}
+          <div className="flex items-center">
+            {NAV_ITEMS.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <MagneticWrapper key={item.href} strength={0.6}>
+                  <Link
+                    href={item.href}
+                    onClick={() => play("click")}
+                    onMouseEnter={() => setHoveredPath(item.href)}
+                    onMouseLeave={() => setHoveredPath(null)}
+                  >
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn(
+                        "relative overflow-hidden rounded-full transition-all duration-300",
+                        isActive
+                          ? "bg-primary/10 text-primary hover:bg-primary/20"
+                          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                      )}
+                      onMouseEnter={() => play("hover")}
+                      aria-label={item.name}
+                    >
+                      <item.icon className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                </MagneticWrapper>
+              );
+            })}
+          </div>
 
-          <MagneticWrapper strength={0.6}>
-            <ThemeToggle />
+          <div className="h-6 w-px bg-border/50 mx-1" />
+
+          {/* 3. Utilities (Right) */}
+          <div className="flex items-center gap-1">
+            <MagneticWrapper strength={0.6}>
+              <CommandTrigger />
+            </MagneticWrapper>
+            <MagneticWrapper strength={0.6}>
+              <SoundToggle />
+            </MagneticWrapper>
+            <MagneticWrapper strength={0.6}>
+              <ThemeToggle />
+            </MagneticWrapper>
+          </div>
+        </div>
+
+        {/* Right: Mobile Toggle (Visible on Mobile) */}
+        <div className="flex md:hidden pointer-events-auto items-center gap-2 z-50">
+          <MagneticWrapper strength={0.2}>
+            <Button
+              variant="outline"
+              size="icon"
+              className={cn(
+                "rounded-full backdrop-blur-md border-border/40",
+                "bg-white/60 dark:bg-neutral-950/60"
+              )}
+              onClick={() => {
+                play("click");
+                setIsMobileMenuOpen(!isMobileMenuOpen);
+              }}
+            >
+              {isMobileMenuOpen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
+            </Button>
           </MagneticWrapper>
+        </div>
+      </div>
+
+      {/* --- FULL SCREEN OVERLAY --- */}
+      <div
+        ref={mobileMenuRef}
+        className={cn(
+          "fixed inset-0 z-40 flex flex-col justify-center px-8 opacity-0 invisible backdrop-blur-xl md:hidden",
+          "bg-white/80 dark:bg-black/60"
+        )}
+      >
+        <div className="flex flex-col gap-8 max-w-sm mx-auto w-full">
+          {/* Navigation Links */}
+          <div className="flex flex-col gap-4">
+            <span className="mobile-nav-item text-xs font-mono text-muted-foreground mb-2 block uppercase tracking-widest">
+              Navigation
+            </span>
+            {NAV_ITEMS.map((item, index) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => play("click")}
+                  className={cn(
+                    "mobile-nav-item text-4xl font-black tracking-tighter flex items-center gap-4 transition-colors",
+                    isActive
+                      ? "text-primary"
+                      : "text-foreground/60 hover:text-foreground"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "text-sm font-mono tracking-widest",
+                      isActive ? "text-primary" : "text-muted-foreground/30"
+                    )}
+                  >
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  {item.name}
+                </Link>
+              );
+            })}
+          </div>
+
+          <div className="w-full h-px bg-foreground/10 mobile-nav-item" />
+
+          {/* Utilities Grid */}
+          <div className="mobile-nav-item grid grid-cols-2 gap-4">
+            <Button
+              variant="outline"
+              className={cn(
+                "h-14 justify-start gap-3",
+                "bg-black/5 border-black/10 hover:bg-black/10",
+                "dark:bg-white/5 dark:border-white/10 dark:hover:bg-white/10"
+              )}
+              onClick={handleMobileSearch}
+            >
+              <Search className="h-5 w-5" />
+              <span className="text-base">Search</span>
+            </Button>
+
+            <div className="flex gap-2 h-14">
+              <div
+                className={cn(
+                  "flex-1 h-full",
+                  "[&>button]:w-full [&>button]:h-full [&>button]:rounded-md",
+                  "[&>button]:bg-black/5 [&>button]:border-black/10",
+                  "dark:[&>button]:bg-white/5 dark:[&>button]:border-white/10"
+                )}
+              >
+                <ThemeToggle />
+              </div>
+              <div
+                className={cn(
+                  "flex-1 h-full",
+                  "[&>button]:w-full [&>button]:h-full [&>button]:rounded-md",
+                  "[&>button]:bg-black/5 [&>button]:border-black/10",
+                  "dark:[&>button]:bg-white/5 dark:[&>button]:border-white/10"
+                )}
+              >
+                <SoundToggle />
+              </div>
+            </div>
+          </div>
+
+          {/* Footer Socials */}
+          <div className="mobile-nav-item flex items-center justify-between mt-4">
+            <div className="flex gap-6">
+              {SOCIALS.map((social) => (
+                <a
+                  key={social.href}
+                  href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                  onClick={() => play("click")}
+                >
+                  <social.icon className="h-6 w-6" />
+                </a>
+              ))}
+            </div>
+            <span className="text-[10px] font-mono text-muted-foreground/50">
+              SYS_ONLINE
+            </span>
+          </div>
         </div>
       </div>
     </nav>
