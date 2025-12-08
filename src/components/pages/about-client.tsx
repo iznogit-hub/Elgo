@@ -3,7 +3,15 @@
 import React, { useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, Cpu, Globe2, ScanFace, Terminal } from "lucide-react";
+import {
+  ArrowLeft,
+  Cpu,
+  Globe2,
+  ScanFace,
+  Terminal,
+  MapPin,
+  Code2,
+} from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 
@@ -59,6 +67,13 @@ export function AboutClient() {
           ease: "expo.out",
         }
       );
+
+      tl.fromTo(
+        ".decor-item",
+        { opacity: 0 },
+        { opacity: 1, duration: 1 },
+        "-=0.5"
+      );
       if (!isReduced) {
         gsap.to(".tech-item", {
           y: "10px",
@@ -71,6 +86,14 @@ export function AboutClient() {
             from: "random",
           },
         });
+        gsap.to(".decor-item", {
+          y: "15px",
+          duration: 5,
+          repeat: -1,
+          yoyo: true,
+          ease: "sine.inOut",
+          stagger: { amount: 4, from: "random" },
+        });
       }
     },
     { scope: containerRef }
@@ -79,7 +102,7 @@ export function AboutClient() {
   return (
     <main
       ref={containerRef}
-      className="relative flex min-h-screen w-full flex-col items-center overflow-hidden text-foreground selection:bg-primary selection:text-primary-foreground pt-24 md:pt-32 pb-20 px-6"
+      className="relative flex min-h-dvh w-full flex-col items-center overflow-hidden text-foreground selection:bg-primary selection:text-primary-foreground pt-24 md:pt-32 pb-20 px-6"
     >
       <div
         className={cn(
@@ -129,6 +152,24 @@ export function AboutClient() {
             <span>::</span>
             <span>KSA</span>
           </div>
+        </div>
+      </div>
+
+      {/* --- Ambient Decor (About) --- */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-20 hidden md:block z-0">
+        <div className="decor-item absolute top-[20%] left-[5%] font-mono text-xs text-primary/60 opacity-0">
+          {`> LOCATING_TARGET...`}
+        </div>
+        <div className="decor-item absolute top-[18%] right-[5%] font-mono text-xs text-muted-foreground/60 opacity-0">
+          {`{ "lat": "21.54", "lon": "39.17" }`}
+        </div>
+        <div className="decor-item absolute bottom-[15%] left-[12%] flex items-center gap-2 text-muted-foreground/60 opacity-0">
+          <MapPin className="h-4 w-4" />
+          <span className="font-mono text-xs">SECTOR: JEDDAH</span>
+        </div>
+        <div className="decor-item absolute bottom-[40%] right-[10%] flex items-center gap-2 text-primary/40 opacity-0">
+          <Code2 className="h-4 w-4" />
+          <span className="font-mono text-xs">STACK: MOUNTED</span>
         </div>
       </div>
 
