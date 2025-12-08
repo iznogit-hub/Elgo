@@ -155,7 +155,7 @@ export function UsesClient() {
       </div>
 
       {/* --- Main Content --- */}
-      <div className="relative z-10 w-full max-w-6xl flex flex-col justify-center h-full pt-10">
+      <div className="relative z-10 w-full max-w-6xl flex flex-col justify-center h-full pt-10 md:pt-32">
         <div className="flex flex-col md:flex-row gap-8 md:gap-16 items-center justify-center">
           <div className="w-full md:w-1/3 space-y-6 text-center md:text-left uses-intro opacity-0">
             <div className="space-y-2">

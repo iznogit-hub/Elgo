@@ -67,7 +67,7 @@ export function GuestbookClient({ children }: { children: React.ReactNode }) {
       ref={containerRef}
       className="flex min-h-dvh md:h-dvh w-full flex-col items-center md:overflow-hidden relative"
     >
-      <div className="absolute top-0 left-0 right-0 pt-20 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
+      <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
         <div className="floating-header pointer-events-auto">
           <Link href="/" className="cursor-none" onClick={() => play("click")}>
             <Button

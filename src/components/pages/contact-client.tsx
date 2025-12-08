@@ -67,8 +67,7 @@ export function ContactClient() {
       className="relative flex min-h-dvh w-full flex-col items-center justify-start overflow-x-hidden text-foreground selection:bg-primary selection:text-primary-foreground pb-10"
     >
       {/* --- FLOATING HEADER --- */}
-      {/* UPDATED: Reduced padding 'pt-20' on mobile to save vertical space */}
-      <div className="absolute top-0 left-0 right-0 pt-20 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
+      <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
         {/* ABORT BUTTON */}
         <div className="floating-header pointer-events-auto">
           <Link href="/" className="cursor-none" onClick={() => play("click")}>
@@ -113,7 +112,6 @@ export function ContactClient() {
       </div>
 
       {/* --- CENTER STAGE --- */}
-      {/* UPDATED: Added 'pt-32 md:pt-0' and 'mt-0 md:mt-auto md:mb-auto' to vertically center ONLY on desktop, but flow naturally on mobile */}
       <div className="w-full max-w-4xl px-6 relative z-10 flex flex-col items-center pt-48 md:pt-0 md:justify-center md:min-h-dvh">
         {/* Title Section */}
         <div className="floating-content text-center mb-8 md:mb-16 space-y-2">
