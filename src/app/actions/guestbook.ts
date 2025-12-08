@@ -2,28 +2,46 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import * as Sentry from "@sentry/nextjs";
+import { Filter } from "bad-words";
 import { redis } from "@/lib/redis";
-import { checkRateLimit } from "@/lib/rate-limit"; // Reusing your existing rate limiter
+import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 import { headers } from "next/headers";
+
+const filter = new Filter();
+
+// --- Types ---
+interface HuggingFaceScore {
+  label: string;
+  score: number;
+}
 
 // Validation Schema
 const entrySchema = z.object({
   name: z
     .string()
     .min(2, "Name must be at least 2 characters")
-    .max(32, "Name is too long"),
+    .max(32, "Name is too long")
+    .regex(
+      /^[\x20-\x7E]+$/,
+      "Only English letters, numbers, and symbols are allowed."
+    ),
   message: z
     .string()
     .min(2, "Message is too short")
-    .max(140, "Message is too long"),
+    .max(140, "Message is too long")
+    .regex(
+      /^[\x20-\x7E]+$/,
+      "Only English letters, numbers, and symbols are allowed."
+    ),
 });
 
 export async function signGuestbook(formData: FormData) {
   const headerStore = await headers();
   const ip = headerStore.get("x-forwarded-for") || "unknown";
 
-  // 1. Rate Limiting (In-memory for now, can be upgraded to Redis later)
+  // 1. Rate Limiting
   try {
     await checkRateLimit(ip);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -41,13 +59,80 @@ export async function signGuestbook(formData: FormData) {
   const validation = entrySchema.safeParse(rawData);
 
   if (!validation.success) {
-    return { error: validation.error.flatten().fieldErrors };
+    const errors = validation.error.flatten().fieldErrors;
+    const firstError =
+      errors.name?.[0] || errors.message?.[0] || "Invalid input.";
+    return { error: firstError };
   }
 
   const { name, message } = validation.data;
 
-  // 3. Persist to Redis
-  // We store entries as a JSON string in a Redis List called "guestbook"
+  // 3. Local Moderation (Fast Fail)
+  try {
+    if (filter.isProfane(name) || filter.isProfane(message)) {
+      logger.warn({ name, ip }, "Profanity detected (local filter)");
+      return { error: "Please keep the frequency clean. Profanity detected." };
+    }
+  } catch (error) {
+    logger.error({ error }, "Local filter error");
+  }
+
+  // 4. AI Moderation (Hugging Face - New Router)
+  const hfToken = process.env.HUGGING_FACE_TOKEN;
+
+  if (hfToken) {
+    try {
+      // UPDATED: Using the new Router URL structure
+      // Format: https://router.huggingface.co/{provider}/models/{model_id}
+      // Provider: 'hf-inference' (The free serverless tier)
+      const response = await fetch(
+        "https://router.huggingface.co/hf-inference/models/unitary/toxic-bert",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${hfToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ inputs: `${name}: ${message}` }),
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        // Result: [[{label: 'toxic', score: 0.9}, ...]]
+        const scores = result[0];
+
+        // Check for any toxic label with high confidence (>85%)
+        // unitary/toxic-bert labels: toxic, severe_toxic, obscene, threat, insult, identity_hate
+        const toxicScore = scores.find((s: HuggingFaceScore) => s.score > 0.85);
+
+        if (toxicScore) {
+          logger.warn(
+            { name, ip, score: toxicScore },
+            "AI Moderation flagged content"
+          );
+          return { error: "Message blocked by AI safety filters." };
+        }
+      } else {
+        // FAIL CLOSED: If API fails, block the user to maintain security.
+        logger.error({ status: response.status }, "Hugging Face API error");
+        return {
+          error: "Security check failed. Please try again later.",
+        };
+      }
+    } catch (error) {
+      // FAIL CLOSED: Network error blocks user.
+      logger.error({ error }, "AI Moderation network error");
+      return {
+        error: "Unable to verify message safety. Please try again later.",
+      };
+    }
+  } else {
+    // If no token, we rely ONLY on the local filter (or you can choose to fail here too)
+    logger.warn({}, "HUGGING_FACE_TOKEN missing, relying on local filter only");
+  }
+
+  // 5. Persist to Redis
   const entry = {
     name,
     message,
@@ -55,19 +140,16 @@ export async function signGuestbook(formData: FormData) {
   };
 
   try {
-    // LPUSH adds to the head of the list (newest first)
     await redis.lpush("guestbook", entry);
-
-    // Optional: Trim list to keep only the last 100 entries to manage storage
-    // await redis.ltrim("guestbook", 0, 99);
-
     logger.info({ name }, "Guestbook signed successfully");
-
-    // 4. Revalidate cache
     revalidatePath("/guestbook");
-
     return { success: true };
   } catch (error) {
+    Sentry.captureException(error, {
+      tags: { action: "sign_guestbook" },
+      user: { ip_address: ip },
+      extra: { name, message_length: message.length },
+    });
     logger.error({ error }, "Redis error signing guestbook");
     return { error: "Failed to sign guestbook. System error." };
   }
