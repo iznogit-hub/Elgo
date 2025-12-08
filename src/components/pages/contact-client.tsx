@@ -44,14 +44,14 @@ export function ContactClient() {
       );
 
       if (!prefersReducedMotion) {
-      gsap.to(".decor-item", {
-        y: "20px",
-        duration: 3,
-        repeat: -1,
-        yoyo: true,
-        ease: "sine.inOut",
+        gsap.to(".decor-item", {
+          y: "20px",
+          duration: 3,
+          repeat: -1,
+          yoyo: true,
+          ease: "sine.inOut",
           stagger: { amount: 2, from: "random" },
-      });
+        });
       }
     },
     { scope: containerRef, dependencies: [prefersReducedMotion] }
@@ -64,7 +64,7 @@ export function ContactClient() {
       // 1. Removed 'justify-center'.
       // 2. Added 'justify-start'.
       // 3. Changed 'py-20' to 'pb-10' to prevent bottom cutoff.
-      className="relative flex min-h-dvh w-full flex-col items-center justify-start overflow-x-hidden text-foreground selection:bg-primary selection:text-primary-foreground pb-10"
+      className="relative flex min-h-dvh w-full flex-col items-center justify-start overflow-x-hidden text-foreground selection:bg-primary selection:text-primary-foreground"
     >
       {/* --- FLOATING HEADER --- */}
       <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
