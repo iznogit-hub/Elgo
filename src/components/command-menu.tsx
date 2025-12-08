@@ -20,6 +20,7 @@ import {
   Monitor,
   Share2,
   PcCase,
+  LayoutDashboard,
 } from "lucide-react";
 
 import {
@@ -198,6 +199,13 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
               >
                 <PcCase className="mr-2 h-4 w-4" />
                 <span>Uses</span>
+              </CommandItem>
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/dashboard"))}
+                onMouseEnter={() => play("hover")}
+              >
+                <LayoutDashboard className="mr-2 h-4 w-4" />
+                <span>Dashboard</span>
               </CommandItem>
             </CommandGroup>
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Send, User, PcCase, Book } from "lucide-react";
+import { Send, User, PcCase, Book, LayoutDashboard } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SoundToggle } from "@/components/sound-toggle";
 import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { name: "About", href: "/about", icon: User },
   { name: "Uses", href: "/uses", icon: PcCase },
   { name: "Guestbook", href: "/guestbook", icon: Book },
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Contact", href: "/contact", icon: Send },
 ];
 
