@@ -17,6 +17,12 @@ interface HuggingFaceScore {
   score: number;
 }
 
+export type GuestbookEntry = {
+  name: string;
+  message: string;
+  timestamp: number;
+};
+
 // Validation Schema
 const entrySchema = z.object({
   name: z
@@ -44,7 +50,7 @@ export async function signGuestbook(formData: FormData) {
   // 1. Rate Limiting
   try {
     await checkRateLimit(ip);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     logger.warn({ ip }, "Guestbook rate limit exceeded");
     return { error: "You are doing that too much. Please try again later." };
@@ -152,5 +158,88 @@ export async function signGuestbook(formData: FormData) {
     });
     logger.error({ error }, "Redis error signing guestbook");
     return { error: "Failed to sign guestbook. System error." };
+  }
+}
+
+/**
+ * NEW: Fetch entries with pagination
+ * @param offset - Number of entries to skip
+ * @param limit - Number of entries to take (default 20)
+ */
+export async function fetchGuestbookEntries(
+  offset: number,
+  limit: number = 20
+): Promise<GuestbookEntry[]> {
+  try {
+    // Redis LRANGE is inclusive for both start and stop offsets
+    // If we want 20 items starting at 0: 0 to 19
+    const start = offset;
+    const end = offset + limit - 1;
+
+    const entries = await redis.lrange<GuestbookEntry>("guestbook", start, end);
+
+    return entries ?? [];
+  } catch (error) {
+    logger.error({ error }, "Failed to fetch guestbook entries");
+    return [];
+  }
+}
+
+/**
+ * Remove a specific entry from the Guestbook.
+ * Requires the ADMIN_SECRET environment variable.
+ */
+export async function deleteGuestbookEntry(
+  entry: GuestbookEntry,
+  secret: string
+) {
+  // 1. Security Check
+  if (secret !== process.env.ADMIN_SECRET) {
+    return { error: "ACCESS_DENIED: Invalid override code." };
+  }
+
+  try {
+    // 2. Remove from Redis
+    // LREM removes elements matching the value.
+    // We serialize the entry to find the exact match in the list.
+    const entryString = JSON.stringify(entry);
+    const removedCount = await redis.lrem("guestbook", 1, entryString);
+
+    if (removedCount === 0) {
+      return { error: "Entry not found (already deleted?)" };
+    }
+
+    logger.info({ name: entry.name }, "Guestbook entry deleted by admin");
+
+    revalidatePath("/guestbook");
+    return { success: true };
+  } catch (error) {
+    logger.error({ error }, "Failed to delete guestbook entry");
+    return { error: "System error during deletion." };
+  }
+}
+
+/**
+ * ☢️ DANGER: Deletes ALL entries in the guestbook.
+ * Requires the ADMIN_SECRET environment variable.
+ */
+export async function purgeGuestbook(secret: string) {
+  // 1. Security Check
+  if (secret !== process.env.ADMIN_SECRET) {
+    return { error: "ACCESS_DENIED: Invalid override code." };
+  }
+
+  try {
+    // 2. Nuke the Redis Key
+    // DEL removes the key entirely, effectively clearing the list.
+    await redis.del("guestbook");
+
+    logger.warn({}, "Guestbook PURGED by admin");
+
+    revalidatePath("/guestbook");
+    return { success: true };
+  } catch (error) {
+    logger.error({ error }, "Failed to purge guestbook");
+    return { error: "System error during purge." };
   }
 }
