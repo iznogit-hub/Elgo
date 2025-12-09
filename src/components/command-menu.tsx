@@ -31,7 +31,6 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-  CommandShortcut,
 } from "@/components/ui/command";
 import { useSfx } from "@/hooks/use-sfx";
 import { useSound } from "@/components/sound-provider";
@@ -157,7 +156,6 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
               >
                 <Mail className="mr-2 h-4 w-4" />
                 <span>Contact Me</span>
-                <CommandShortcut>C</CommandShortcut>
               </CommandItem>
               <CommandItem
                 onSelect={() => navigateTo("theme")}
@@ -172,7 +170,6 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
               >
                 <Gamepad2 className="mr-2 h-4 w-4" />
                 <span>Play Snake</span>
-                <CommandShortcut>G</CommandShortcut>
               </CommandItem>
             </CommandGroup>
 
@@ -277,7 +274,6 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
             >
               <Github className="mr-2 h-4 w-4" />
               <span>GitHub</span>
-              <CommandShortcut>↵</CommandShortcut>
             </CommandItem>
             <CommandItem
               onSelect={() =>
@@ -289,7 +285,6 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
             >
               <Linkedin className="mr-2 h-4 w-4" />
               <span>LinkedIn</span>
-              <CommandShortcut>↵</CommandShortcut>
             </CommandItem>
             <CommandItem
               onSelect={() =>
@@ -301,7 +296,6 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
             >
               <Twitter className="mr-2 h-4 w-4" />
               <span>Twitter</span>
-              <CommandShortcut>↵</CommandShortcut>
             </CommandItem>
             <CommandItem
               onSelect={() =>
