@@ -38,7 +38,7 @@ function SubmitButton() {
   );
 }
 
-export function GuestbookForm({ user }: { user?: User }) {
+export function GuestbookForm({ user }: { user?: User | null }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState<string | null>(null);
   const { play } = useSfx();
