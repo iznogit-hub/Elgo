@@ -10,8 +10,15 @@ import { GuestbookForm } from "@/components/guestbook/form";
 import { HackerText } from "@/components/ui/hacker-text";
 import { Button } from "@/components/ui/button";
 import { useSfx } from "@/hooks/use-sfx";
+import { User } from "next-auth";
 
-export function GuestbookClient({ children }: { children: React.ReactNode }) {
+export function GuestbookClient({
+  children,
+  user,
+}: {
+  children: React.ReactNode;
+  user?: User | null; // <--- Accept User
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const prefersReducedMotion = usePrefersReducedMotion();
   const { play } = useSfx();
@@ -141,7 +148,7 @@ export function GuestbookClient({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="gb-item w-full flex justify-center shrink-0 opacity-0">
-          <GuestbookForm />
+          <GuestbookForm user={user} />
         </div>
 
         <div className="gb-item w-full shrink-0 opacity-0">

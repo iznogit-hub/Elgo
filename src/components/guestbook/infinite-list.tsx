@@ -9,7 +9,15 @@ import {
   type GuestbookEntry,
 } from "@/app/actions/guestbook";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Trash2, ShieldAlert, Skull } from "lucide-react"; // Added Skull icon
+import {
+  Loader2,
+  Trash2,
+  ShieldAlert,
+  Skull,
+  CheckCircle2,
+} from "lucide-react";
+import Image from "next/image";
+import { FaGithub, FaDiscord, FaGoogle } from "react-icons/fa";
 import { useSfx } from "@/hooks/use-sfx";
 import { Button } from "@/components/ui/button";
 
@@ -180,6 +188,17 @@ export function InfiniteGuestbookList({
     );
   }
 
+  // Helper to render provider icon (Optional detail)
+  const ProviderIcon = ({ provider }: { provider?: string }) => {
+    if (provider === "github")
+      return <FaGithub className="w-3 h-3 text-muted-foreground/50" />;
+    if (provider === "discord")
+      return <FaDiscord className="w-3 h-3 text-muted-foreground/50" />;
+    if (provider === "google")
+      return <FaGoogle className="w-3 h-3 text-muted-foreground/50" />;
+    return null;
+  };
+
   return (
     <ScrollArea className="h-full w-full max-w-lg rounded-md border border-border/40 bg-background/20 backdrop-blur-sm p-4 relative">
       {/* --- Admin Controls Header --- */}
@@ -208,39 +227,66 @@ export function InfiniteGuestbookList({
         {entries.map((entry, i) => (
           <div
             key={`${entry.timestamp}-${entry.name}-${i}`}
-            className="flex flex-col gap-1 rounded-lg border border-border/40 bg-background/40 p-4 backdrop-blur-md animate-fade-in group relative hover:bg-background/60 transition-colors"
+            className="flex flex-col gap-2 rounded-lg border border-border/40 bg-background/40 p-4 backdrop-blur-md animate-fade-in group relative hover:bg-background/60 transition-colors"
             style={{ animationDelay: `${(i % 20) * 0.05}s` }}
           >
+            {/* --- HEADER ROW --- */}
             <div className="flex items-center justify-between">
-              <span className="font-mono text-sm font-bold text-primary">
-                {entry.name}
-              </span>
-              <div className="flex items-center gap-2">
-                <span
-                  className="text-[10px] text-muted-foreground"
-                  suppressHydrationWarning
-                >
-                  {new Date(entry.timestamp).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "2-digit",
-                    day: "2-digit",
-                  })}
-                </span>
+              <div className="flex items-center gap-3">
+                {/* Avatar */}
+                <div className="relative h-8 w-8 shrink-0 rounded-full border border-border/50 bg-muted overflow-hidden">
+                  <Image
+                    src={entry.avatar || "/Avatar.png"}
+                    alt={entry.name}
+                    fill
+                    sizes="32px"
+                    className="object-cover"
+                  />
+                </div>
 
-                {isAdminMode && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 text-red-500 hover:text-white hover:bg-red-600 ml-2 transition-all duration-300"
-                    onClick={() => handleDelete(entry)}
-                    title="Delete Entry"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                )}
+                {/* Name & Badge */}
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-sm font-bold text-primary">
+                      {entry.name}
+                    </span>
+                    {entry.verified && (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 fill-blue-400/10" />
+                    )}
+                  </div>
+                  {/* Timestamp & Provider Icon */}
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="text-[10px] text-muted-foreground"
+                      suppressHydrationWarning
+                    >
+                      {new Date(entry.timestamp).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                      })}
+                    </span>
+                    <ProviderIcon provider={entry.provider} />
+                  </div>
+                </div>
               </div>
+
+              {/* Admin Delete Button (Keep existing logic) */}
+              {isAdminMode && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-red-500 hover:text-white hover:bg-red-600 transition-all duration-300"
+                  onClick={() => handleDelete(entry)}
+                  title="Delete Entry"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              )}
             </div>
-            <p className="text-sm text-foreground/90 wrap-break-word whitespace-pre-wrap">
+
+            {/* --- MESSAGE CONTENT --- */}
+            <p className="text-sm text-foreground/90 wrap-break-word whitespace-pre-wrap pl-11">
               {entry.message}
             </p>
           </div>

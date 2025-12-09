@@ -8,6 +8,7 @@ import { redis } from "@/lib/redis";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 import { headers } from "next/headers";
+import { auth } from "@/auth"; // <--- NEW: Import Auth
 
 const filter = new Filter();
 
@@ -21,76 +22,104 @@ export type GuestbookEntry = {
   name: string;
   message: string;
   timestamp: number;
+  // New Fields for Verified Identity
+  avatar?: string;
+  verified?: boolean;
+  provider?: "github" | "discord" | "google";
 };
 
-// Validation Schema
-const entrySchema = z.object({
-  name: z
-    .string()
-    .min(2, "Name must be at least 2 characters")
-    .max(32, "Name is too long")
-    .regex(
-      /^[\x20-\x7E]+$/,
-      "Only English letters, numbers, and symbols are allowed."
-    ),
-  message: z
-    .string()
-    .min(2, "Message is too short")
-    .max(140, "Message is too long")
-    .regex(
-      /^[\x20-\x7E]+$/,
-      "Only English letters, numbers, and symbols are allowed."
-    ),
-});
+// --- Validation Schemas ---
 
+// Message is validated for everyone
+const messageSchema = z
+  .string()
+  .min(2, "Message is too short")
+  .max(140, "Message is too long")
+  .regex(
+    /^[\x20-\x7E]+$/,
+    "Only English letters, numbers, and symbols are allowed."
+  );
+
+// Name is only validated for Anonymous users
+const nameSchema = z
+  .string()
+  .min(2, "Name must be at least 2 characters")
+  .max(32, "Name is too long")
+  .regex(
+    /^[\x20-\x7E]+$/,
+    "Only English letters, numbers, and symbols are allowed."
+  );
+
+// --- 1. Sign Guestbook Action ---
 export async function signGuestbook(formData: FormData) {
+  const session = await auth(); // Check active session
   const headerStore = await headers();
   const ip = headerStore.get("x-forwarded-for") || "unknown";
 
   // 1. Rate Limiting
   try {
     await checkRateLimit(ip);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     logger.warn({ ip }, "Guestbook rate limit exceeded");
     return { error: "You are doing that too much. Please try again later." };
   }
 
-  // 2. Validation
-  const rawData = {
-    name: formData.get("name"),
-    message: formData.get("message"),
-  };
+  const rawMessage = formData.get("message");
+  const rawName = formData.get("name");
 
-  const validation = entrySchema.safeParse(rawData);
+  // 2. Determine Identity (Verified vs Anonymous)
+  let name: string;
+  let avatar: string | undefined;
+  let verified = false;
+  let provider: "github" | "discord" | "google" | undefined;
 
-  if (!validation.success) {
-    const errors = validation.error.flatten().fieldErrors;
-    const firstError =
-      errors.name?.[0] || errors.message?.[0] || "Invalid input.";
-    return { error: firstError };
+  if (session?.user) {
+    // --- VERIFIED PATH ---
+    // Trust the session data provided by OAuth
+    name = session.user.name || "Verified User";
+    avatar = session.user.image || undefined;
+    verified = true;
+
+    // Heuristic to detect provider from avatar URL
+    if (avatar?.includes("github")) provider = "github";
+    else if (avatar?.includes("discord")) provider = "discord";
+    else if (avatar?.includes("google")) provider = "google";
+  } else {
+    // --- ANONYMOUS PATH ---
+    // Strict validation for user-input names
+    const nameValidation = nameSchema.safeParse(rawName);
+    if (!nameValidation.success) {
+      return {
+        error: "Invalid name. " + nameValidation.error.issues[0].message,
+      };
+    }
+    name = nameValidation.data;
   }
 
-  const { name, message } = validation.data;
+  // 3. Validate Message
+  const messageValidation = messageSchema.safeParse(rawMessage);
+  if (!messageValidation.success) {
+    return { error: messageValidation.error.issues[0].message };
+  }
+  const message = messageValidation.data;
 
-  // 3. Local Moderation (Fast Fail)
+  // 4. Moderation (Profanity)
   try {
-    if (filter.isProfane(name) || filter.isProfane(message)) {
+    // We check the message for everyone.
+    // We only check the NAME if it's anonymous (Verified names are trusted/handled by providers).
+    if (filter.isProfane(message) || (!verified && filter.isProfane(name))) {
       logger.warn({ name, ip }, "Profanity detected (local filter)");
-      return { error: "Please keep the frequency clean. Profanity detected." };
+      return { error: "Profanity detected. Please keep it clean." };
     }
   } catch (error) {
-    logger.error({ error }, "Local filter error");
+    logger.error({ error }, "Moderation error");
   }
 
-  // 4. AI Moderation (Hugging Face - New Router)
+  // 5. AI Safety Check (Hugging Face)
   const hfToken = process.env.HUGGING_FACE_TOKEN;
-
   if (hfToken) {
     try {
-      // UPDATED: Using the new Router URL structure
-      // Format: https://router.huggingface.co/{provider}/models/{model_id}
-      // Provider: 'hf-inference' (The free serverless tier)
       const response = await fetch(
         "https://router.huggingface.co/hf-inference/models/unitary/toxic-bert",
         {
@@ -138,16 +167,19 @@ export async function signGuestbook(formData: FormData) {
     logger.warn({}, "HUGGING_FACE_TOKEN missing, relying on local filter only");
   }
 
-  // 5. Persist to Redis
-  const entry = {
+  // 6. Persist to Redis
+  const entry: GuestbookEntry = {
     name,
     message,
     timestamp: Date.now(),
+    avatar,
+    verified,
+    provider,
   };
 
   try {
     await redis.lpush("guestbook", entry);
-    logger.info({ name }, "Guestbook signed successfully");
+    logger.info({ name, verified }, "Guestbook signed successfully");
     revalidatePath("/guestbook");
     return { success: true };
   } catch (error) {
@@ -161,23 +193,15 @@ export async function signGuestbook(formData: FormData) {
   }
 }
 
-/**
- * NEW: Fetch entries with pagination
- * @param offset - Number of entries to skip
- * @param limit - Number of entries to take (default 20)
- */
+// --- 2. Fetch Entries Action ---
 export async function fetchGuestbookEntries(
   offset: number,
   limit: number = 20
 ): Promise<GuestbookEntry[]> {
   try {
-    // Redis LRANGE is inclusive for both start and stop offsets
-    // If we want 20 items starting at 0: 0 to 19
     const start = offset;
     const end = offset + limit - 1;
-
     const entries = await redis.lrange<GuestbookEntry>("guestbook", start, end);
-
     return entries ?? [];
   } catch (error) {
     logger.error({ error }, "Failed to fetch guestbook entries");
@@ -185,23 +209,17 @@ export async function fetchGuestbookEntries(
   }
 }
 
-/**
- * Remove a specific entry from the Guestbook.
- * Requires the ADMIN_SECRET environment variable.
- */
+// --- 3. Delete Entry Action (Admin) ---
 export async function deleteGuestbookEntry(
   entry: GuestbookEntry,
   secret: string
 ) {
-  // 1. Security Check
   if (secret !== process.env.ADMIN_SECRET) {
     return { error: "ACCESS_DENIED: Invalid override code." };
   }
 
   try {
-    // 2. Remove from Redis
-    // LREM removes elements matching the value.
-    // We serialize the entry to find the exact match in the list.
+    // Remove exact match from list
     const entryString = JSON.stringify(entry);
     const removedCount = await redis.lrem("guestbook", 1, entryString);
 
@@ -210,7 +228,6 @@ export async function deleteGuestbookEntry(
     }
 
     logger.info({ name: entry.name }, "Guestbook entry deleted by admin");
-
     revalidatePath("/guestbook");
     return { success: true };
   } catch (error) {
@@ -219,23 +236,15 @@ export async function deleteGuestbookEntry(
   }
 }
 
-/**
- * ☢️ DANGER: Deletes ALL entries in the guestbook.
- * Requires the ADMIN_SECRET environment variable.
- */
+// --- 4. Purge All Action (Admin) ---
 export async function purgeGuestbook(secret: string) {
-  // 1. Security Check
   if (secret !== process.env.ADMIN_SECRET) {
     return { error: "ACCESS_DENIED: Invalid override code." };
   }
 
   try {
-    // 2. Nuke the Redis Key
-    // DEL removes the key entirely, effectively clearing the list.
     await redis.del("guestbook");
-
     logger.warn({}, "Guestbook PURGED by admin");
-
     revalidatePath("/guestbook");
     return { success: true };
   } catch (error) {
