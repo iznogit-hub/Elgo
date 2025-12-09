@@ -9,7 +9,8 @@ import React, {
   useCallback,
 } from "react";
 
-type SoundType = "hover" | "click" | "success";
+// UPDATED: Added 'error', 'on', and 'off' to the type definition
+type SoundType = "hover" | "click" | "success" | "error" | "on" | "off";
 
 interface SoundContextType {
   play: (type: SoundType) => void;
@@ -106,7 +107,7 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
 
     const now = ctx.currentTime;
 
-    // Sound Profiles
+    // --- Sound Profiles ---
     if (type === "hover") {
       oscillator.type = "sine";
       oscillator.frequency.setValueAtTime(800, now);
@@ -138,6 +139,38 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
         osc.start(st);
         osc.stop(st + 0.1);
       });
+      // Cleanup main oscillator/gain since we created new ones above
+      return;
+    }
+    // NEW: Error Sound (Low Sawtooth Buzzer)
+    else if (type === "error") {
+      oscillator.type = "sawtooth";
+      oscillator.frequency.setValueAtTime(150, now);
+      oscillator.frequency.exponentialRampToValueAtTime(50, now + 0.2);
+      gainNode.gain.setValueAtTime(0.1, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      oscillator.start(now);
+      oscillator.stop(now + 0.2);
+    }
+    // NEW: On Sound (High Ascending Chirp)
+    else if (type === "on") {
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(600, now);
+      oscillator.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
+      gainNode.gain.setValueAtTime(0.05, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+      oscillator.start(now);
+      oscillator.stop(now + 0.1);
+    }
+    // NEW: Off Sound (Descending Chirp)
+    else if (type === "off") {
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(1200, now);
+      oscillator.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+      gainNode.gain.setValueAtTime(0.05, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+      oscillator.start(now);
+      oscillator.stop(now + 0.1);
     }
   }, []);
 
