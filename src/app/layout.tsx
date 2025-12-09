@@ -5,6 +5,8 @@ import { SoundProvider } from "@/components/sound-provider";
 import { GlobalAppWrapper } from "@/components/global-app-wrapper";
 import { JsonLd } from "@/components/seo/json-ld";
 import "./globals.css";
+import { AdminProvider } from "@/providers/admin-provider";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -93,8 +95,10 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <SoundProvider>
-            {/* WRAPPER: Now contains all overlays (Cursor, Preloader, Navbar, Analytics) */}
-            <GlobalAppWrapper>{children}</GlobalAppWrapper>
+            <AdminProvider>
+              <GlobalAppWrapper>{children}</GlobalAppWrapper>
+              <Toaster position="top-center" richColors />
+            </AdminProvider>
           </SoundProvider>
         </ThemeProvider>
       </body>

@@ -8,7 +8,7 @@ import { redis } from "@/lib/redis";
 import { checkRateLimit } from "@/lib/rate-limit";
 import logger from "@/lib/logger";
 import { headers } from "next/headers";
-import { auth } from "@/auth"; // <--- NEW: Import Auth
+import { auth } from "@/auth";
 
 const filter = new Filter();
 
@@ -59,7 +59,7 @@ export async function signGuestbook(formData: FormData) {
   // 1. Rate Limiting
   try {
     await checkRateLimit(ip);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     logger.warn({ ip }, "Guestbook rate limit exceeded");
     return { error: "You are doing that too much. Please try again later." };
@@ -210,16 +210,16 @@ export async function fetchGuestbookEntries(
 }
 
 // --- 3. Delete Entry Action (Admin) ---
-export async function deleteGuestbookEntry(
-  entry: GuestbookEntry,
-  secret: string
-) {
-  if (secret !== process.env.ADMIN_SECRET) {
-    return { error: "ACCESS_DENIED: Invalid override code." };
+export async function deleteGuestbookEntry(entry: GuestbookEntry) {
+  const session = await auth();
+
+  // SECURITY CHECK: Must be logged in AND be an admin
+  if (!session?.user?.isAdmin) {
+    logger.warn({ user: session?.user?.name }, "Unauthorized delete attempt");
+    return { error: "ACCESS_DENIED: Insufficient clearance level." };
   }
 
   try {
-    // Remove exact match from list
     const entryString = JSON.stringify(entry);
     const removedCount = await redis.lrem("guestbook", 1, entryString);
 
@@ -227,7 +227,10 @@ export async function deleteGuestbookEntry(
       return { error: "Entry not found (already deleted?)" };
     }
 
-    logger.info({ name: entry.name }, "Guestbook entry deleted by admin");
+    logger.info(
+      { admin: session.user.email, target: entry.name },
+      "Guestbook entry deleted by admin"
+    );
     revalidatePath("/guestbook");
     return { success: true };
   } catch (error) {
@@ -236,15 +239,18 @@ export async function deleteGuestbookEntry(
   }
 }
 
-// --- 4. Purge All Action (Admin) ---
-export async function purgeGuestbook(secret: string) {
-  if (secret !== process.env.ADMIN_SECRET) {
-    return { error: "ACCESS_DENIED: Invalid override code." };
+// --- 4. Purge All Action (RBAC Protected) ---
+export async function purgeGuestbook() {
+  const session = await auth();
+
+  // SECURITY CHECK
+  if (!session?.user?.isAdmin) {
+    return { error: "ACCESS_DENIED: Insufficient clearance level." };
   }
 
   try {
     await redis.del("guestbook");
-    logger.warn({}, "Guestbook PURGED by admin");
+    logger.warn({ admin: session.user.email }, "Guestbook PURGED by admin");
     revalidatePath("/guestbook");
     return { success: true };
   } catch (error) {

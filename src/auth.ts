@@ -3,16 +3,29 @@ import GitHub from "next-auth/providers/github";
 import Discord from "next-auth/providers/discord";
 import Google from "next-auth/providers/google";
 
+const adminEmails = process.env.ADMIN_EMAILS?.split(",") || [];
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [GitHub, Discord, Google],
   pages: {
-    signIn: "/guestbook", // Redirect back to guestbook to sign in
+    signIn: "/guestbook",
   },
   callbacks: {
     async session({ session, token }) {
-      // Pass the user ID to the session
-      if (session.user && token.sub) {
-        session.user.id = token.sub;
+      if (session.user) {
+        // 1. Pass User ID
+        if (token.sub) {
+          session.user.id = token.sub;
+        }
+
+        // 2. RBAC Logic: Check if email is in the admin whitelist
+        // We normalize to lowercase to avoid casing issues
+        const userEmail = session.user.email?.toLowerCase() || "";
+        const isAdmin = adminEmails.some(
+          (admin) => admin.trim().toLowerCase() === userEmail
+        );
+
+        session.user.isAdmin = isAdmin;
       }
       return session;
     },
