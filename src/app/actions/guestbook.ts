@@ -28,6 +28,14 @@ export type GuestbookEntry = {
   provider?: "github" | "discord" | "google";
 };
 
+// Helper to remove null/undefined keys to match original JSON.stringify behavior
+function sanitizeEntry(entry: GuestbookEntry) {
+  return Object.fromEntries(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    Object.entries(entry).filter(([_, v]) => v != null)
+  );
+}
+
 // --- Validation Schemas ---
 
 // Message is validated for everyone
@@ -209,21 +217,27 @@ export async function fetchGuestbookEntries(
   }
 }
 
-// --- 3. Delete Entry Action (Admin) ---
+// --- 3. Delete Entry Action (RBAC Protected) ---
 export async function deleteGuestbookEntry(entry: GuestbookEntry) {
   const session = await auth();
 
-  // SECURITY CHECK: Must be logged in AND be an admin
   if (!session?.user?.isAdmin) {
     logger.warn({ user: session?.user?.name }, "Unauthorized delete attempt");
     return { error: "ACCESS_DENIED: Insufficient clearance level." };
   }
 
   try {
-    const entryString = JSON.stringify(entry);
+    // FIX: Sanitize the entry to remove 'null' values introduced by Next.js serialization
+    const cleanEntry = sanitizeEntry(entry);
+
+    // Now stringify the clean object
+    const entryString = JSON.stringify(cleanEntry);
+
     const removedCount = await redis.lrem("guestbook", 1, entryString);
 
     if (removedCount === 0) {
+      // Optional: Debug log to see what we tried to delete vs what failed
+      console.log("Failed to delete. hash:", entryString);
       return { error: "Entry not found (already deleted?)" };
     }
 
