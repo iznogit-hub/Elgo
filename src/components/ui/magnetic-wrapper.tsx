@@ -17,7 +17,6 @@ export function MagneticWrapper({
   strength = 0.5,
 }: MagneticWrapperProps) {
   const ref = useRef<HTMLDivElement>(null);
-  // We use a ref to store the bounding box to avoid recalculating it (and causing jitter) on every mouse frame
   const boundsRef = useRef<{
     width: number;
     height: number;
@@ -42,7 +41,6 @@ export function MagneticWrapper({
 
       const handleMouseEnter = () => {
         play("hover");
-        // Cache bounds on enter so the magnetic math stays stable even as the element moves
         const rect = element.getBoundingClientRect();
         boundsRef.current = {
           width: rect.width,
@@ -57,8 +55,6 @@ export function MagneticWrapper({
         if (!bounds) return;
 
         const { clientX, clientY } = e;
-
-        // Calculate based on the cached "home" position
         const x = clientX - (bounds.left + bounds.width / 2);
         const y = clientY - (bounds.top + bounds.height / 2);
 
@@ -69,7 +65,7 @@ export function MagneticWrapper({
       const handleMouseLeave = () => {
         xTo(0);
         yTo(0);
-        boundsRef.current = null; // Clear bounds
+        boundsRef.current = null;
       };
 
       element.addEventListener("mouseenter", handleMouseEnter);
@@ -86,7 +82,12 @@ export function MagneticWrapper({
   );
 
   return (
-    <div ref={ref} className={className}>
+    <div
+      ref={ref}
+      className={className}
+      // Prevents browser scrolling when dragging/interacting on mobile
+      style={{ touchAction: "none" }}
+    >
       {children}
     </div>
   );
