@@ -12,12 +12,38 @@ export function SoundPrompter() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { play } = useSfx();
 
+  // ⚡ Logic: Smart Timer
   useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), 1500);
-    return () => clearTimeout(timer);
+    // Controller to clean up the early-interaction listener
+    const abortController = new AbortController();
+
+    // If user clicks anywhere BEFORE the timer, we cancel the prompt
+    const handleEarlyInteraction = () => {
+      // User already interacted, no need to prompt
+      clearTimeout(timer);
+      abortController.abort();
+    };
+
+    // Listen for early clicks immediately
+    window.addEventListener("click", handleEarlyInteraction, {
+      signal: abortController.signal,
+      once: true,
+    });
+
+    const timer = setTimeout(() => {
+      setIsVisible(true);
+      // Once visible, we don't need the 'early' listener anymore
+      // The 'handleGlobalClick' inside the next useEffect will take over
+      abortController.abort();
+    }, 1500);
+
+    return () => {
+      clearTimeout(timer);
+      abortController.abort();
+    };
   }, []);
 
-  // Setup the "Click Anywhere" Listener
+  // ⚡ Logic: Dismissal (Only runs if isVisible becomes true)
   useEffect(() => {
     if (!isVisible) return;
 
@@ -38,6 +64,7 @@ export function SoundPrompter() {
     return () => window.removeEventListener("click", handleGlobalClick);
   }, [isVisible, play]);
 
+  // Entrance Animation
   useGSAP(
     () => {
       if (isVisible && containerRef.current) {
@@ -58,12 +85,9 @@ export function SoundPrompter() {
       aria-label="Sound Controls"
       ref={containerRef}
       className={cn(
-        // Base Layout (Mobile)
         "fixed z-90 pointer-events-none select-none",
-        "top-20 right-4", // Tighter spacing for mobile
-        "max-w-[calc(100vw-2rem)]", // Prevent overflow on small screens
-
-        // Desktop Breakpoint
+        "top-20 right-4",
+        "max-w-[calc(100vw-2rem)]",
         "md:top-24 md:right-6"
       )}
     >
@@ -72,18 +96,15 @@ export function SoundPrompter() {
           "flex items-center rounded-lg",
           "bg-background/80 backdrop-blur-md border border-border/50",
           "shadow-lg shadow-black/5",
-          // Adaptive Padding
           "gap-3 px-3 py-2.5 pr-5",
           "md:gap-4 md:px-4 md:py-3 md:pr-6"
         )}
       >
-        {/* Animated Icon */}
         <div className="relative flex items-center justify-center w-8 h-8 shrink-0 rounded-full bg-primary/10 text-primary">
           <Volume2 className="w-4 h-4" />
           <span className="absolute inset-0 rounded-full border border-primary/40 animate-ping opacity-20" />
         </div>
 
-        {/* Text Content */}
         <div className="flex flex-col min-w-0">
           <span className="text-xs font-bold text-foreground tracking-tight whitespace-nowrap">
             Sound Standby
