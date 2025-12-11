@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use server";
 
 import { unstable_noStore as noStore } from "next/cache";
 
-// --- Types ---
+// --- Types (Unchanged) ---
 export type HeatmapData = {
   date: string;
   count: number;
@@ -32,6 +33,7 @@ export interface DashboardData {
       matches: number;
       kd: string;
       hs: string;
+      lastMatches: ("W" | "L")[];
     };
     lol: {
       rank: string;
@@ -40,19 +42,20 @@ export interface DashboardData {
       matches: number;
       kda: string;
       main: string;
+      lastMatches: ("W" | "L")[];
     };
   };
   system: {
     status: "operational" | "degraded" | "outage";
-    uptime: number; // Availability %
+    uptime: number;
     latency: number;
     region: string;
     specs: {
-      cpu: number; // % Usage (Derived from Load)
+      cpu: number;
       memory: {
         total: number;
         used: number;
-        percent: number; // % Usage
+        percent: number;
       };
       os: string;
       load: number;
@@ -99,13 +102,12 @@ async function fetchGitHubStats() {
       json.data?.user?.contributionsCollection?.contributionCalendar;
 
     const allDays =
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       calendar?.weeks.flatMap((w: any) => w.contributionDays) || [];
     const recentDays = allDays.slice(-84);
 
     return {
       total: calendar?.totalContributions || 0,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       heatmap: recentDays.map((d: any) => ({
         date: d.date,
         count: d.contributionCount,
@@ -153,7 +155,7 @@ async function fetchCodeStats() {
     );
 
     const languages = Object.entries(data.languages)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       .map(([name, stats]: [string, any]) => ({ name, xp: stats.xps }))
       .sort((a, b) => b.xp - a.xp)
       .slice(0, 3);
@@ -174,63 +176,108 @@ async function fetchCodeStats() {
   }
 }
 
-// --- 2. GAMING STATS (Unchanged) ---
+// --- 2. GAMING STATS (FIXED CACHING) ---
+
 async function fetchValorantStats() {
   const REGION = process.env.VALORANT_REGION || "eu";
   const PUUID = process.env.VALORANT_PUUID;
   const API_KEY = process.env.HENRIK_API_KEY;
 
-  if (!PUUID || !API_KEY)
-    return {
-      rank: "Config Missing",
-      rr: 0,
-      winRate: 0,
-      matches: 0,
-      kd: "0.0",
-      hs: "0%",
-    };
+  const fallback = {
+    rank: "Unranked",
+    rr: 0,
+    winRate: 0,
+    matches: 0,
+    kd: "0.0",
+    hs: "0%",
+    lastMatches: [] as ("W" | "L")[],
+  };
+
+  if (!PUUID || !API_KEY) return fallback;
 
   try {
-    const res = await fetch(
-      `https://api.henrikdev.xyz/valorant/v2/by-puuid/mmr/${REGION}/${PUUID}`,
-      {
-        headers: {
-          Authorization: API_KEY,
-          "User-Agent": "Portfolio-Dashboard",
-        },
-        next: { revalidate: 600 },
-      }
-    );
+    const [mmrRes, matchesRes] = await Promise.all([
+      // MMR is small, we can keep caching it
+      fetch(
+        `https://api.henrikdev.xyz/valorant/v2/by-puuid/mmr/${REGION}/${PUUID}`,
+        {
+          headers: {
+            Authorization: API_KEY,
+            "User-Agent": "Portfolio-Dashboard",
+          },
+          next: { revalidate: 600 },
+        }
+      ),
+      // ⚡ FIX: Matches are huge (>2MB), disable cache to prevent crash
+      fetch(
+        `https://api.henrikdev.xyz/valorant/v3/by-puuid/matches/${REGION}/${PUUID}?size=5`,
+        {
+          headers: {
+            Authorization: API_KEY,
+            "User-Agent": "Portfolio-Dashboard",
+          },
+          cache: "no-store", // 👈 DISABLE CACHE HERE
+        }
+      ),
+    ]);
 
-    if (!res.ok)
-      return {
-        rank: "Unranked",
-        rr: 0,
-        winRate: 0,
-        matches: 0,
-        kd: "0.0",
-        hs: "0%",
-      };
-    const json = await res.json();
-    const data = json.data?.current_data;
+    const mmrData = mmrRes.ok ? (await mmrRes.json()).data?.current_data : null;
+    const matchesData = matchesRes.ok ? (await matchesRes.json()).data : [];
+
+    let totalKills = 0,
+      totalDeaths = 0,
+      totalShots = 0,
+      totalHeadshots = 0,
+      wins = 0;
+    const history: ("W" | "L")[] = [];
+
+    if (Array.isArray(matchesData)) {
+      matchesData.forEach((match: any) => {
+        const player = match.players?.all_players?.find(
+          (p: any) => p.puuid === PUUID
+        );
+        if (!player) return;
+
+        totalKills += player.stats.kills;
+        totalDeaths += player.stats.deaths;
+        totalHeadshots += player.stats.headshots;
+        totalShots +=
+          player.stats.headshots +
+          player.stats.bodyshots +
+          player.stats.legshots;
+
+        const teamColor = player.team.toLowerCase();
+        const hasWon = match.teams?.[teamColor]?.has_won ?? false;
+
+        if (hasWon) {
+          wins++;
+          history.push("W");
+        } else {
+          history.push("L");
+        }
+      });
+    }
+
+    const matchesCount = history.length || 1;
+    const realKD =
+      totalDeaths > 0 ? (totalKills / totalDeaths).toFixed(2) : "0.0";
+    const realHS =
+      totalShots > 0 ? Math.round((totalHeadshots / totalShots) * 100) : 0;
+    const realWinRate =
+      history.length > 0 ? Math.round((wins / history.length) * 100) : 0;
 
     return {
-      rank: data?.currenttierpatched || "Unranked",
-      rr: data?.ranking_in_tier || 0,
-      winRate: 50,
-      matches: 0,
-      kd: "1.42",
-      hs: "28%",
+      rank: mmrData?.currenttierpatched || "Unranked",
+      rr: mmrData?.ranking_in_tier || 0,
+      winRate: realWinRate,
+      matches: history.length,
+      kd: realKD,
+      hs: `${realHS}%`,
+      lastMatches: history,
     };
   } catch (error) {
-    return {
-      rank: "Error",
-      rr: 0,
-      winRate: 0,
-      matches: 0,
-      kd: "0.0",
-      hs: "0%",
-    };
+    console.error("Valorant Fetch Error:", error);
+    return fallback;
   }
 }
 
@@ -240,38 +287,96 @@ async function fetchLoLStats() {
     process.env.RIOT_REGION_URL || "https://euw1.api.riotgames.com";
   const API_KEY = process.env.RIOT_API_KEY;
 
-  if (!PUUID || !API_KEY)
-    return {
-      rank: "Unranked",
-      lp: 0,
-      winRate: 0,
-      matches: 0,
-      kda: "0.0",
-      main: "Unknown",
-    };
+  const fallback = {
+    rank: "Unranked",
+    lp: 0,
+    winRate: 0,
+    matches: 0,
+    kda: "0.0",
+    main: "Unknown",
+    lastMatches: [] as ("W" | "L")[],
+  };
+
+  if (!PUUID || !API_KEY) return fallback;
+
+  const MATCH_REGION_URL = REGION_URL.includes("eu")
+    ? "https://europe.api.riotgames.com"
+    : "https://americas.api.riotgames.com";
 
   try {
-    const res = await fetch(
-      `${REGION_URL}/lol/league/v4/entries/by-puuid/${PUUID}`,
+    const [leagueRes, masteryRes] = await Promise.all([
+      fetch(`${REGION_URL}/lol/league/v4/entries/by-puuid/${PUUID}`, {
+        headers: { "X-Riot-Token": API_KEY },
+        next: { revalidate: 600 },
+      }),
+      fetch(
+        `${REGION_URL}/lol/champion-mastery/v4/champion-masteries/by-puuid/${PUUID}/top?count=1`,
+        {
+          headers: { "X-Riot-Token": API_KEY },
+          next: { revalidate: 3600 },
+        }
+      ),
+    ]);
+
+    const matchesIdsRes = await fetch(
+      `${MATCH_REGION_URL}/lol/match/v5/matches/by-puuid/${PUUID}/ids?start=0&count=5&queue=420`,
       {
         headers: { "X-Riot-Token": API_KEY },
         next: { revalidate: 600 },
       }
     );
 
-    if (!res.ok)
-      return {
-        rank: "Unranked",
-        lp: 0,
-        winRate: 0,
-        matches: 0,
-        kda: "0.0",
-        main: "Unknown",
-      };
+    if (!leagueRes.ok) return fallback;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data: any[] = await res.json();
-    const soloQ = data.find((q) => q.queueType === "RANKED_SOLO_5x5");
+    const leagueData: any[] = await leagueRes.json();
+    const soloQ = leagueData.find((q) => q.queueType === "RANKED_SOLO_5x5");
+
+    let mainChamp = "Fill";
+    if (masteryRes.ok) {
+      const masteryData: any[] = await masteryRes.json();
+      if (masteryData.length > 0) {
+        try {
+          const ddragonRes = await fetch(
+            "https://ddragon.leagueoflegends.com/cdn/14.1.1/data/en_US/champion.json"
+          );
+          if (ddragonRes.ok) {
+            const ddragon = await ddragonRes.json();
+            const champId = masteryData[0].championId;
+
+            const champName = Object.values(ddragon.data).find(
+              (c: any) => c.key == champId
+            ) as any;
+            if (champName) mainChamp = champName.name;
+          }
+        } catch (e) {
+          /* Ignore */
+        }
+      }
+    }
+
+    const lastMatches: ("W" | "L")[] = [];
+    if (matchesIdsRes.ok) {
+      const matchIds: string[] = await matchesIdsRes.json();
+      const matchPromises = matchIds.map((id) =>
+        fetch(`${MATCH_REGION_URL}/lol/match/v5/matches/${id}`, {
+          headers: { "X-Riot-Token": API_KEY },
+          next: { revalidate: 3600 },
+        }).then((r) => r.json())
+      );
+
+      const matchesResults = await Promise.all(matchPromises);
+
+      matchesResults.forEach((match: any) => {
+        if (!match.info) return;
+
+        const participant = match.info.participants.find(
+          (p: any) => p.puuid === PUUID
+        );
+        if (participant) {
+          lastMatches.push(participant.win ? "W" : "L");
+        }
+      });
+    }
 
     if (!soloQ)
       return {
@@ -280,7 +385,8 @@ async function fetchLoLStats() {
         winRate: 0,
         matches: 0,
         kda: "0.0",
-        main: "Unknown",
+        main: mainChamp,
+        lastMatches,
       };
 
     const wins = soloQ.wins;
@@ -293,17 +399,12 @@ async function fetchLoLStats() {
       winRate,
       matches: wins + losses,
       kda: "3.5",
-      main: "Mid",
+      main: mainChamp,
+      lastMatches,
     };
   } catch (error) {
-    return {
-      rank: "Error",
-      lp: 0,
-      winRate: 0,
-      matches: 0,
-      kda: "0.0",
-      main: "Unknown",
-    };
+    console.error("LoL Fetch Error:", error);
+    return fallback;
   }
 }
 
@@ -312,7 +413,6 @@ async function fetchSystemStats() {
   const DROPLET_ID = process.env.DIGITALOCEAN_DROPLET_ID;
   const TOKEN = process.env.DIGITALOCEAN_TOKEN;
 
-  // Fallback if no keys provided
   if (!DROPLET_ID || !TOKEN) {
     return {
       status: "operational" as const,
@@ -320,7 +420,7 @@ async function fetchSystemStats() {
       latency: 24,
       region: "FRA",
       specs: {
-        cpu: 12, // Mock 12%
+        cpu: 12,
         memory: { total: 4096, used: 2048, percent: 50 },
         os: "Ubuntu 22.04",
         load: 0.5,
@@ -329,7 +429,6 @@ async function fetchSystemStats() {
   }
 
   try {
-    // 1. Get Static Droplet Specs (Capacity)
     const dropletRes = await fetch(
       `https://api.digitalocean.com/v2/droplets/${DROPLET_ID}`,
       {
@@ -348,68 +447,49 @@ async function fetchSystemStats() {
       status = "degraded";
 
     const availability = status === "operational" ? 100 : 0;
-    const totalMem = droplet.memory; // MB
+    const totalMem = droplet.memory;
     const cpuCores = droplet.vcpus;
     const osName = `${droplet.image?.distribution} ${droplet.image?.name}`;
 
-    // 2. Get LIVE Metrics (Last 5 minutes)
-    // We use a short window to get the most recent data point
     const end = Math.floor(Date.now() / 1000);
-    const start = end - 300; // 5 minutes ago
-
+    const start = end - 300;
     const metricsUrl = `https://api.digitalocean.com/v2/monitoring/metrics/droplet`;
 
-    // Fetch Load (CPU Proxy) & Free Memory
     const [loadRes, memRes] = await Promise.all([
       fetch(
         `${metricsUrl}/load1?host_id=${DROPLET_ID}&start=${start}&end=${end}`,
-        {
-          headers: { Authorization: `Bearer ${TOKEN}` },
-        }
+        { headers: { Authorization: `Bearer ${TOKEN}` } }
       ),
       fetch(
         `${metricsUrl}/memory_free?host_id=${DROPLET_ID}&start=${start}&end=${end}`,
-        {
-          headers: { Authorization: `Bearer ${TOKEN}` },
-        }
+        { headers: { Authorization: `Bearer ${TOKEN}` } }
       ),
     ]);
 
     let realLoad = 0;
     let realFreeMem = 0;
 
-    // Parse Load
     if (loadRes.ok) {
       const json = await loadRes.json();
-      // Get the last value from the time series
       const values = json.data?.result?.[0]?.values;
-      if (values && values.length > 0) {
+      if (values && values.length > 0)
         realLoad = parseFloat(values[values.length - 1][1]);
-      }
     }
 
-    // Parse Memory
     if (memRes.ok) {
       const json = await memRes.json();
-      // Free memory returns bytes, convert to MB
       const values = json.data?.result?.[0]?.values;
-      if (values && values.length > 0) {
+      if (values && values.length > 0)
         realFreeMem = parseFloat(values[values.length - 1][1]) / 1024 / 1024;
-      }
     }
 
-    // 3. Calculate Real Percentages
-    // If agent is missing, fallback to random data so UI isn't empty
     const hasMetrics = realLoad > 0 || realFreeMem > 0;
-
     const finalLoad = hasMetrics
       ? realLoad
       : Number((Math.random() * 0.5 + 0.1).toFixed(2));
     const finalUsedMem = hasMetrics
       ? Math.round(totalMem - realFreeMem)
       : Math.floor((totalMem * (Math.random() * 20 + 30)) / 100);
-
-    // CPU % = (Load / Cores) * 100
     const cpuPercent = Math.min(Math.round((finalLoad / cpuCores) * 100), 100);
     const memPercent = Math.min(
       Math.round((finalUsedMem / totalMem) * 100),
@@ -423,11 +503,7 @@ async function fetchSystemStats() {
       region: droplet.region?.slug.toUpperCase() || "FRA",
       specs: {
         cpu: cpuPercent,
-        memory: {
-          total: totalMem,
-          used: finalUsedMem,
-          percent: memPercent,
-        },
+        memory: { total: totalMem, used: finalUsedMem, percent: memPercent },
         os: osName,
         load: finalLoad,
       },

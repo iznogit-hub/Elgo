@@ -75,22 +75,35 @@ function LoadGraph() {
   );
 }
 
-function MatchHistory({ winRate }: { winRate: number }) {
-  const [history, setHistory] = useState<string[]>([]);
+// --- MATCH HISTORY STRIP (Handles Real or Mock) ---
+function MatchHistory({
+  history,
+  winRate,
+}: {
+  history?: ("W" | "L")[];
+  winRate: number;
+}) {
+  const [visualHistory, setVisualHistory] = useState<string[]>([]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      const results = Array.from({ length: 10 }).map(() =>
-        Math.random() < winRate / 100 ? "W" : "L"
-      );
-      setHistory(results);
+      if (history && history.length > 0) {
+        // Use Real History
+        setVisualHistory(history);
+      } else {
+        // Fallback: Mock based on winrate
+        const results = Array.from({ length: 5 }).map(() =>
+          Math.random() < winRate / 100 ? "W" : "L"
+        );
+        setVisualHistory(results);
+      }
     }, 0);
     return () => clearTimeout(timer);
-  }, [winRate]);
+  }, [history, winRate]);
 
   return (
     <div className="flex gap-1 mt-1 min-h-1.5">
-      {history.map((result, i) => (
+      {visualHistory.map((result, i) => (
         <div
           key={i}
           className={cn(
@@ -236,7 +249,6 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
                 </span>
               </div>
 
-              {/* Availability */}
               <div className="flex items-center justify-between bg-white/5 p-2 rounded border border-white/10">
                 <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                   <ShieldCheck className="h-3 w-3" /> AVAILABILITY
@@ -246,9 +258,7 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
                 </span>
               </div>
 
-              {/* Resource Bars */}
               <div className="space-y-3 mt-2">
-                {/* CPU Usage */}
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs font-mono">
                     <span className="text-muted-foreground flex items-center gap-1">
@@ -266,7 +276,6 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
                   </div>
                 </div>
 
-                {/* Memory Usage */}
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs font-mono">
                     <span className="text-muted-foreground flex items-center gap-1">
@@ -287,7 +296,6 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
                 </div>
               </div>
 
-              {/* Load Graph */}
               <div className="space-y-1 pt-2">
                 <div className="flex justify-between items-end">
                   <span className="text-[10px] text-muted-foreground font-mono">
@@ -377,7 +385,7 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
             </div>
           </DashboardCard>
 
-          {/* 3. GAMING STATS */}
+          {/* 3. GAMING STATS (UPDATED) */}
           <DashboardCard
             title="COMBAT_RECORDS"
             icon={Swords}
@@ -385,6 +393,7 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
             border="hover:border-red-500/50"
           >
             <div className="space-y-6">
+              {/* Valorant */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs font-mono text-muted-foreground">
                   <span>VALORANT</span>
@@ -393,8 +402,8 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
                       WIN: {initialData.gaming.valorant.winRate}%
                     </span>
                     <span className="text-muted-foreground flex items-center gap-1">
-                      <Crosshair className="h-3 w-3" />{" "}
-                      {initialData.gaming.valorant.kd}
+                      <Crosshair className="h-3 w-3" />
+                      {initialData.gaming.valorant.kd} KD
                     </span>
                   </div>
                 </div>
@@ -403,15 +412,22 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
                     <span className="font-bold text-sm">
                       {initialData.gaming.valorant.rank}
                     </span>
-                    <span className="font-mono text-xs text-red-400">
-                      {initialData.gaming.valorant.rr} RR
+                    <span className="font-mono text-xs text-red-400 flex gap-2">
+                      <span>{initialData.gaming.valorant.rr} RR</span>
+                      <span className="text-muted-foreground/50">|</span>
+                      <span>HS {initialData.gaming.valorant.hs}</span>
                     </span>
                   </div>
-                  <MatchHistory winRate={initialData.gaming.valorant.winRate} />
+                  {/* REAL HISTORY IF AVAILABLE */}
+                  <MatchHistory
+                    history={initialData.gaming.valorant.lastMatches}
+                    winRate={initialData.gaming.valorant.winRate}
+                  />
                 </div>
               </div>
 
-              <div className="space-y-2">
+              {/* LoL */}
+              <div className="space-y-2 border-t border-border/50 pt-4">
                 <div className="flex items-center justify-between text-xs font-mono text-muted-foreground">
                   <span>LEAGUE</span>
                   <div className="flex gap-3">
@@ -419,7 +435,7 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
                       WIN: {initialData.gaming.lol.winRate}%
                     </span>
                     <span className="text-muted-foreground">
-                      {initialData.gaming.lol.kda} KDA
+                      {initialData.gaming.lol.main}
                     </span>
                   </div>
                 </div>
@@ -432,7 +448,11 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
                       {initialData.gaming.lol.lp} LP
                     </span>
                   </div>
-                  <MatchHistory winRate={initialData.gaming.lol.winRate} />
+                  {/* 👇 UPDATED: Pass the real history here */}
+                  <MatchHistory
+                    history={initialData.gaming.lol.lastMatches}
+                    winRate={initialData.gaming.lol.winRate}
+                  />
                 </div>
               </div>
             </div>
