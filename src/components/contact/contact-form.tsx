@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useActionState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { gsap } from "gsap";
@@ -21,17 +22,25 @@ import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
 import { contactSchema, type ContactFormValues } from "@/lib/validators";
 import { cn } from "@/lib/utils";
 import { useSfx } from "@/hooks/use-sfx";
-import { sendMessage } from "@/app/actions/send-message";
+import { sendMessage, type ContactState } from "@/app/actions/send-message";
 
 gsap.registerPlugin(useGSAP);
 
 const TOTAL_STEPS = 3;
 
+const initialState: ContactState = {
+  success: false,
+  message: "",
+};
+
 export function ContactForm() {
   const [currentStep, setCurrentStep] = React.useState(0);
   const [direction, setDirection] = React.useState(1);
-  const [isSubmitted, setIsSubmitted] = React.useState(false);
-  const [serverError, setServerError] = React.useState<string | null>(null);
+
+  const [state, formAction, isPending] = useActionState(
+    sendMessage,
+    initialState
+  );
 
   const containerRef = React.useRef<HTMLDivElement>(null);
   const stepRef = React.useRef<HTMLDivElement>(null);
@@ -43,37 +52,43 @@ export function ContactForm() {
     mode: "onChange",
   });
 
+  // 1. Destructure 'watch' to track values for hidden inputs
   const {
     register,
-    handleSubmit,
     trigger,
-    formState: { errors, isSubmitting },
+    watch,
+    formState: { errors },
   } = form;
+
+  // Track values to persist them when inputs are unmounted
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const formValues = watch();
 
   useGSAP(
     () => {
-      if (isSubmitted || !stepRef.current) return;
+      if (state.success || !stepRef.current) return;
       gsap.fromTo(
         stepRef.current,
         { x: direction * 50, opacity: 0 },
         { x: 0, opacity: 1, duration: 0.4, ease: "power2.out" }
       );
     },
-    { scope: containerRef, dependencies: [currentStep, isSubmitted] }
+    { scope: containerRef, dependencies: [currentStep, state.success] }
   );
 
   useGSAP(
     () => {
-      if (isSubmitted) {
+      if (state.success) {
         gsap.from(".success-view", {
           opacity: 0,
           y: 20,
           duration: 0.5,
           ease: "back.out(1.7)",
         });
+        play("success");
       }
     },
-    { scope: containerRef, dependencies: [isSubmitted] }
+    { scope: containerRef, dependencies: [state.success] }
   );
 
   const handleNext = async () => {
@@ -92,7 +107,7 @@ export function ContactForm() {
         onComplete: () => setCurrentStep((prev) => prev + 1),
       });
     } else {
-      play("click");
+      play("error");
     }
   };
 
@@ -108,38 +123,19 @@ export function ContactForm() {
     });
   };
 
-  async function onSubmit(data: ContactFormValues) {
-    setServerError(null);
-    play("click");
-
-    const formData = new FormData();
-    formData.append("name", data.name);
-    formData.append("email", data.email);
-    formData.append("message", data.message);
-
-    const result = await sendMessage(formData);
-
-    if (result.error) {
-      setServerError(result.error);
-      play("click");
-    } else {
-      setIsSubmitted(true);
-      play("success");
-    }
-  }
-
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && currentStep < TOTAL_STEPS - 1) {
-      e.preventDefault();
-      handleNext();
+    if (e.key === "Enter") {
+      if (currentStep < TOTAL_STEPS - 1) {
+        e.preventDefault();
+        handleNext();
+      }
     }
   };
 
-  if (isSubmitted) {
+  if (state.success) {
     return (
       <div
         ref={containerRef}
-        // FIXED: Reduced min-height on mobile
         className="flex flex-col items-center justify-center p-8 md:p-12 text-center border border-green-500/30 bg-green-500/5 rounded-2xl backdrop-blur-md min-h-[300px] md:min-h-[400px]"
       >
         <div className="success-view">
@@ -153,11 +149,7 @@ export function ContactForm() {
           <Button
             variant="outline"
             className="mt-6 border-green-500/50 text-green-500 hover:bg-green-500 hover:text-black cursor-none"
-            onClick={() => {
-              setIsSubmitted(false);
-              setCurrentStep(0);
-              form.reset();
-            }}
+            onClick={() => window.location.reload()}
           >
             Send Another
           </Button>
@@ -169,10 +161,8 @@ export function ContactForm() {
   return (
     <div
       ref={containerRef}
-      // FIXED: Adjusted min-height for mobile
       className="w-full max-w-lg mx-auto min-h-[350px] md:min-h-[400px] flex flex-col justify-center"
     >
-      {/* Progress Indicator */}
       <div className="mb-6 md:mb-8 flex items-center justify-between px-1">
         <div className="flex gap-2">
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
@@ -190,7 +180,21 @@ export function ContactForm() {
         </span>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form action={formAction} className="space-y-6">
+        {/* 2. HIDDEN INPUTS: 
+            These ensure that even if a step is not currently visible (unmounted), 
+            its value is still sent to the server action.
+        */}
+        {currentStep !== 0 && (
+          <input type="hidden" name="name" value={formValues.name} />
+        )}
+        {currentStep !== 1 && (
+          <input type="hidden" name="email" value={formValues.email} />
+        )}
+        {currentStep !== 2 && (
+          <input type="hidden" name="message" value={formValues.message} />
+        )}
+
         <div ref={stepRef} className="space-y-6">
           {/* STEP 1: NAME */}
           {currentStep === 0 && (
@@ -205,10 +209,11 @@ export function ContactForm() {
                 onKeyDown={handleKeyDown}
                 autoFocus
                 onMouseEnter={() => play("hover")}
+                aria-invalid={!!(errors.name || state.errors?.name)}
               />
-              {errors.name && (
+              {(errors.name || state.errors?.name) && (
                 <p className="text-xs text-red-500 ml-1 animate-pulse">
-                  {errors.name.message}
+                  {errors.name?.message || state.errors?.name?.[0]}
                 </p>
               )}
             </div>
@@ -227,10 +232,11 @@ export function ContactForm() {
                 onKeyDown={handleKeyDown}
                 autoFocus
                 onMouseEnter={() => play("hover")}
+                aria-invalid={!!(errors.email || state.errors?.email)}
               />
-              {errors.email && (
+              {(errors.email || state.errors?.email) && (
                 <p className="text-xs text-red-500 ml-1 animate-pulse">
-                  {errors.email.message}
+                  {errors.email?.message || state.errors?.email?.[0]}
                 </p>
               )}
             </div>
@@ -248,32 +254,31 @@ export function ContactForm() {
                 className="min-h-[120px] md:min-h-[150px] bg-background/50 border-white/10 focus:border-primary/50 transition-all text-base resize-none"
                 autoFocus
                 onMouseEnter={() => play("hover")}
+                aria-invalid={!!(errors.message || state.errors?.message)}
               />
-              {errors.message && (
+              {(errors.message || state.errors?.message) && (
                 <p className="text-xs text-red-500 ml-1 animate-pulse">
-                  {errors.message.message}
+                  {errors.message?.message || state.errors?.message?.[0]}
                 </p>
               )}
             </div>
           )}
         </div>
 
-        {/* Server Error Message */}
-        {serverError && (
+        {state.message && !state.success && (
           <div className="flex items-center gap-2 text-red-500 text-sm bg-red-500/10 p-3 rounded-md animate-fade-in">
             <AlertCircle className="h-4 w-4" />
-            <p>{serverError}</p>
+            <p>{state.message}</p>
           </div>
         )}
 
-        {/* Action Buttons */}
         <div className="flex gap-3 pt-2">
           {currentStep > 0 && (
             <Button
               type="button"
               variant="ghost"
               onClick={handleBack}
-              disabled={isSubmitting}
+              disabled={isPending}
               className="px-3 hover:bg-white/5"
               onMouseEnter={() => play("hover")}
             >
@@ -295,12 +300,12 @@ export function ContactForm() {
             ) : (
               <Button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isPending}
                 className="w-full gap-2 cursor-none magnetic-target hover:scale-[1.02] transition-transform text-sm md:text-base h-11"
-                onClick={() => play("click")}
                 onMouseEnter={() => play("hover")}
+                onClick={() => play("click")}
               >
-                {isSubmitting ? (
+                {isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span>TRANSMITTING...</span>

@@ -1,74 +1,107 @@
 "use server";
 
 import { Resend } from "resend";
-import * as Sentry from "@sentry/nextjs"; // Import Sentry
+import * as Sentry from "@sentry/nextjs";
 import { contactSchema } from "@/lib/validators";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { headers } from "next/headers";
-import logger from "@/lib/logger"; // Import your new logger
+import logger from "@/lib/logger";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-export async function sendMessage(formData: FormData) {
+// 1. Define the State Interface
+export interface ContactState {
+  success: boolean;
+  message?: string;
+  errors?: {
+    name?: string[];
+    email?: string[];
+    message?: string[];
+  };
+  timestamp?: number;
+}
+
+// 2. Update Function Signature
+export async function sendMessage(
+  prevState: ContactState,
+  formData: FormData
+): Promise<ContactState> {
   const headerStore = await headers();
   const ip = headerStore.get("x-forwarded-for") || "unknown";
   const userAgent = headerStore.get("user-agent") || "unknown";
 
-  // 1. Rate Limit
+  // Rate Limit
   try {
     await checkRateLimit(ip);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error: unknown) {
     logger.warn({ ip, userAgent }, "Rate limit exceeded");
-    return { error: "Too many requests. Please try again later." };
+    return {
+      success: false,
+      message: "Rate limit exceeded. System cooling down...",
+      timestamp: Date.now(),
+    };
   }
 
-  // ... (Validation Logic remains the same) ...
+  // Validation
   const rawData = {
     name: formData.get("name"),
     email: formData.get("email"),
     message: formData.get("message"),
   };
 
-  const result = contactSchema.safeParse(rawData);
-  if (!result.success) return { error: "Validation failed." };
+  const validatedFields = contactSchema.safeParse(rawData);
 
+  if (!validatedFields.success) {
+    return {
+      success: false,
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: "Validation failed. Check your inputs.",
+      timestamp: Date.now(),
+    };
+  }
+
+  const { name, email, message } = validatedFields.data;
+
+  // Execution
   try {
-    // 3. Send Email
     const data = await resend.emails.send({
-      // ... existing email config ...
       from: "Portfolio Contact <onboarding@resend.dev>",
       to: "a.hitelare2@gmail.com",
-      replyTo: result.data.email,
-      subject: `New Transmission from ${result.data.name}`,
-      text: `Name: ${result.data.name}\nEmail: ${result.data.email}\n\nMessage:\n${result.data.message}`,
+      replyTo: email,
+      subject: `New Transmission from ${name}`,
+      text: `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`,
     });
 
     if (data.error) {
-      // Log structured error
-      logger.error(
-        { error: data.error, email: result.data.email },
-        "Resend API Error"
-      );
-      return { error: data.error.message };
+      logger.error({ error: data.error, email }, "Resend API Error");
+      return {
+        success: false,
+        message: "Signal jamming detected (API Error).",
+        timestamp: Date.now(),
+      };
     }
 
-    logger.info({ email: result.data.email }, "Email sent successfully");
-    return { success: true };
+    logger.info({ email }, "Email sent successfully");
+    return {
+      success: true,
+      message: "Transmission sent successfully.",
+      timestamp: Date.now(),
+    };
   } catch (error) {
-    // 4. Advanced Sentry Reporting
     Sentry.withScope((scope) => {
       scope.setTag("action", "send-message");
       scope.setUser({ ip_address: ip });
       scope.setContext("headers", { user_agent: userAgent });
-      scope.setContext("payload", {
-        email: result.data.email,
-        name: result.data.name,
-      });
+      scope.setContext("payload", { email, name });
       Sentry.captureException(error);
     });
 
     logger.error({ error }, "Unexpected error in sendMessage");
-    return { error: "Transmission failed. Please try again." };
+    return {
+      success: false,
+      message: "Critical transmission error. Please retry.",
+      timestamp: Date.now(),
+    };
   }
 }
