@@ -1,57 +1,85 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
-import { useFormStatus } from "react-dom";
+import * as React from "react";
+import { useRef, useEffect } from "react";
+import { useActionState } from "react";
 import Image from "next/image";
 import { User } from "next-auth";
-import { signOut, useSession } from "next-auth/react"; // Import useSession
+import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { signGuestbook } from "@/app/actions/guestbook";
+import { signGuestbook, type GuestbookState } from "@/app/actions/guestbook";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Loader2,
   Send,
   AlertCircle,
   Github,
   LogOut,
   CheckCircle2,
+  Terminal,
 } from "lucide-react";
 import { FaDiscord, FaGoogle } from "react-icons/fa";
 import { useSfx } from "@/hooks/use-sfx";
+import { HackerText } from "@/components/ui/hacker-text";
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
+const initialState: GuestbookState = {
+  success: false,
+  message: "",
+};
+
+// --- TERMINAL LOADER ---
+function TerminalLoader() {
+  const [text, setText] = React.useState("INITIALIZING...");
+
+  React.useEffect(() => {
+    const steps = ["ENCRYPTING...", "SIGNING...", "UPLOADING...", "SYNCING..."];
+    let i = 0;
+    const interval = setInterval(() => {
+      setText(steps[i]);
+      i = (i + 1) % steps.length;
+    }, 500);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <Button
-      type="submit"
-      disabled={pending}
-      className="w-full sm:w-auto min-w-[140px]"
-    >
-      {pending ? (
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-      ) : (
-        <Send className="mr-2 h-4 w-4" />
-      )}
-      Sign
-    </Button>
+    <span className="font-mono text-xs animate-pulse flex items-center gap-2">
+      <Terminal className="h-3 w-3" />
+      {text}
+    </span>
   );
 }
 
 export function GuestbookForm({ user }: { user?: User | null }) {
   const formRef = useRef<HTMLFormElement>(null);
-  const [error, setError] = useState<string | null>(null);
   const { play } = useSfx();
   const router = useRouter();
-
-  // We use the client-side session hook to force updates
   const { update } = useSession();
 
-  // --- NEW: Popup Login Handler ---
+  // React 19 Hook
+  const [state, formAction, isPending] = useActionState(
+    signGuestbook,
+    initialState
+  );
+
+  // --- Effect: Handle Success & Events ---
+  useEffect(() => {
+    if (state.success && state.newEntry) {
+      play("success");
+      formRef.current?.reset();
+
+      // Dispatch event for the infinite list to pick up immediately
+      const event = new CustomEvent("guestbook-new-entry", {
+        detail: state.newEntry,
+      });
+      window.dispatchEvent(event);
+    } else if (!state.success && state.message) {
+      play("error");
+    }
+  }, [state, play]);
+
+  // --- Auth Popup Logic ---
   const openLoginPopup = (provider: string) => {
     play("click");
-
-    // Center the popup on the screen
     const width = 500;
     const height = 600;
     const left = window.screenX + (window.outerWidth - width) / 2;
@@ -64,23 +92,15 @@ export function GuestbookForm({ user }: { user?: User | null }) {
     );
   };
 
-  // --- NEW: Message Listener ---
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
-      // Security check: ensure message comes from same origin
       if (event.origin !== window.location.origin) return;
-
       if (event.data?.type === "AUTH_SUCCESS") {
-        play("on"); // Success sound
-
-        // 1. Force NextAuth to re-fetch the session in the background
+        play("on");
         await update();
-
-        // 2. Refresh the route to update Server Components
         router.refresh();
       }
     };
-
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, [play, router, update]);
@@ -91,47 +111,9 @@ export function GuestbookForm({ user }: { user?: User | null }) {
     router.refresh();
   };
 
-  async function action(formData: FormData) {
-    setError(null);
-
-    const name = user?.name || (formData.get("name") as string);
-    const message = formData.get("message") as string;
-    const avatar = user?.image || undefined;
-
-    let provider = undefined;
-    if (user?.image?.includes("github")) provider = "github";
-    else if (user?.image?.includes("discord")) provider = "discord";
-    else if (user?.image?.includes("google")) provider = "google";
-
-    const result = await signGuestbook(formData);
-
-    if (result?.error) {
-      if (typeof result.error === "string") {
-        setError(result.error);
-      } else {
-        setError("Invalid input. Please check your entries.");
-      }
-      play("error");
-    } else {
-      play("success");
-      formRef.current?.reset();
-
-      const event = new CustomEvent("guestbook-new-entry", {
-        detail: {
-          name,
-          message,
-          timestamp: Date.now(),
-          verified: !!user,
-          avatar,
-          provider,
-        },
-      });
-      window.dispatchEvent(event);
-    }
-  }
-
   return (
     <div className="w-full max-w-lg mb-8 flex flex-col gap-4">
+      {/* Identity Card */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3 rounded-lg border border-border/40 bg-background/30 backdrop-blur-md">
         {user ? (
           <>
@@ -183,11 +165,10 @@ export function GuestbookForm({ user }: { user?: User | null }) {
             </div>
 
             <div className="flex items-center gap-1">
-              {/* UPDATED: Use openLoginPopup instead of login server action */}
               <Button
                 variant="outline"
                 size="icon"
-                className="h-8 w-8"
+                className="h-8 w-8 hover:border-primary/50 transition-colors"
                 onClick={() => openLoginPopup("github")}
                 title="Connect GitHub"
               >
@@ -196,7 +177,7 @@ export function GuestbookForm({ user }: { user?: User | null }) {
               <Button
                 variant="outline"
                 size="icon"
-                className="h-8 w-8"
+                className="h-8 w-8 hover:border-primary/50 transition-colors"
                 onClick={() => openLoginPopup("discord")}
                 title="Connect Discord"
               >
@@ -205,7 +186,7 @@ export function GuestbookForm({ user }: { user?: User | null }) {
               <Button
                 variant="outline"
                 size="icon"
-                className="h-8 w-8"
+                className="h-8 w-8 hover:border-primary/50 transition-colors"
                 onClick={() => openLoginPopup("google")}
                 title="Connect Google"
               >
@@ -216,36 +197,71 @@ export function GuestbookForm({ user }: { user?: User | null }) {
         )}
       </div>
 
+      {/* The Form */}
       <form
         ref={formRef}
-        action={action}
+        action={formAction}
         className="flex flex-col w-full gap-4"
       >
-        <div className="flex flex-col sm:flex-row gap-3 w-full">
+        <div className="flex flex-col sm:flex-row gap-3 w-full items-start">
           {!user && (
-            <Input
-              name="name"
-              placeholder="Your Name"
-              className="flex-1 bg-background/50 backdrop-blur-sm"
-              required
-              maxLength={32}
-            />
+            <div className="flex-1 w-full sm:w-auto">
+              <Input
+                name="name"
+                placeholder="Alias"
+                className="bg-background/50 backdrop-blur-sm"
+                required
+                maxLength={32}
+                onFocus={() => play("click")}
+                aria-invalid={!!state.errors?.name}
+              />
+              {state.errors?.name && (
+                <p className="text-[10px] text-red-500 mt-1 pl-1 font-mono">
+                  {state.errors.name[0]}
+                </p>
+              )}
+            </div>
           )}
 
-          <Input
-            name="message"
-            placeholder="Leave a message..."
-            className="flex-2 bg-background/50 backdrop-blur-sm"
-            required
-            maxLength={140}
-          />
-          <SubmitButton />
+          <div className="flex-2 w-full sm:w-auto">
+            <Input
+              name="message"
+              placeholder="Leave a mark in the matrix..."
+              className="bg-background/50 backdrop-blur-sm"
+              required
+              maxLength={140}
+              onFocus={() => play("click")}
+              aria-invalid={!!state.errors?.message}
+            />
+            {state.errors?.message && (
+              <p className="text-[10px] text-red-500 mt-1 pl-1 font-mono">
+                {state.errors.message[0]}
+              </p>
+            )}
+          </div>
+
+          <Button
+            type="submit"
+            disabled={isPending}
+            className="w-full sm:w-auto min-w-[120px] bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20"
+            onClick={() => play("click")}
+          >
+            {isPending ? (
+              <TerminalLoader />
+            ) : (
+              <>
+                <Send className="mr-2 h-4 w-4" />
+                <HackerText text="SIGN" speed={50} />
+              </>
+            )}
+          </Button>
         </div>
 
-        {error && (
+        {/* Global Error/Success Message */}
+        {state.message && !state.success && (
           <div className="flex items-center gap-3 rounded-md bg-red-500/10 border border-red-500/50 p-3 text-red-500 animate-in slide-in-from-top-1 fade-in duration-300">
             <AlertCircle className="h-5 w-5 shrink-0" />
-            <p className="text-sm font-medium">{error}</p>
+            <p className="text-sm font-medium font-mono">{state.message}</p>
           </div>
         )}
       </form>
