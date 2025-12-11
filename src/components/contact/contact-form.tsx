@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { gsap } from "gsap";
@@ -13,6 +13,7 @@ import {
   AlertCircle,
   ArrowRight,
   ArrowLeft,
+  Save,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -27,15 +28,31 @@ import { sendMessage, type ContactState } from "@/app/actions/send-message";
 gsap.registerPlugin(useGSAP);
 
 const TOTAL_STEPS = 3;
+const STORAGE_KEY = "t7sen-contact-draft";
 
 const initialState: ContactState = {
   success: false,
   message: "",
 };
 
+// --- WRAPPER COMPONENT (Handles Soft Reset) ---
 export function ContactForm() {
+  const [formKey, setFormKey] = React.useState(0);
+
+  const handleReset = () => {
+    // Incrementing the key forces React to unmount and remount the inner component,
+    // effectively resetting all its state (including useActionState).
+    setFormKey((prev) => prev + 1);
+  };
+
+  return <ContactFormContent key={formKey} onReset={handleReset} />;
+}
+
+// --- INNER CONTENT COMPONENT ---
+function ContactFormContent({ onReset }: { onReset: () => void }) {
   const [currentStep, setCurrentStep] = React.useState(0);
   const [direction, setDirection] = React.useState(1);
+  const [restored, setRestored] = React.useState(false);
 
   const [state, formAction, isPending] = useActionState(
     sendMessage,
@@ -56,12 +73,47 @@ export function ContactForm() {
     register,
     trigger,
     watch,
+    setValue,
     formState: { errors },
   } = form;
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const formValues = watch();
 
+  // 💾 1. Session Persistence: Load Draft
+  useEffect(() => {
+    const saved = sessionStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.name) setValue("name", parsed.name);
+        if (parsed.email) setValue("email", parsed.email);
+        if (parsed.message) setValue("message", parsed.message);
+        setRestored(true);
+        // Clear flag after a delay
+        setTimeout(() => setRestored(false), 3000);
+      } catch (e) {
+        console.error("Failed to restore draft", e);
+      }
+    }
+  }, [setValue]);
+
+  // 💾 2. Session Persistence: Save Draft
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(formValues));
+    }, 500); // Debounce saves
+    return () => clearTimeout(handler);
+  }, [formValues]);
+
+  // Cleanup draft on success
+  useEffect(() => {
+    if (state.success) {
+      sessionStorage.removeItem(STORAGE_KEY);
+    }
+  }, [state.success]);
+
+  // Animations
   useGSAP(
     () => {
       if (state.success || !stepRef.current) return;
@@ -147,7 +199,7 @@ export function ContactForm() {
           <Button
             variant="outline"
             className="mt-6 border-green-500/50 text-green-500 hover:bg-green-500 hover:text-black cursor-none"
-            onClick={() => window.location.reload()}
+            onClick={onReset} // 🔄 Uses Soft Reset
           >
             Send Another
           </Button>
@@ -159,8 +211,17 @@ export function ContactForm() {
   return (
     <div
       ref={containerRef}
-      className="w-full max-w-lg mx-auto min-h-[350px] md:min-h-[400px] flex flex-col justify-center"
+      className="w-full max-w-lg mx-auto min-h-[350px] md:min-h-[400px] flex flex-col justify-center relative"
     >
+      {/* Session Restored Indicator */}
+      {restored && (
+        <div className="absolute -top-8 right-0 flex items-center gap-1.5 text-[10px] font-mono text-primary/70 animate-pulse">
+          <Save className="h-3 w-3" />
+          <span>SESSION_RESTORED</span>
+        </div>
+      )}
+
+      {/* Progress Indicator */}
       <div className="mb-6 md:mb-8 flex items-center justify-between px-1">
         <div className="flex gap-2">
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
@@ -179,7 +240,12 @@ export function ContactForm() {
       </div>
 
       <form action={formAction} className="space-y-6">
-        {/* HIDDEN INPUTS: Added suppressHydrationWarning to fix extension errors */}
+        {/* 🤖 HONEYPOT FIELD (Hidden) */}
+        <div className="hidden" aria-hidden="true">
+          <input type="text" name="_gotcha" tabIndex={-1} autoComplete="off" />
+        </div>
+
+        {/* Hidden Inputs for Persistence */}
         {currentStep !== 0 && (
           <input
             type="hidden"

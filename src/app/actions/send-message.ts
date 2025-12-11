@@ -6,10 +6,10 @@ import { contactSchema } from "@/lib/validators";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { headers } from "next/headers";
 import logger from "@/lib/logger";
+import { ContactTemplate } from "@/components/email/contact-template";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// 1. Define the State Interface
 export interface ContactState {
   success: boolean;
   message?: string;
@@ -21,7 +21,6 @@ export interface ContactState {
   timestamp?: number;
 }
 
-// 2. Update Function Signature
 export async function sendMessage(
   prevState: ContactState,
   formData: FormData
@@ -30,7 +29,20 @@ export async function sendMessage(
   const ip = headerStore.get("x-forwarded-for") || "unknown";
   const userAgent = headerStore.get("user-agent") || "unknown";
 
-  // Rate Limit
+  // 1. 🤖 HONEYPOT CHECK
+  // If the hidden '_gotcha' field is filled, it's a bot.
+  // We return 'success' to confuse the bot, but don't send the email.
+  const honeypot = formData.get("_gotcha");
+  if (honeypot && honeypot.toString().length > 0) {
+    logger.warn({ ip, userAgent }, "Bot detected via honeypot");
+    return {
+      success: true, // Fake success
+      message: "Transmission sent successfully.",
+      timestamp: Date.now(),
+    };
+  }
+
+  // 2. Rate Limit
   try {
     await checkRateLimit(ip);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -43,7 +55,7 @@ export async function sendMessage(
     };
   }
 
-  // Validation
+  // 3. Validation
   const rawData = {
     name: formData.get("name"),
     email: formData.get("email"),
@@ -63,14 +75,14 @@ export async function sendMessage(
 
   const { name, email, message } = validatedFields.data;
 
-  // Execution
+  // 4. Execution
   try {
     const data = await resend.emails.send({
       from: "Portfolio Contact <onboarding@resend.dev>",
       to: "a.hitelare2@gmail.com",
       replyTo: email,
       subject: `New Transmission from ${name}`,
-      text: `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`,
+      react: ContactTemplate({ name, email, message }),
     });
 
     if (data.error) {
