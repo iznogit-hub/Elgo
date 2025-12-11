@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -8,8 +8,8 @@ import {
   Cpu,
   Wifi,
   Activity,
-  Zap,
   Swords,
+  Zap,
 } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -30,6 +30,27 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { play } = useSfx();
   const prefersReducedMotion = usePrefersReducedMotion();
+
+  // ✅ KEEP: Real-Time Latency State
+  const [latency, setLatency] = useState<number>(0);
+
+  // ✅ KEEP: Latency Logic (Pings /api/health)
+  useEffect(() => {
+    const checkLatency = async () => {
+      const start = performance.now();
+      try {
+        await fetch("/api/health");
+        const end = performance.now();
+        setLatency(Math.round(end - start));
+      } catch {
+        setLatency(999);
+      }
+    };
+
+    checkLatency();
+    const interval = setInterval(checkLatency, 5000); // Check every 5s
+    return () => clearInterval(interval);
+  }, []);
 
   useGSAP(
     () => {
@@ -77,7 +98,7 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
       ref={containerRef}
       className="relative flex min-h-dvh md:h-dvh w-full flex-col items-center pt-24 md:pt-40 pb-20 px-6 overflow-hidden"
     >
-      {/* --- Header --- */}
+      {/* --- Header (Reverted to Static) --- */}
       <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
         <div className="floating-header pointer-events-auto">
           <Link href="/" className="cursor-none" onClick={() => play("click")}>
@@ -183,11 +204,18 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
                   {initialData.system.region}
                 </span>
               </div>
+              {/* ✅ KEEP: Real Latency Display */}
               <div className="mt-4 pt-4 border-t border-border/50 flex items-center justify-between text-xs font-mono text-muted-foreground">
                 <span className="flex items-center gap-2">
                   <Wifi className="h-3 w-3" /> LATENCY
                 </span>
-                <span>{initialData.system.latency}ms</span>
+                <span
+                  className={cn(
+                    latency > 100 ? "text-yellow-500" : "text-green-500"
+                  )}
+                >
+                  {latency}ms
+                </span>
               </div>
             </div>
           </DashboardCard>
@@ -225,7 +253,7 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
                 </span>
               </div>
 
-              {/* FIXED PROGRESS BAR */}
+              {/* ✅ KEEP: Progress Bar */}
               <div className="h-1.5 w-full bg-muted/20 rounded-full overflow-hidden mt-2">
                 <div
                   className="h-full bg-purple-500 animate-pulse transition-all duration-1000 ease-out"
