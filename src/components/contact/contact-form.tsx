@@ -354,7 +354,6 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
                 onKeyDown={handleKeyDown}
                 autoFocus
                 onMouseEnter={() => play("hover")}
-                onFocus={() => play("click")}
                 aria-invalid={!!(errors.name || state.errors?.name)}
                 suppressHydrationWarning
               />
