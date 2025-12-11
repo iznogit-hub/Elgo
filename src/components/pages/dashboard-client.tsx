@@ -10,6 +10,8 @@ import {
   Activity,
   Swords,
   Zap,
+  ShieldCheck,
+  Crosshair,
 } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -26,15 +28,87 @@ interface DashboardClientProps {
   initialData: DashboardData;
 }
 
+const getHeatmapColor = (level: number) => {
+  switch (level) {
+    case 0:
+      return "bg-white/5";
+    case 1:
+      return "bg-purple-900/40";
+    case 2:
+      return "bg-purple-700/60";
+    case 3:
+      return "bg-purple-500/80";
+    case 4:
+      return "bg-purple-400";
+    default:
+      return "bg-white/5";
+  }
+};
+
+function LoadGraph() {
+  const [bars, setBars] = useState<{ height: number; delay: number }[]>([]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const newBars = Array.from({ length: 30 }).map(() => ({
+        height: Math.random() * 100,
+        delay: Math.random(),
+      }));
+      setBars(newBars);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <div className="flex items-end gap-0.5 h-8 w-full mt-2 opacity-50 min-h-8">
+      {bars.map((bar, i) => (
+        <div
+          key={i}
+          className="w-1 bg-blue-500/50 rounded-t-[1px]"
+          style={{
+            height: `${bar.height}%`,
+            animation: `pulse 2s infinite ${bar.delay}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function MatchHistory({ winRate }: { winRate: number }) {
+  const [history, setHistory] = useState<string[]>([]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const results = Array.from({ length: 10 }).map(() =>
+        Math.random() < winRate / 100 ? "W" : "L"
+      );
+      setHistory(results);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [winRate]);
+
+  return (
+    <div className="flex gap-1 mt-1 min-h-1.5">
+      {history.map((result, i) => (
+        <div
+          key={i}
+          className={cn(
+            "h-1.5 w-full rounded-sm",
+            result === "W" ? "bg-green-500" : "bg-red-500/50"
+          )}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function DashboardClient({ initialData }: DashboardClientProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { play } = useSfx();
   const prefersReducedMotion = usePrefersReducedMotion();
-
-  // ✅ KEEP: Real-Time Latency State
   const [latency, setLatency] = useState<number>(0);
 
-  // ✅ KEEP: Latency Logic (Pings /api/health)
   useEffect(() => {
     const checkLatency = async () => {
       const start = performance.now();
@@ -46,9 +120,8 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
         setLatency(999);
       }
     };
-
     checkLatency();
-    const interval = setInterval(checkLatency, 5000); // Check every 5s
+    const interval = setInterval(checkLatency, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -61,14 +134,12 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
         { y: -30, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, delay: 0.2 }
       );
-
       tl.fromTo(
         ".dashboard-card",
         { y: 30, opacity: 0, scale: 0.95 },
         { y: 0, opacity: 1, scale: 1, duration: 0.6, stagger: 0.1 },
         "-=0.4"
       );
-
       tl.fromTo(
         ".decor-item",
         { opacity: 0 },
@@ -83,10 +154,7 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
           repeat: -1,
           yoyo: true,
           ease: "sine.inOut",
-          stagger: {
-            amount: 3,
-            from: "random",
-          },
+          stagger: { amount: 3, from: "random" },
         });
       }
     },
@@ -98,7 +166,7 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
       ref={containerRef}
       className="relative flex min-h-dvh md:h-dvh w-full flex-col items-center pt-24 md:pt-40 pb-20 px-6 overflow-hidden"
     >
-      {/* --- Header (Reverted to Static) --- */}
+      {/* Header */}
       <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
         <div className="floating-header pointer-events-auto">
           <Link href="/" className="cursor-none" onClick={() => play("click")}>
@@ -121,7 +189,6 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
             </Button>
           </Link>
         </div>
-
         <div className="floating-header flex flex-col items-end gap-2">
           <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 backdrop-blur-sm">
             <span className="relative flex h-2 w-2">
@@ -141,26 +208,7 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
         </div>
       </div>
 
-      {/* --- Ambient Decor --- */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-20 hidden md:block z-0">
-        <div className="decor-item absolute top-[20%] left-[5%] font-mono text-xs text-primary/60 opacity-0">
-          {`> ESTABLISHING_UPLINK...`}
-        </div>
-        <div className="decor-item absolute top-[25%] right-[10%] font-mono text-xs text-muted-foreground/60 opacity-0">
-          {`{ "stream": "encrypted" }`}
-        </div>
-        <div className="decor-item absolute bottom-[20%] left-[8%] flex items-center gap-2 text-muted-foreground/60 opacity-0">
-          <Wifi className="h-4 w-4" />
-          <span className="font-mono text-xs">SIGNAL_STRENGTH: MAX</span>
-        </div>
-        <div className="decor-item absolute bottom-[10%] right-[12%] flex items-center gap-2 text-primary/40 opacity-0">
-          <Zap className="h-4 w-4" />
-          <span className="font-mono text-xs">LIVE_METRICS: ACTIVE</span>
-        </div>
-      </div>
-
       <div className="relative z-10 w-full max-w-6xl space-y-12 pt-24 md:pt-12">
-        {/* Title */}
         <div className="text-center space-y-4 floating-header">
           <h1 className="text-4xl md:text-6xl font-black tracking-tighter">
             <HackerText text="Command Center" />
@@ -170,7 +218,6 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
           </p>
         </div>
 
-        {/* Grid Layout */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* 1. SYSTEM STATUS */}
           <DashboardCard
@@ -188,24 +235,72 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
                   {initialData.system.status.toUpperCase()}
                 </span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground text-sm font-mono">
-                  UPTIME
+
+              {/* Availability */}
+              <div className="flex items-center justify-between bg-white/5 p-2 rounded border border-white/10">
+                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                  <ShieldCheck className="h-3 w-3" /> AVAILABILITY
                 </span>
-                <span className="font-mono text-foreground">
+                <span className="font-mono text-xs text-green-400">
                   {initialData.system.uptime}%
                 </span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground text-sm font-mono">
-                  REGION
-                </span>
-                <span className="font-mono text-foreground">
-                  {initialData.system.region}
-                </span>
+
+              {/* Resource Bars */}
+              <div className="space-y-3 mt-2">
+                {/* CPU Usage */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs font-mono">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <Cpu className="h-3 w-3" /> CPU USAGE
+                    </span>
+                    <span className="text-blue-400">
+                      {initialData.system.specs.cpu}%
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full bg-black/20 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-blue-500 transition-all duration-1000"
+                      style={{ width: `${initialData.system.specs.cpu}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Memory Usage */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs font-mono">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <Zap className="h-3 w-3" /> RAM USAGE
+                    </span>
+                    <span className="text-purple-400">
+                      {initialData.system.specs.memory.percent}%
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full bg-black/20 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-purple-500 transition-all duration-1000"
+                      style={{
+                        width: `${initialData.system.specs.memory.percent}%`,
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
-              {/* ✅ KEEP: Real Latency Display */}
-              <div className="mt-4 pt-4 border-t border-border/50 flex items-center justify-between text-xs font-mono text-muted-foreground">
+
+              {/* Load Graph */}
+              <div className="space-y-1 pt-2">
+                <div className="flex justify-between items-end">
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    SYS_LOAD
+                  </span>
+                  <span className="text-xs font-mono text-blue-400">
+                    {initialData.system.specs.load.toFixed(2)}
+                  </span>
+                </div>
+                <LoadGraph />
+              </div>
+
+              <div className="mt-2 pt-4 border-t border-border/50 flex items-center justify-between text-xs font-mono text-muted-foreground">
                 <span className="flex items-center gap-2">
                   <Wifi className="h-3 w-3" /> LATENCY
                 </span>
@@ -236,29 +331,48 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
                   {initialData.coding.commits}
                 </span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground text-sm font-mono">
-                  C::S LEVEL
-                </span>
-                <span className="text-xl font-bold font-mono">
-                  Lvl {initialData.coding.level}
-                </span>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs font-mono">
+                  <span className="text-muted-foreground">
+                    C::S LEVEL {initialData.coding.level}
+                  </span>
+                  <span className="text-purple-400">
+                    {initialData.coding.progress}%
+                  </span>
+                </div>
+                <div className="h-1.5 w-full bg-muted/20 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
+                    style={{ width: `${initialData.coding.progress}%` }}
+                  />
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground text-sm font-mono">
-                  TOP LANG
+              <div className="space-y-2 mt-4 pt-4 border-t border-border/50">
+                <span className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase">
+                  Contribution Matrix (Last 12 Weeks)
                 </span>
-                <span className="text-purple-400 font-bold text-sm">
-                  {initialData.coding.topLanguage}
-                </span>
+                <div className="grid grid-rows-7 grid-flow-col gap-1 w-full h-[100px]">
+                  {initialData.coding.heatmap.map((day, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        "w-full h-full rounded-[1px] transition-colors hover:scale-125 hover:z-10",
+                        getHeatmapColor(day.level)
+                      )}
+                      title={`${day.date}: ${day.count} commits`}
+                    />
+                  ))}
+                </div>
               </div>
-
-              {/* ✅ KEEP: Progress Bar */}
-              <div className="h-1.5 w-full bg-muted/20 rounded-full overflow-hidden mt-2">
-                <div
-                  className="h-full bg-purple-500 animate-pulse transition-all duration-1000 ease-out"
-                  style={{ width: `${initialData.coding.progress}%` }}
-                />
+              <div className="flex gap-2 mt-1">
+                {initialData.coding.languages.map((lang) => (
+                  <span
+                    key={lang.name}
+                    className="px-1.5 py-0.5 rounded bg-white/5 text-[10px] border border-white/10"
+                  >
+                    {lang.name}
+                  </span>
+                ))}
               </div>
             </div>
           </DashboardCard>
@@ -271,50 +385,78 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
             border="hover:border-red-500/50"
           >
             <div className="space-y-6">
-              {/* Valorant */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs font-mono text-muted-foreground">
                   <span>VALORANT</span>
-                  <span className="text-red-400">
-                    WIN: {initialData.gaming.valorant.winRate}%
-                  </span>
+                  <div className="flex gap-3">
+                    <span className="text-red-400">
+                      WIN: {initialData.gaming.valorant.winRate}%
+                    </span>
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <Crosshair className="h-3 w-3" />{" "}
+                      {initialData.gaming.valorant.kd}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between bg-background/50 p-2 rounded border border-border/50">
-                  <span className="font-bold text-sm">
-                    {initialData.gaming.valorant.rank}
-                  </span>
-                  <span className="font-mono text-xs">
-                    {initialData.gaming.valorant.rr} RR
-                  </span>
+                <div className="bg-background/50 p-3 rounded border border-border/50 flex flex-col gap-2">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-sm">
+                      {initialData.gaming.valorant.rank}
+                    </span>
+                    <span className="font-mono text-xs text-red-400">
+                      {initialData.gaming.valorant.rr} RR
+                    </span>
+                  </div>
+                  <MatchHistory winRate={initialData.gaming.valorant.winRate} />
                 </div>
               </div>
 
-              {/* LoL */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs font-mono text-muted-foreground">
                   <span>LEAGUE</span>
-                  <span className="text-blue-400">
-                    WIN: {initialData.gaming.lol.winRate}%
-                  </span>
+                  <div className="flex gap-3">
+                    <span className="text-blue-400">
+                      WIN: {initialData.gaming.lol.winRate}%
+                    </span>
+                    <span className="text-muted-foreground">
+                      {initialData.gaming.lol.kda} KDA
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between bg-background/50 p-2 rounded border border-border/50">
-                  <span className="font-bold text-sm">
-                    {initialData.gaming.lol.rank}
-                  </span>
-                  <span className="font-mono text-xs">
-                    {initialData.gaming.lol.lp} LP
-                  </span>
+                <div className="bg-background/50 p-3 rounded border border-border/50 flex flex-col gap-2">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-sm">
+                      {initialData.gaming.lol.rank}
+                    </span>
+                    <span className="font-mono text-xs text-blue-400">
+                      {initialData.gaming.lol.lp} LP
+                    </span>
+                  </div>
+                  <MatchHistory winRate={initialData.gaming.lol.winRate} />
                 </div>
               </div>
             </div>
           </DashboardCard>
         </div>
       </div>
+
+      {/* Ambient Decor */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-20 hidden md:block z-0">
+        <div className="decor-item absolute top-[20%] left-[5%] font-mono text-xs text-primary/60 opacity-0">{`> ESTABLISHING_UPLINK...`}</div>
+        <div className="decor-item absolute top-[25%] right-[10%] font-mono text-xs text-muted-foreground/60 opacity-0">{`{ "stream": "encrypted" }`}</div>
+        <div className="decor-item absolute bottom-[20%] left-[8%] flex items-center gap-2 text-muted-foreground/60 opacity-0">
+          <Wifi className="h-4 w-4" />
+          <span className="font-mono text-xs">SIGNAL_STRENGTH: MAX</span>
+        </div>
+        <div className="decor-item absolute bottom-[10%] right-[12%] flex items-center gap-2 text-primary/40 opacity-0">
+          <Zap className="h-4 w-4" />
+          <span className="font-mono text-xs">LIVE_METRICS: ACTIVE</span>
+        </div>
+      </div>
     </main>
   );
 }
 
-// Sub-component for Card
 function DashboardCard({
   title,
   icon: Icon,
@@ -337,7 +479,6 @@ function DashboardCard({
         )}
       >
         <div className="absolute inset-0 bg-noise opacity-[0.03] pointer-events-none" />
-
         <div className="flex items-center gap-3 mb-6">
           <div className={cn("p-2 rounded-md bg-white/5", accent)}>
             <Icon className="h-5 w-5" />
@@ -346,7 +487,6 @@ function DashboardCard({
             {title}
           </h3>
         </div>
-
         <div className="relative z-10">{children}</div>
       </div>
     </MagneticWrapper>
