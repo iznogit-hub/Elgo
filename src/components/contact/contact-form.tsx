@@ -6,22 +6,23 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
+import confetti from "canvas-confetti"; // 👈 Import Confetti
 import {
-  Loader2,
   Send,
   CheckCircle2,
   AlertCircle,
   ArrowRight,
   ArrowLeft,
   Save,
+  Terminal,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
-import { contactSchema, type ContactFormValues } from "@/lib/validators";
 import { HackerText } from "@/components/ui/hacker-text";
+import { contactSchema, type ContactFormValues } from "@/lib/validators";
 import { cn } from "@/lib/utils";
 import { useSfx } from "@/hooks/use-sfx";
 import { sendMessage, type ContactState } from "@/app/actions/send-message";
@@ -36,16 +37,38 @@ const initialState: ContactState = {
   message: "",
 };
 
-// --- WRAPPER COMPONENT (Handles Soft Reset) ---
+// --- TERMINAL LOADER COMPONENT ---
+// Cycles through "hacking" messages while waiting
+function TerminalLoader() {
+  const [text, setText] = React.useState("INITIALIZING...");
+
+  React.useEffect(() => {
+    const steps = [
+      "ESTABLISHING_UPLINK...",
+      "ENCRYPTING_PAYLOAD...",
+      "HANDSHAKING_SERVER...",
+      "TRANSMITTING_DATA...",
+    ];
+    let i = 0;
+    const interval = setInterval(() => {
+      setText(steps[i]);
+      i = (i + 1) % steps.length;
+    }, 600); // Change text every 600ms
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <span className="font-mono text-xs animate-pulse flex items-center gap-2">
+      <Terminal className="h-3 w-3" />
+      {text}
+    </span>
+  );
+}
+
+// --- WRAPPER COMPONENT ---
 export function ContactForm() {
   const [formKey, setFormKey] = React.useState(0);
-
-  const handleReset = () => {
-    // Incrementing the key forces React to unmount and remount the inner component,
-    // effectively resetting all its state (including useActionState).
-    setFormKey((prev) => prev + 1);
-  };
-
+  const handleReset = () => setFormKey((prev) => prev + 1);
   return <ContactFormContent key={formKey} onReset={handleReset} />;
 }
 
@@ -62,6 +85,7 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
 
   const containerRef = React.useRef<HTMLDivElement>(null);
   const stepRef = React.useRef<HTMLDivElement>(null);
+  const formRef = React.useRef<HTMLFormElement>(null); // For shake effect
   const { play } = useSfx();
 
   const form = useForm<ContactFormValues>({
@@ -78,10 +102,9 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
     formState: { errors },
   } = form;
 
-  // eslint-disable-next-line react-hooks/incompatible-library
   const formValues = watch();
 
-  // 💾 1. Session Persistence: Load Draft
+  // 💾 Persistence Logic
   useEffect(() => {
     const saved = sessionStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -91,7 +114,6 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
         if (parsed.email) setValue("email", parsed.email);
         if (parsed.message) setValue("message", parsed.message);
         setRestored(true);
-        // Clear flag after a delay
         setTimeout(() => setRestored(false), 3000);
       } catch (e) {
         console.error("Failed to restore draft", e);
@@ -99,22 +121,84 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
     }
   }, [setValue]);
 
-  // 💾 2. Session Persistence: Save Draft
   useEffect(() => {
     const handler = setTimeout(() => {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(formValues));
-    }, 500); // Debounce saves
+    }, 500);
     return () => clearTimeout(handler);
   }, [formValues]);
 
-  // Cleanup draft on success
   useEffect(() => {
     if (state.success) {
       sessionStorage.removeItem(STORAGE_KEY);
     }
   }, [state.success]);
 
-  // Animations
+  // 💥 ANIMATION: Success Confetti
+  useGSAP(
+    () => {
+      if (state.success) {
+        // 1. Success View Animation
+        gsap.from(".success-view", {
+          opacity: 0,
+          y: 20,
+          duration: 0.5,
+          ease: "back.out(1.7)",
+        });
+        play("success");
+
+        // 2. Digital Confetti Burst
+        const colors = ["#22c55e", "#000000", "#ffffff"]; // Cyberpunk Palette
+        const end = Date.now() + 1000;
+
+        (function frame() {
+          confetti({
+            particleCount: 3,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0, y: 0.6 },
+            colors: colors,
+            shapes: ["square"], // Pixels!
+            disableForReducedMotion: true,
+            ticks: 200,
+          });
+          confetti({
+            particleCount: 3,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1, y: 0.6 },
+            colors: colors,
+            shapes: ["square"],
+            disableForReducedMotion: true,
+            ticks: 200,
+          });
+
+          if (Date.now() < end) {
+            requestAnimationFrame(frame);
+          }
+        })();
+      }
+    },
+    { scope: containerRef, dependencies: [state.success] }
+  );
+
+  // 💥 ANIMATION: Error Shake
+  useGSAP(
+    () => {
+      if (!state.success && state.message) {
+        // Shake the form if the server returns an error
+        gsap.fromTo(
+          formRef.current,
+          { x: -10 },
+          { x: 10, duration: 0.1, repeat: 3, yoyo: true, clearProps: "x" }
+        );
+        play("error");
+      }
+    },
+    { scope: containerRef, dependencies: [state.message, state.success] }
+  );
+
+  // Animation: Step Transition
   useGSAP(
     () => {
       if (state.success || !stepRef.current) return;
@@ -125,21 +209,6 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
       );
     },
     { scope: containerRef, dependencies: [currentStep, state.success] }
-  );
-
-  useGSAP(
-    () => {
-      if (state.success) {
-        gsap.from(".success-view", {
-          opacity: 0,
-          y: 20,
-          duration: 0.5,
-          ease: "back.out(1.7)",
-        });
-        play("success");
-      }
-    },
-    { scope: containerRef, dependencies: [state.success] }
   );
 
   const handleNext = async () => {
@@ -200,7 +269,7 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
           <Button
             variant="outline"
             className="mt-6 border-green-500/50 text-green-500 hover:bg-green-500 hover:text-black cursor-none"
-            onClick={onReset} // 🔄 Uses Soft Reset
+            onClick={onReset}
           >
             Send Another
           </Button>
@@ -222,7 +291,6 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
         </div>
       )}
 
-      {/* Progress Indicator */}
       <div className="mb-6 md:mb-8 flex items-center justify-between px-1">
         <div className="flex gap-2">
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
@@ -240,13 +308,13 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
         </span>
       </div>
 
-      <form action={formAction} className="space-y-6">
-        {/* 🤖 HONEYPOT FIELD (Hidden) */}
+      <form ref={formRef} action={formAction} className="space-y-6">
+        {/* HONEYPOT */}
         <div className="hidden" aria-hidden="true">
           <input type="text" name="_gotcha" tabIndex={-1} autoComplete="off" />
         </div>
 
-        {/* Hidden Inputs for Persistence */}
+        {/* Hidden Inputs for Persistence & Hydration Safety */}
         {currentStep !== 0 && (
           <input
             type="hidden"
@@ -277,8 +345,7 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
           {currentStep === 0 && (
             <div className="space-y-2 group">
               <label className="text-xs font-mono text-muted-foreground ml-1 group-focus-within:text-primary transition-colors">
-                <HackerText text="IDENTIFIER (NAME)" speed={30} />{" "}
-                {/* 👈 Hacker Text */}
+                <HackerText text="IDENTIFIER (NAME)" speed={30} />
               </label>
               <Input
                 {...register("name")}
@@ -287,7 +354,7 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
                 onKeyDown={handleKeyDown}
                 autoFocus
                 onMouseEnter={() => play("hover")}
-                onFocus={() => play("click")} // 👈 Focus Sound
+                onFocus={() => play("click")}
                 aria-invalid={!!(errors.name || state.errors?.name)}
                 suppressHydrationWarning
               />
@@ -303,8 +370,7 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
           {currentStep === 1 && (
             <div className="space-y-2 group">
               <label className="text-xs font-mono text-muted-foreground ml-1 group-focus-within:text-primary transition-colors">
-                <HackerText text="FREQUENCY (EMAIL)" speed={30} />{" "}
-                {/* 👈 Hacker Text */}
+                <HackerText text="FREQUENCY (EMAIL)" speed={30} />
               </label>
               <Input
                 {...register("email")}
@@ -313,7 +379,7 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
                 onKeyDown={handleKeyDown}
                 autoFocus
                 onMouseEnter={() => play("hover")}
-                onFocus={() => play("click")} // 👈 Focus Sound
+                onFocus={() => play("click")}
                 aria-invalid={!!(errors.email || state.errors?.email)}
                 suppressHydrationWarning
               />
@@ -329,8 +395,7 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
           {currentStep === 2 && (
             <div className="space-y-2 group">
               <label className="text-xs font-mono text-muted-foreground ml-1 group-focus-within:text-primary transition-colors">
-                <HackerText text="PAYLOAD (MESSAGE)" speed={30} />{" "}
-                {/* 👈 Hacker Text */}
+                <HackerText text="PAYLOAD (MESSAGE)" speed={30} />
               </label>
               <Textarea
                 {...register("message")}
@@ -338,7 +403,7 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
                 className="min-h-[120px] md:min-h-[150px] bg-background/50 border-white/10 focus:border-primary/50 transition-all text-base resize-none"
                 autoFocus
                 onMouseEnter={() => play("hover")}
-                onFocus={() => play("click")} // 👈 Focus Sound
+                onFocus={() => play("click")}
                 aria-invalid={!!(errors.message || state.errors?.message)}
                 suppressHydrationWarning
               />
@@ -392,10 +457,7 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
                 onClick={() => play("click")}
               >
                 {isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>TRANSMITTING...</span>
-                  </>
+                  <TerminalLoader />
                 ) : (
                   <>
                     <Send className="h-4 w-4" />
