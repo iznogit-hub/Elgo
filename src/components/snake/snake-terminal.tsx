@@ -35,6 +35,7 @@ export function SnakeTerminal({ onClose }: SnakeTerminalProps) {
   } = useSnakeGame();
   const { play } = useSfx();
   const containerRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null); // Ref for the grid to shake
 
   // Entrance Animation
   useGSAP(
@@ -48,9 +49,51 @@ export function SnakeTerminal({ onClose }: SnakeTerminalProps) {
     { scope: containerRef }
   );
 
+  // 💥 NEW: Game Over Impact Shake
+  useGSAP(() => {
+    if (status === "GAME_OVER") {
+      gsap.fromTo(
+        gridRef.current,
+        { x: -5 },
+        {
+          x: 5,
+          duration: 0.05,
+          repeat: 5,
+          yoyo: true,
+          clearProps: "x",
+          onComplete: () => {
+            // Optional: Red flash effect could go here
+            gsap.to(gridRef.current, {
+              borderColor: "rgba(239, 68, 68, 0.8)", // red-500
+              duration: 0.2,
+              yoyo: true,
+              repeat: 1,
+              clearProps: "borderColor",
+            });
+          },
+        }
+      );
+      play("click"); // Or a specific 'death' sound if available
+    }
+  }, [status]);
+
   // Keyboard Controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Prevent default scrolling for game keys
+      if (
+        [
+          "ArrowUp",
+          "ArrowDown",
+          "ArrowLeft",
+          "ArrowRight",
+          " ",
+          "Space",
+        ].includes(e.key)
+      ) {
+        e.preventDefault();
+      }
+
       switch (e.key) {
         // UP
         case "ArrowUp":
@@ -106,7 +149,6 @@ export function SnakeTerminal({ onClose }: SnakeTerminalProps) {
   // Touch/Click Control Handlers
   const handleControl = (dir: "UP" | "DOWN" | "LEFT" | "RIGHT") => {
     play("click");
-    // If game hasn't started, start it on first move
     if (status === "IDLE") {
       startGame();
     }
@@ -154,8 +196,9 @@ export function SnakeTerminal({ onClose }: SnakeTerminalProps) {
             </div>
           </div>
 
-          {/* The Grid */}
+          {/* The Grid - Added Ref for Shake Effect */}
           <div
+            ref={gridRef}
             className="relative mx-auto aspect-square w-full max-w-[360px] border border-green-500/30 bg-black/50"
             style={{
               display: "grid",
