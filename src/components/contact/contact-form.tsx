@@ -52,7 +52,6 @@ export function ContactForm() {
     mode: "onChange",
   });
 
-  // 1. Destructure 'watch' to track values for hidden inputs
   const {
     register,
     trigger,
@@ -60,7 +59,6 @@ export function ContactForm() {
     formState: { errors },
   } = form;
 
-  // Track values to persist them when inputs are unmounted
   // eslint-disable-next-line react-hooks/incompatible-library
   const formValues = watch();
 
@@ -181,18 +179,30 @@ export function ContactForm() {
       </div>
 
       <form action={formAction} className="space-y-6">
-        {/* 2. HIDDEN INPUTS: 
-            These ensure that even if a step is not currently visible (unmounted), 
-            its value is still sent to the server action.
-        */}
+        {/* HIDDEN INPUTS: Added suppressHydrationWarning to fix extension errors */}
         {currentStep !== 0 && (
-          <input type="hidden" name="name" value={formValues.name} />
+          <input
+            type="hidden"
+            name="name"
+            value={formValues.name}
+            suppressHydrationWarning
+          />
         )}
         {currentStep !== 1 && (
-          <input type="hidden" name="email" value={formValues.email} />
+          <input
+            type="hidden"
+            name="email"
+            value={formValues.email}
+            suppressHydrationWarning
+          />
         )}
         {currentStep !== 2 && (
-          <input type="hidden" name="message" value={formValues.message} />
+          <input
+            type="hidden"
+            name="message"
+            value={formValues.message}
+            suppressHydrationWarning
+          />
         )}
 
         <div ref={stepRef} className="space-y-6">
@@ -210,6 +220,7 @@ export function ContactForm() {
                 autoFocus
                 onMouseEnter={() => play("hover")}
                 aria-invalid={!!(errors.name || state.errors?.name)}
+                suppressHydrationWarning
               />
               {(errors.name || state.errors?.name) && (
                 <p className="text-xs text-red-500 ml-1 animate-pulse">
@@ -233,6 +244,7 @@ export function ContactForm() {
                 autoFocus
                 onMouseEnter={() => play("hover")}
                 aria-invalid={!!(errors.email || state.errors?.email)}
+                suppressHydrationWarning
               />
               {(errors.email || state.errors?.email) && (
                 <p className="text-xs text-red-500 ml-1 animate-pulse">
@@ -255,6 +267,7 @@ export function ContactForm() {
                 autoFocus
                 onMouseEnter={() => play("hover")}
                 aria-invalid={!!(errors.message || state.errors?.message)}
+                suppressHydrationWarning
               />
               {(errors.message || state.errors?.message) && (
                 <p className="text-xs text-red-500 ml-1 animate-pulse">
