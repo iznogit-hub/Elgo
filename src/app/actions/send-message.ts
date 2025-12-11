@@ -7,6 +7,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { headers } from "next/headers";
 import logger from "@/lib/logger";
 import { ContactTemplate } from "@/components/email/contact-template";
+import { redis } from "@/lib/redis"; // 👈 Import Redis
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -30,13 +31,11 @@ export async function sendMessage(
   const userAgent = headerStore.get("user-agent") || "unknown";
 
   // 1. 🤖 HONEYPOT CHECK
-  // If the hidden '_gotcha' field is filled, it's a bot.
-  // We return 'success' to confuse the bot, but don't send the email.
   const honeypot = formData.get("_gotcha");
   if (honeypot && honeypot.toString().length > 0) {
     logger.warn({ ip, userAgent }, "Bot detected via honeypot");
     return {
-      success: true, // Fake success
+      success: true,
       message: "Transmission sent successfully.",
       timestamp: Date.now(),
     };
@@ -77,6 +76,19 @@ export async function sendMessage(
 
   // 4. Execution
   try {
+    // 💾 BLACK BOX RECORDING: Save to Redis first
+    // We use a separate list 'inbox' to distinguish from 'guestbook'
+    await redis.lpush("inbox", {
+      name,
+      email,
+      message,
+      ip,
+      userAgent,
+      timestamp: Date.now(),
+      status: "received",
+    });
+
+    // 📧 Send Email
     const data = await resend.emails.send({
       from: "Portfolio Contact <onboarding@resend.dev>",
       to: "a.hitelare2@gmail.com",
@@ -87,9 +99,11 @@ export async function sendMessage(
 
     if (data.error) {
       logger.error({ error: data.error, email }, "Resend API Error");
+      // Even if email fails, we have it in Redis!
       return {
         success: false,
-        message: "Signal jamming detected (API Error).",
+        message:
+          "Signal jamming detected (API Error). Message saved to archive.",
         timestamp: Date.now(),
       };
     }

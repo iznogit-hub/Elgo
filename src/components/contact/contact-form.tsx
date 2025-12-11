@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
 import { contactSchema, type ContactFormValues } from "@/lib/validators";
+import { HackerText } from "@/components/ui/hacker-text";
 import { cn } from "@/lib/utils";
 import { useSfx } from "@/hooks/use-sfx";
 import { sendMessage, type ContactState } from "@/app/actions/send-message";
@@ -276,7 +277,8 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
           {currentStep === 0 && (
             <div className="space-y-2 group">
               <label className="text-xs font-mono text-muted-foreground ml-1 group-focus-within:text-primary transition-colors">
-                IDENTIFIER (NAME)
+                <HackerText text="IDENTIFIER (NAME)" speed={30} />{" "}
+                {/* 👈 Hacker Text */}
               </label>
               <Input
                 {...register("name")}
@@ -285,6 +287,7 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
                 onKeyDown={handleKeyDown}
                 autoFocus
                 onMouseEnter={() => play("hover")}
+                onFocus={() => play("click")} // 👈 Focus Sound
                 aria-invalid={!!(errors.name || state.errors?.name)}
                 suppressHydrationWarning
               />
@@ -300,7 +303,8 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
           {currentStep === 1 && (
             <div className="space-y-2 group">
               <label className="text-xs font-mono text-muted-foreground ml-1 group-focus-within:text-primary transition-colors">
-                FREQUENCY (EMAIL)
+                <HackerText text="FREQUENCY (EMAIL)" speed={30} />{" "}
+                {/* 👈 Hacker Text */}
               </label>
               <Input
                 {...register("email")}
@@ -309,6 +313,7 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
                 onKeyDown={handleKeyDown}
                 autoFocus
                 onMouseEnter={() => play("hover")}
+                onFocus={() => play("click")} // 👈 Focus Sound
                 aria-invalid={!!(errors.email || state.errors?.email)}
                 suppressHydrationWarning
               />
@@ -324,7 +329,8 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
           {currentStep === 2 && (
             <div className="space-y-2 group">
               <label className="text-xs font-mono text-muted-foreground ml-1 group-focus-within:text-primary transition-colors">
-                PAYLOAD (MESSAGE)
+                <HackerText text="PAYLOAD (MESSAGE)" speed={30} />{" "}
+                {/* 👈 Hacker Text */}
               </label>
               <Textarea
                 {...register("message")}
@@ -332,6 +338,7 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
                 className="min-h-[120px] md:min-h-[150px] bg-background/50 border-white/10 focus:border-primary/50 transition-all text-base resize-none"
                 autoFocus
                 onMouseEnter={() => play("hover")}
+                onFocus={() => play("click")} // 👈 Focus Sound
                 aria-invalid={!!(errors.message || state.errors?.message)}
                 suppressHydrationWarning
               />
