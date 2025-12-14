@@ -15,7 +15,16 @@ import { Navbar } from "@/components/navbar";
 import { LoadingContext } from "@/components/loading-context";
 import { TabManager } from "@/components/ui/tab-manager";
 import { SoundPrompter } from "@/components/ui/sound-prompter";
-import { SnakeTerminal } from "@/components/snake/snake-terminal";
+
+import dynamic from "next/dynamic";
+
+const SnakeTerminal = dynamic(
+  () =>
+    import("@/components/snake/snake-terminal").then(
+      (mod) => mod.SnakeTerminal,
+    ),
+  { ssr: false },
+);
 
 export function GlobalAppWrapper({ children }: { children: React.ReactNode }) {
   const [assetsLoaded, setAssetsLoaded] = useState(false);
