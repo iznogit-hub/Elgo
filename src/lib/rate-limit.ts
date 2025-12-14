@@ -1,25 +1,57 @@
-import { Ratelimit } from "@upstash/ratelimit";
+import { Ratelimit, type Duration } from "@upstash/ratelimit";
 import { redis } from "@/lib/redis";
 import { RateLimiterMemory } from "rate-limiter-flexible";
 
-// 1. Fallback Limiter (Memory)
-// Used during CI tests or local dev without credentials
-const memoryLimiter = new RateLimiterMemory({
-  points: 5, // 5 requests
-  duration: 60, // Per 60 seconds
-});
+export type RateLimitType = "core" | "guestbook" | "contact";
 
-// 2. Production Limiter (Redis)
-// Uses a sliding window algorithm for better accuracy
-const redisLimiter = new Ratelimit({
-  redis: redis, // Uses the client we configured (or the mock)
-  limiter: Ratelimit.slidingWindow(10, "60 s"), // 10 requests per 60s
-  analytics: true,
-  prefix: "@upstash/ratelimit",
-});
+// --- Configuration ---
+const LIMITERS: Record<
+  RateLimitType,
+  { points: number; duration: Duration; blockDuration: number }
+> = {
+  core: { points: 20, duration: "60 s", blockDuration: 60 }, // 20 req / 1 min
+  guestbook: { points: 5, duration: "60 s", blockDuration: 60 }, // 5 req / 1 min
+  contact: { points: 3, duration: "1 h", blockDuration: 60 * 60 }, // 3 req / 1 hour
+};
 
-export async function checkRateLimit(identifier: string) {
-  // DETECT MODE: Check if we are running with real credentials
+// --- Cache Containers ---
+const redisLimiters = new Map<RateLimitType, Ratelimit>();
+const memoryLimiters = new Map<RateLimitType, RateLimiterMemory>();
+
+function getRedisLimiter(type: RateLimitType): Ratelimit {
+  if (!redisLimiters.has(type)) {
+    const config = LIMITERS[type];
+    redisLimiters.set(
+      type,
+      new Ratelimit({
+        redis: redis,
+        limiter: Ratelimit.slidingWindow(config.points, config.duration),
+        analytics: true,
+        prefix: `@upstash/ratelimit/${type}`,
+      }),
+    );
+  }
+  return redisLimiters.get(type)!;
+}
+
+function getMemoryLimiter(type: RateLimitType): RateLimiterMemory {
+  if (!memoryLimiters.has(type)) {
+    const config = LIMITERS[type];
+    memoryLimiters.set(
+      type,
+      new RateLimiterMemory({
+        points: config.points,
+        duration: config.blockDuration,
+      }),
+    );
+  }
+  return memoryLimiters.get(type)!;
+}
+
+export async function checkRateLimit(
+  identifier: string,
+  type: RateLimitType = "core",
+) {
   const isProductionRedis =
     !!process.env.UPSTASH_REDIS_REST_URL &&
     !!process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -27,18 +59,30 @@ export async function checkRateLimit(identifier: string) {
   try {
     if (isProductionRedis) {
       // --- REDIS MODE ---
-      const { success } = await redisLimiter.limit(identifier);
+      const limiter = getRedisLimiter(type);
+      const { success, reset } = await limiter.limit(identifier);
+
       if (!success) {
-        throw new Error("Too many requests. Please try again later.");
+        const now = Date.now();
+        const retryAfter = Math.ceil((reset - now) / 1000);
+        throw new Error(`Rate limit exceeded. Try again in ${retryAfter}s.`);
       }
     } else {
       // --- MEMORY MODE ---
-      // Note: This relies on the memory limiter's Promise rejection for failure
-      await memoryLimiter.consume(identifier);
+      const limiter = getMemoryLimiter(type);
+      await limiter.consume(identifier);
     }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
-    // Standardize the error message for the frontend
+    // FIX: Only re-throw our specific Redis time-based errors.
+    // Swallow the test mock error ("No points") and standard memory errors,
+    // converting them to the standard user-facing message.
+    if (
+      error instanceof Error &&
+      error.message.startsWith("Rate limit exceeded")
+    ) {
+      throw error;
+    }
+
     throw new Error("Too many requests. Please try again later.");
   }
 }

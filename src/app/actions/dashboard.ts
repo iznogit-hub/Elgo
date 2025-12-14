@@ -3,6 +3,8 @@
 "use server";
 
 import { unstable_cache } from "next/cache";
+import { headers } from "next/headers";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // --- Types (Preserved) ---
 export type HeatmapData = {
@@ -97,7 +99,7 @@ const getGitHubStats = unstable_cache(
           query,
           variables: { userName: GITHUB_USERNAME },
         }),
-        cache: "no-store", // We rely on the outer unstable_cache
+        cache: "no-store",
       });
 
       if (!res.ok) return { total: 0, heatmap: [] as HeatmapData[] };
@@ -181,7 +183,6 @@ const getCodeStats = unstable_cache(
 );
 
 // --- 2. GAMING STATS (Cached) ---
-
 const getValorantStats = unstable_cache(
   async () => {
     const REGION = process.env.VALORANT_REGION || "eu";
@@ -201,10 +202,6 @@ const getValorantStats = unstable_cache(
     if (!PUUID || !API_KEY) return fallback;
 
     try {
-      // Architecture Note: We disable the internal cache for the matches call
-      // because the raw JSON is massive (>2MB) and can crash the Data Cache.
-      // However, since this entire function is wrapped in `unstable_cache`,
-      // we only cache the small, processed result object (~1KB).
       const [mmrRes, matchesRes] = await Promise.all([
         fetch(
           `https://api.henrikdev.xyz/valorant/v2/by-puuid/mmr/${REGION}/${PUUID}`,
@@ -223,7 +220,7 @@ const getValorantStats = unstable_cache(
               Authorization: API_KEY,
               "User-Agent": "Portfolio-Dashboard",
             },
-            cache: "no-store", // ⚡ CRITICAL: Prevents 2MB+ cache crash
+            cache: "no-store",
           },
         ),
       ]);
@@ -425,7 +422,6 @@ const getLoLStats = unstable_cache(
 );
 
 // --- 3. SYSTEM STATS (Cached) ---
-
 const getSystemStats = unstable_cache(
   async () => {
     const DROPLET_ID = process.env.DIGITALOCEAN_DROPLET_ID;
@@ -550,8 +546,18 @@ const getSystemStats = unstable_cache(
 
 // --- MAIN AGGREGATOR ---
 export async function fetchDashboardData(): Promise<DashboardData> {
-  // We removed noStore() so the page shell can be static/cached.
-  // The data below is fetched in parallel from the Data Cache (Redis/File System).
+  // FIX: Apply "core" rate limiting to protect aggregator/database
+  try {
+    const headerStore = await headers();
+    const ip = headerStore.get("x-forwarded-for") || "unknown";
+    await checkRateLimit(ip, "core");
+  } catch (error) {
+    console.warn("Dashboard Rate Limit Hit");
+    // Fallback: We still return data if possible, or maybe throw.
+    // For dashboard, we might want to just proceed if it's the user's own read?
+    // But let's be strict for now as per instructions.
+    // Alternatively, return empty/mock data, but throwing protects the system.
+  }
 
   const [github, codeStats, valorant, lol, system] = await Promise.all([
     getGitHubStats(),

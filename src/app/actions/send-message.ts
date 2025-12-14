@@ -7,7 +7,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { headers } from "next/headers";
 import logger from "@/lib/logger";
 import { ContactTemplate } from "@/components/email/contact-template";
-import { redis } from "@/lib/redis"; // 👈 Import Redis
+import { redis } from "@/lib/redis";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -24,13 +24,13 @@ export interface ContactState {
 
 export async function sendMessage(
   prevState: ContactState,
-  formData: FormData
+  formData: FormData,
 ): Promise<ContactState> {
   const headerStore = await headers();
   const ip = headerStore.get("x-forwarded-for") || "unknown";
   const userAgent = headerStore.get("user-agent") || "unknown";
 
-  // 1. 🤖 HONEYPOT CHECK
+  // 1. HONEYPOT CHECK
   const honeypot = formData.get("_gotcha");
   if (honeypot && honeypot.toString().length > 0) {
     logger.warn({ ip, userAgent }, "Bot detected via honeypot");
@@ -41,15 +41,17 @@ export async function sendMessage(
     };
   }
 
-  // 2. Rate Limit
+  // 2. Rate Limit (Strict: "contact" type)
   try {
-    await checkRateLimit(ip);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  } catch (error: unknown) {
-    logger.warn({ ip, userAgent }, "Rate limit exceeded");
+    // FIX: Use specific "contact" limiter (3 req / 1 hour)
+    await checkRateLimit(ip, "contact");
+  } catch (error) {
+    const errorMsg =
+      error instanceof Error ? error.message : "Rate limit exceeded";
+    logger.warn({ ip, userAgent }, `Contact rate limit exceeded: ${errorMsg}`);
     return {
       success: false,
-      message: "Rate limit exceeded. System cooling down...",
+      message: errorMsg,
       timestamp: Date.now(),
     };
   }
@@ -76,8 +78,7 @@ export async function sendMessage(
 
   // 4. Execution
   try {
-    // 💾 BLACK BOX RECORDING: Save to Redis first
-    // We use a separate list 'inbox' to distinguish from 'guestbook'
+    // BLACK BOX RECORDING: Save to Redis first
     await redis.lpush("inbox", {
       name,
       email,
@@ -88,7 +89,7 @@ export async function sendMessage(
       status: "received",
     });
 
-    // 📧 Send Email
+    // Send Email
     const data = await resend.emails.send({
       from: "Portfolio Contact <onboarding@resend.dev>",
       to: "a.hitelare2@gmail.com",
@@ -99,7 +100,6 @@ export async function sendMessage(
 
     if (data.error) {
       logger.error({ error: data.error, email }, "Resend API Error");
-      // Even if email fails, we have it in Redis!
       return {
         success: false,
         message:

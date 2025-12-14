@@ -65,7 +65,7 @@ const nameSchema = z
     "Only English letters, numbers, and symbols are allowed.",
   );
 
-// --- CACHED DATA FETCHING (NEW) ---
+// --- CACHED DATA FETCHING ---
 const getCachedEntries = unstable_cache(
   async (start: number, end: number) => {
     try {
@@ -74,14 +74,14 @@ const getCachedEntries = unstable_cache(
       return [];
     }
   },
-  ["guestbook-entries"], // Cache Key
+  ["guestbook-entries"],
   {
-    revalidate: 3600, // Fallback: revalidate every hour
-    tags: ["guestbook"], // Tag for manual invalidation
+    revalidate: 3600,
+    tags: ["guestbook"],
   },
 );
 
-// --- 2. Sign Guestbook Action (React 19 Compatible) ---
+// --- 2. Sign Guestbook Action ---
 export async function signGuestbook(
   prevState: GuestbookState,
   formData: FormData,
@@ -90,14 +90,15 @@ export async function signGuestbook(
   const headerStore = await headers();
   const ip = headerStore.get("x-forwarded-for") || "unknown";
 
-  // Rate Limiting
+  // Rate Limiting (Targeted)
   try {
-    await checkRateLimit(ip);
+    // FIX: Applied "guestbook" limit (5 req/min)
+    await checkRateLimit(ip, "guestbook");
   } catch (error) {
     logger.warn({ ip }, "Guestbook rate limit exceeded");
     return {
       success: false,
-      message: "System cooling down... (Rate Limit)",
+      message: error instanceof Error ? error.message : "Rate limit exceeded",
       timestamp: Date.now(),
     };
   }
@@ -208,9 +209,8 @@ export async function signGuestbook(
     await redis.lpush("guestbook", entry);
     logger.info({ name, verified }, "Guestbook signed successfully");
 
-    // Invalidate the Data Cache so the next read fetches fresh data
     revalidateTag("guestbook", { expire: 0 });
-    revalidatePath("/guestbook"); // Keep for client-router cache
+    revalidatePath("/guestbook", "page");
 
     return {
       success: true,
@@ -232,7 +232,6 @@ export async function fetchGuestbookEntries(
   offset: number,
   limit: number = 20,
 ): Promise<GuestbookEntry[]> {
-  // Use the cached function instead of direct redis call
   const start = offset;
   const end = offset + limit - 1;
   const entries = await getCachedEntries(start, end);
@@ -246,8 +245,10 @@ export async function deleteGuestbookEntry(entry: GuestbookEntry) {
   try {
     const cleanEntry = sanitizeEntry(entry);
     await redis.lrem("guestbook", 1, JSON.stringify(cleanEntry));
+
     revalidateTag("guestbook", { expire: 0 });
-    revalidatePath("/guestbook");
+    revalidatePath("/guestbook", "page");
+
     return { success: true };
   } catch (error) {
     return { error: "Delete failed" };
@@ -260,8 +261,10 @@ export async function purgeGuestbook() {
 
   try {
     await redis.del("guestbook");
+
     revalidateTag("guestbook", { expire: 0 });
-    revalidatePath("/guestbook");
+    revalidatePath("/guestbook", "page");
+
     return { success: true };
   } catch (error) {
     return { error: "Purge failed" };
