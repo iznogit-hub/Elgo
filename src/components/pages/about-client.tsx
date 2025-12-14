@@ -33,27 +33,27 @@ export function AboutClient() {
     () => {
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
       const isReduced = window.matchMedia(
-        "(prefers-reduced-motion: reduce)"
+        "(prefers-reduced-motion: reduce)",
       ).matches;
 
       tl.fromTo(
         ".floating-header",
         { y: -30, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, delay: 0.2 }
+        { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, delay: 0.2 },
       );
 
       tl.fromTo(
         ".float-profile",
         { scale: 0.9, opacity: 0, y: 20 },
         { scale: 1, opacity: 1, y: 0, duration: 1 },
-        "-=0.6"
+        "-=0.6",
       );
 
       tl.fromTo(
         ".tech-item",
         { opacity: 0, x: -20 },
         { opacity: 1, x: 0, duration: 0.6, stagger: 0.05 },
-        "-=0.5"
+        "-=0.5",
       );
 
       gsap.fromTo(
@@ -65,14 +65,14 @@ export function AboutClient() {
           duration: 2.5,
           delay: 0.5,
           ease: "expo.out",
-        }
+        },
       );
 
       tl.fromTo(
         ".decor-item",
         { opacity: 0 },
         { opacity: 1, duration: 1 },
-        "-=0.5"
+        "-=0.5",
       );
       if (!isReduced) {
         gsap.to(".tech-item", {
@@ -96,7 +96,7 @@ export function AboutClient() {
         });
       }
     },
-    { scope: containerRef }
+    { scope: containerRef },
   );
 
   return (
@@ -106,8 +106,8 @@ export function AboutClient() {
     >
       <div
         className={cn(
-          "bg-globe fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] opacity-0 pointer-events-none -z-10",
-          "mix-blend-multiply dark:mix-blend-screen"
+          "bg-globe fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-200 h-200 opacity-0 pointer-events-none -z-10",
+          "mix-blend-multiply dark:mix-blend-screen",
         )}
       >
         <Globe />
@@ -229,7 +229,7 @@ export function AboutClient() {
                     className={cn(
                       "h-6 w-6 opacity-60 group-hover:opacity-100 transition-opacity",
                       (tech.n === "Next.js" || tech.n === "Three.js") &&
-                        "dark:invert"
+                        "dark:invert",
                     )}
                   />
                   <div className="flex flex-col">

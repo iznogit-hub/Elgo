@@ -7,13 +7,17 @@ test.describe("Navigation & Smoke Tests", () => {
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   });
 
-  test("should navigate to About page via menu", async ({ page }) => {
-    // Start on Home
+  test("should navigate to About page via menu", async ({ page, isMobile }) => {
     await page.goto("/");
 
-    // Click About in Navbar (assuming standard nav links or dock)
-    // Adjust selector based on your actual Navbar implementation if needed
-    // Using text selector for robustness
+    if (isMobile) {
+      // Click the hamburger menu button (targeting the SVG icon class since aria-label is missing)
+      await page
+        .locator("button")
+        .filter({ has: page.locator(".lucide-menu") })
+        .click();
+    }
+
     await page.getByRole("link", { name: "About" }).click();
 
     await expect(page).toHaveURL("/about");

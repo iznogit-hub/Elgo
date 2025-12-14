@@ -30,11 +30,26 @@ interface InfiniteGuestbookListProps {
 
 const ProviderIcon = ({ provider }: { provider?: string }) => {
   if (provider === "github")
-    return <Icons.github className="w-3 h-3 text-muted-foreground/50" />;
+    return (
+      <Icons.github
+        className="w-3 h-3 text-muted-foreground/50"
+        aria-hidden="true"
+      />
+    );
   if (provider === "discord")
-    return <Icons.discord className="w-3 h-3 text-muted-foreground/50" />;
+    return (
+      <Icons.discord
+        className="w-3 h-3 text-muted-foreground/50"
+        aria-hidden="true"
+      />
+    );
   if (provider === "google")
-    return <Icons.google className="w-3 h-3 text-muted-foreground/50" />;
+    return (
+      <Icons.google
+        className="w-3 h-3 text-muted-foreground/50"
+        aria-hidden="true"
+      />
+    );
   return null;
 };
 

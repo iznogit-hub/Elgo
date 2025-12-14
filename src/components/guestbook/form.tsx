@@ -171,7 +171,7 @@ export function GuestbookForm({ user }: { user?: User | null }) {
                 onClick={() => openLoginPopup("github")}
                 title="Connect GitHub"
               >
-                <Icons.github className="w-4 h-4" />
+                <Icons.github className="w-4 h-4" aria-hidden="true" />
               </Button>
               <Button
                 variant="outline"
@@ -180,7 +180,7 @@ export function GuestbookForm({ user }: { user?: User | null }) {
                 onClick={() => openLoginPopup("discord")}
                 title="Connect Discord"
               >
-                <Icons.discord className="w-4 h-4" />
+                <Icons.discord className="w-4 h-4" aria-hidden="true" />
               </Button>
               <Button
                 variant="outline"
@@ -189,7 +189,7 @@ export function GuestbookForm({ user }: { user?: User | null }) {
                 onClick={() => openLoginPopup("google")}
                 title="Connect Google"
               >
-                <Icons.google className="w-4 h-4" />
+                <Icons.google className="w-4 h-4" aria-hidden="true" />
               </Button>
             </div>
           </>

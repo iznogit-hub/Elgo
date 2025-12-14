@@ -75,7 +75,7 @@ export function SocialLinks() {
                 rel="noopener noreferrer"
                 aria-label={`Visit my ${item.name}`}
               >
-                <item.icon className="h-5 w-5" />
+                <item.icon className="h-5 w-5" aria-hidden="true" />
               </a>
             </Button>
           </MagneticWrapper>
