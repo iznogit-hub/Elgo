@@ -92,17 +92,17 @@ export function UsesClient() {
       tl.fromTo(
         ".floating-header",
         { y: -30, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.8, stagger: 0.1 }
+        { y: 0, opacity: 1, duration: 0.8, stagger: 0.1 },
       );
 
       tl.fromTo(
         ".fade-in",
         { y: 30, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.6, stagger: 0.05 },
-        "-=0.4"
+        "-=0.4",
       );
     },
-    { scope: containerRef }
+    { scope: containerRef },
   );
 
   return (
@@ -110,10 +110,6 @@ export function UsesClient() {
       ref={containerRef}
       className="relative h-dvh w-full overflow-hidden text-foreground flex flex-col"
     >
-      {/* --- CINEMATIC BACKGROUND --- */}
-      <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.02] dark:opacity-[0.03] pointer-events-none z-0 mix-blend-overlay" />
-      <div className="absolute inset-0 bg-radial-gradient from-transparent via-background/80 to-background pointer-events-none z-0" />
-
       {/* --- FLOATING HEADER --- */}
       <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-50">
         <div className="floating-header pointer-events-auto">
@@ -180,7 +176,7 @@ export function UsesClient() {
       </div>
 
       {/* --- MAIN CONTENT --- */}
-      <div className="relative z-10 flex-1 w-full max-w-[1400px] mx-auto flex items-center justify-center h-full px-6 md:px-12 pt-20 pb-8">
+      <div className="relative z-10 flex-1 w-full max-w-350 mx-auto flex items-center justify-center h-full px-6 md:px-12 pt-20 pb-8">
         <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
           {/* LEFT: Intro */}
           <div className="lg:col-span-3 flex flex-col justify-center space-y-6 fade-in self-center">
@@ -211,7 +207,7 @@ export function UsesClient() {
                     <div
                       className={cn(
                         "w-1 h-1 rounded-full",
-                        rarityBgMap[rarity]
+                        rarityBgMap[rarity],
                       )}
                     />
                     <span className="text-[8px] uppercase font-mono text-muted-foreground">
@@ -242,10 +238,10 @@ export function UsesClient() {
                       <MagneticWrapper key={item.name} strength={0.02}>
                         <div
                           className={cn(
-                            "group relative h-[84px] p-3 rounded-lg transition-all duration-300 cursor-none overflow-hidden flex flex-col",
+                            "group relative h-21 p-3 rounded-lg transition-all duration-300 cursor-none overflow-hidden flex flex-col",
                             "border border-border/40 bg-card/30 dark:bg-accent/10 backdrop-blur-sm",
                             "hover:bg-accent/50 dark:hover:bg-accent/30",
-                            rarityGlowMap[item.rarity]
+                            rarityGlowMap[item.rarity],
                           )}
                           onMouseEnter={() => play("hover")}
                         >
@@ -255,7 +251,7 @@ export function UsesClient() {
                                 "text-xs font-bold tracking-tight transition-colors duration-300 truncate pr-2",
                                 "text-foreground/90 group-hover:text-foreground",
                                 item.rarity !== "common" &&
-                                  `group-hover:${rarityTextMap[item.rarity].split(" ")[0]}`
+                                  `group-hover:${rarityTextMap[item.rarity].split(" ")[0]}`,
                               )}
                             >
                               {item.name}
@@ -264,7 +260,7 @@ export function UsesClient() {
                             <div
                               className={cn(
                                 "w-1.5 h-1.5 rounded-full opacity-50 group-hover:opacity-100 transition-opacity shrink-0 mt-1",
-                                rarityBgMap[item.rarity]
+                                rarityBgMap[item.rarity],
                               )}
                             />
                           </div>
@@ -281,7 +277,7 @@ export function UsesClient() {
                                 "bg-background/80 dark:bg-background/90 backdrop-blur-xl",
                                 "border-t border-border/50",
                                 "bg-linear-to-t",
-                                rarityTintMap[item.rarity]
+                                rarityTintMap[item.rarity],
                               )}
                             >
                               {item.specs.slice(0, 4).map((spec) => (
@@ -295,7 +291,7 @@ export function UsesClient() {
                                   <span
                                     className={cn(
                                       "text-[8px] font-mono font-bold ml-1 truncate",
-                                      rarityTextMap[item.rarity]
+                                      rarityTextMap[item.rarity],
                                     )}
                                   >
                                     {spec.value}
