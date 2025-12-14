@@ -1,5 +1,10 @@
 import { withSentryConfig } from "@sentry/nextjs";
+import withBundleAnalyzer from "@next/bundle-analyzer";
 import type { NextConfig } from "next";
+
+const bundleAnalyzer = withBundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+});
 
 const nextConfig: NextConfig = {
   images: {
@@ -55,16 +60,18 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
-  org: "t7sen-c0",
-  project: "portfolio",
-  silent: !process.env.CI,
-  widenClientFileUpload: true,
-  tunnelRoute: "/monitoring",
-  webpack: {
-    treeshake: {
-      removeDebugLogging: true,
+export default bundleAnalyzer(
+  withSentryConfig(nextConfig, {
+    org: "t7sen-c0",
+    project: "portfolio",
+    silent: !process.env.CI,
+    widenClientFileUpload: true,
+    tunnelRoute: "/monitoring",
+    webpack: {
+      treeshake: {
+        removeDebugLogging: true,
+      },
+      automaticVercelMonitors: true,
     },
-    automaticVercelMonitors: true,
-  },
-});
+  }),
+);
