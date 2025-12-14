@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { z } from "zod";
 import * as Sentry from "@sentry/nextjs";
 import { Filter } from "bad-words";
@@ -37,13 +37,12 @@ export interface GuestbookState {
     message?: string[];
   };
   timestamp?: number;
-  // We pass back the new entry data for optimistic updates
   newEntry?: GuestbookEntry;
 }
 
 function sanitizeEntry(entry: GuestbookEntry) {
   return Object.fromEntries(
-    Object.entries(entry).filter(([_, v]) => v != null)
+    Object.entries(entry).filter(([_, v]) => v != null),
   );
 }
 
@@ -54,7 +53,7 @@ const messageSchema = z
   .max(140, "Message is too long")
   .regex(
     /^[\x20-\x7E]+$/,
-    "Only English letters, numbers, and symbols are allowed."
+    "Only English letters, numbers, and symbols are allowed.",
   );
 
 const nameSchema = z
@@ -63,13 +62,29 @@ const nameSchema = z
   .max(32, "Name is too long")
   .regex(
     /^[\x20-\x7E]+$/,
-    "Only English letters, numbers, and symbols are allowed."
+    "Only English letters, numbers, and symbols are allowed.",
   );
+
+// --- CACHED DATA FETCHING (NEW) ---
+const getCachedEntries = unstable_cache(
+  async (start: number, end: number) => {
+    try {
+      return await redis.lrange<GuestbookEntry>("guestbook", start, end);
+    } catch (error) {
+      return [];
+    }
+  },
+  ["guestbook-entries"], // Cache Key
+  {
+    revalidate: 3600, // Fallback: revalidate every hour
+    tags: ["guestbook"], // Tag for manual invalidation
+  },
+);
 
 // --- 2. Sign Guestbook Action (React 19 Compatible) ---
 export async function signGuestbook(
   prevState: GuestbookState,
-  formData: FormData
+  formData: FormData,
 ): Promise<GuestbookState> {
   const session = await auth();
   const headerStore = await headers();
@@ -153,7 +168,7 @@ export async function signGuestbook(
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ inputs: `${name}: ${message}` }),
-        }
+        },
       );
 
       if (response.ok) {
@@ -192,11 +207,15 @@ export async function signGuestbook(
   try {
     await redis.lpush("guestbook", entry);
     logger.info({ name, verified }, "Guestbook signed successfully");
-    revalidatePath("/guestbook");
+
+    // Invalidate the Data Cache so the next read fetches fresh data
+    revalidateTag("guestbook", { expire: 0 });
+    revalidatePath("/guestbook"); // Keep for client-router cache
+
     return {
       success: true,
       message: "Signature encoded successfully.",
-      newEntry: entry, // Return data for client-side event
+      newEntry: entry,
       timestamp: Date.now(),
     };
   } catch (error) {
@@ -211,16 +230,13 @@ export async function signGuestbook(
 
 export async function fetchGuestbookEntries(
   offset: number,
-  limit: number = 20
+  limit: number = 20,
 ): Promise<GuestbookEntry[]> {
-  try {
-    const start = offset;
-    const end = offset + limit - 1;
-    const entries = await redis.lrange<GuestbookEntry>("guestbook", start, end);
-    return entries ?? [];
-  } catch (error) {
-    return [];
-  }
+  // Use the cached function instead of direct redis call
+  const start = offset;
+  const end = offset + limit - 1;
+  const entries = await getCachedEntries(start, end);
+  return entries ?? [];
 }
 
 export async function deleteGuestbookEntry(entry: GuestbookEntry) {
@@ -230,6 +246,7 @@ export async function deleteGuestbookEntry(entry: GuestbookEntry) {
   try {
     const cleanEntry = sanitizeEntry(entry);
     await redis.lrem("guestbook", 1, JSON.stringify(cleanEntry));
+    revalidateTag("guestbook", { expire: 0 });
     revalidatePath("/guestbook");
     return { success: true };
   } catch (error) {
@@ -243,6 +260,7 @@ export async function purgeGuestbook() {
 
   try {
     await redis.del("guestbook");
+    revalidateTag("guestbook", { expire: 0 });
     revalidatePath("/guestbook");
     return { success: true };
   } catch (error) {
