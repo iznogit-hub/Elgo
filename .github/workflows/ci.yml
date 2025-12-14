@@ -12,14 +12,6 @@ jobs:
     timeout-minutes: 60
     runs-on: ubuntu-latest
 
-    env:
-      # Use these secrets if you set them in GitHub, otherwise tests might fail
-      # if they depend on real external APIs.
-      # For E2E, we often mock these or use testing keys.
-      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-      NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -44,6 +36,14 @@ jobs:
 
       - name: Run E2E Tests
         run: npm run test:e2e
+        env:
+          # ⚡ FIX: Added the dummy secret here so tests can start NextAuth
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+
+          # Secrets for external services (if you added them to GitHub Repo Settings)
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
 
       - name: Upload Test Report
         if: always()
