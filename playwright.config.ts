@@ -56,5 +56,8 @@ export default defineConfig({
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
+    env: {
+      SKIP_RATE_LIMIT: "true",
+    },
   },
 });

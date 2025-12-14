@@ -52,6 +52,11 @@ export async function checkRateLimit(
   identifier: string,
   type: RateLimitType = "core",
 ) {
+  // 1. BYPASS: Check for the CI/Test environment variable immediately
+  if (process.env.SKIP_RATE_LIMIT === "true") {
+    return;
+  }
+
   const isProductionRedis =
     !!process.env.UPSTASH_REDIS_REST_URL &&
     !!process.env.UPSTASH_REDIS_REST_TOKEN;
