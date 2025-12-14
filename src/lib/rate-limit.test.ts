@@ -53,13 +53,13 @@ describe("rate-limit", () => {
 
     // Override the consume method to simulate failure
     vi.mocked(
-      await import("rate-limiter-flexible")
+      await import("rate-limiter-flexible"),
     ).RateLimiterMemory.prototype.consume = vi
       .fn()
       .mockRejectedValue(new Error("No points"));
 
     await expect(checkRateLimit("spammer-ip")).rejects.toThrow(
-      "Too many requests. Please try again later."
+      "Rate limit exceeded. Please try again later.",
     );
   });
 });
