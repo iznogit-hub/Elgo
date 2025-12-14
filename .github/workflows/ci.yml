@@ -37,10 +37,7 @@ jobs:
       - name: Run E2E Tests
         run: npm run test:e2e
         env:
-          # ⚡ FIX: Added the dummy secret here so tests can start NextAuth
           AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
-
-          # Secrets for external services (if you added them to GitHub Repo Settings)
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
