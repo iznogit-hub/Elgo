@@ -17,12 +17,12 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import Image from "next/image";
-import { FaGithub, FaDiscord, FaGoogle } from "react-icons/fa";
 import { useSfx } from "@/hooks/use-sfx";
 import { Button } from "@/components/ui/button";
 import { useAdmin } from "@/providers/admin-provider";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import { Icons } from "@/components/ui/icons";
 
 interface InfiniteGuestbookListProps {
   initialEntries: GuestbookEntry[];
@@ -30,11 +30,11 @@ interface InfiniteGuestbookListProps {
 
 const ProviderIcon = ({ provider }: { provider?: string }) => {
   if (provider === "github")
-    return <FaGithub className="w-3 h-3 text-muted-foreground/50" />;
+    return <Icons.github className="w-3 h-3 text-muted-foreground/50" />;
   if (provider === "discord")
-    return <FaDiscord className="w-3 h-3 text-muted-foreground/50" />;
+    return <Icons.discord className="w-3 h-3 text-muted-foreground/50" />;
   if (provider === "google")
-    return <FaGoogle className="w-3 h-3 text-muted-foreground/50" />;
+    return <Icons.google className="w-3 h-3 text-muted-foreground/50" />;
   return null;
 };
 
@@ -53,12 +53,12 @@ export function InfiniteGuestbookList({
 
   const isDuplicate = (
     newEntry: GuestbookEntry,
-    currentList: GuestbookEntry[]
+    currentList: GuestbookEntry[],
   ) => {
     return currentList.some(
       (existing) =>
         existing.timestamp === newEntry.timestamp &&
-        existing.name === newEntry.name
+        existing.name === newEntry.name,
     );
   };
 
@@ -128,7 +128,7 @@ export function InfiniteGuestbookList({
       else {
         setEntries((prev) => {
           const uniqueNewEntries = newEntries.filter(
-            (entry) => !isDuplicate(entry, prev)
+            (entry) => !isDuplicate(entry, prev),
           );
           return [...prev, ...uniqueNewEntries];
         });
@@ -148,7 +148,7 @@ export function InfiniteGuestbookList({
       (entries) => {
         if (entries[0].isIntersecting) loadMoreEntries();
       },
-      { root: null, rootMargin: "100px", threshold: 0.1 }
+      { root: null, rootMargin: "100px", threshold: 0.1 },
     );
     observer.observe(sentinel);
     return () => {

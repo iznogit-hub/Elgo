@@ -13,14 +13,13 @@ import { Input } from "@/components/ui/input";
 import {
   Send,
   AlertCircle,
-  Github,
   LogOut,
   CheckCircle2,
   Terminal,
 } from "lucide-react";
-import { FaDiscord, FaGoogle } from "react-icons/fa";
 import { useSfx } from "@/hooks/use-sfx";
 import { HackerText } from "@/components/ui/hacker-text";
+import { Icons } from "@/components/ui/icons";
 
 const initialState: GuestbookState = {
   success: false,
@@ -58,7 +57,7 @@ export function GuestbookForm({ user }: { user?: User | null }) {
   // React 19 Hook
   const [state, formAction, isPending] = useActionState(
     signGuestbook,
-    initialState
+    initialState,
   );
 
   // --- Effect: Handle Success & Events ---
@@ -88,7 +87,7 @@ export function GuestbookForm({ user }: { user?: User | null }) {
     window.open(
       `/auth/popup?provider=${provider}`,
       `Login with ${provider}`,
-      `width=${width},height=${height},left=${left},top=${top}`
+      `width=${width},height=${height},left=${left},top=${top}`,
     );
   };
 
@@ -172,7 +171,7 @@ export function GuestbookForm({ user }: { user?: User | null }) {
                 onClick={() => openLoginPopup("github")}
                 title="Connect GitHub"
               >
-                <Github className="w-4 h-4" />
+                <Icons.github className="w-4 h-4" />
               </Button>
               <Button
                 variant="outline"
@@ -181,7 +180,7 @@ export function GuestbookForm({ user }: { user?: User | null }) {
                 onClick={() => openLoginPopup("discord")}
                 title="Connect Discord"
               >
-                <FaDiscord className="w-4 h-4" />
+                <Icons.discord className="w-4 h-4" />
               </Button>
               <Button
                 variant="outline"
@@ -190,7 +189,7 @@ export function GuestbookForm({ user }: { user?: User | null }) {
                 onClick={() => openLoginPopup("google")}
                 title="Connect Google"
               >
-                <FaGoogle className="w-4 h-4" />
+                <Icons.google className="w-4 h-4" />
               </Button>
             </div>
           </>
@@ -243,7 +242,7 @@ export function GuestbookForm({ user }: { user?: User | null }) {
           <Button
             type="submit"
             disabled={isPending}
-            className="w-full sm:w-auto min-w-[120px] bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20"
+            className="w-full sm:w-auto min-w-30 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20"
             onClick={() => play("click")}
           >
             {isPending ? (

@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Github, Linkedin, Twitter, Mail } from "lucide-react";
+import { Mail } from "lucide-react";
+import { Icons } from "@/components/ui/icons";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { useSfx } from "@/hooks/use-sfx";
@@ -11,11 +12,27 @@ import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
 
 gsap.registerPlugin(useGSAP);
 
-const socialLinks = [
-  { name: "GitHub", href: "https://github.com/t7sen", icon: Github },
-  { name: "LinkedIn", href: "https://linkedin.com/in/t7sen", icon: Linkedin },
-  { name: "Twitter", href: "https://twitter.com/t7sen", icon: Twitter },
-  { name: "Email", href: "mailto:contact@t7sen.com", icon: Mail },
+export const socialLinks = [
+  {
+    name: "GitHub",
+    href: "https://github.com/t7sen",
+    icon: Icons.github,
+  },
+  {
+    name: "Twitter",
+    href: "https://twitter.com/t7sen",
+    icon: Icons.twitter,
+  },
+  {
+    name: "LinkedIn",
+    href: "https://linkedin.com/in/t7sen",
+    icon: Icons.linkedin,
+  },
+  {
+    name: "Email",
+    href: "mailto:contact@t7sen.com",
+    icon: Mail,
+  },
 ];
 
 export function SocialLinks() {
@@ -33,7 +50,7 @@ export function SocialLinks() {
         delay: 0.5,
       });
     },
-    { scope: containerRef }
+    { scope: containerRef },
   );
 
   return (
