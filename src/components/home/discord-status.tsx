@@ -15,7 +15,7 @@ export function DiscordStatus() {
 
   if (!data || !isConnected) {
     return (
-      <div className="flex min-w-[220px] items-center gap-3 rounded-2xl border border-border/50 bg-background/40 px-4 py-3 backdrop-blur-md">
+      <div className="flex min-w-55 items-center gap-3 rounded-2xl border border-border/50 bg-background/40 px-4 py-3 backdrop-blur-md">
         <div className="relative">
           <div className="h-10 w-10 animate-pulse rounded-full bg-muted" />
           <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background bg-muted-foreground" />
@@ -74,7 +74,7 @@ export function DiscordStatus() {
       rel="noopener noreferrer"
       onMouseEnter={() => play("hover")}
       onClick={() => play("click")}
-      className="group relative flex min-w-[220px] items-center gap-4 rounded-2xl border border-border/40 bg-background/40 px-4 py-3 backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:bg-background/60 hover:shadow-xl hover:shadow-primary/5 active:scale-[0.98] active:translate-y-0"
+      className="group relative flex min-w-55 items-center gap-4 rounded-2xl border border-border/40 bg-background/40 px-4 py-3 backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:bg-background/60 hover:shadow-xl hover:shadow-primary/5 active:scale-[0.98] active:translate-y-0"
     >
       <div className="relative shrink-0">
         {discord_user.avatar ? (
@@ -93,7 +93,7 @@ export function DiscordStatus() {
         <span
           className={cn(
             "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background transition-all duration-300",
-            statusColor
+            statusColor,
           )}
         />
       </div>
@@ -109,7 +109,7 @@ export function DiscordStatus() {
           <StatusIcon
             className={cn(
               "h-3 w-3 shrink-0 transition-colors duration-300",
-              isActivity ? "text-primary" : "text-muted-foreground"
+              isActivity ? "text-primary" : "text-muted-foreground",
             )}
           />
           <span className="truncate text-xs font-medium text-muted-foreground transition-colors duration-300 group-hover:text-foreground">

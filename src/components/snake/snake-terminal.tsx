@@ -43,10 +43,10 @@ export function SnakeTerminal({ onClose }: SnakeTerminalProps) {
       gsap.fromTo(
         containerRef.current,
         { scale: 0.8, opacity: 0 },
-        { scale: 1, opacity: 1, duration: 0.4, ease: "back.out(1.5)" }
+        { scale: 1, opacity: 1, duration: 0.4, ease: "back.out(1.5)" },
       );
     },
-    { scope: containerRef }
+    { scope: containerRef },
   );
 
   // 💥 NEW: Game Over Impact Shake
@@ -71,7 +71,7 @@ export function SnakeTerminal({ onClose }: SnakeTerminalProps) {
               clearProps: "borderColor",
             });
           },
-        }
+        },
       );
       play("click"); // Or a specific 'death' sound if available
     }
@@ -199,7 +199,7 @@ export function SnakeTerminal({ onClose }: SnakeTerminalProps) {
           {/* The Grid - Added Ref for Shake Effect */}
           <div
             ref={gridRef}
-            className="relative mx-auto aspect-square w-full max-w-[360px] border border-green-500/30 bg-black/50"
+            className="relative mx-auto aspect-square w-full max-w-90 border border-green-500/30 bg-black/50"
             style={{
               display: "grid",
               gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)`,
@@ -261,10 +261,10 @@ export function SnakeTerminal({ onClose }: SnakeTerminalProps) {
                     isHead
                       ? "bg-green-400 shadow-[0_0_10px_rgba(74,222,128,0.8)]"
                       : isSnake
-                      ? "bg-green-600/80"
-                      : isFood
-                      ? "bg-red-500 animate-pulse rounded-full"
-                      : "bg-transparent"
+                        ? "bg-green-600/80"
+                        : isFood
+                          ? "bg-red-500 animate-pulse rounded-full"
+                          : "bg-transparent",
                   )}
                 />
               );
@@ -272,7 +272,7 @@ export function SnakeTerminal({ onClose }: SnakeTerminalProps) {
           </div>
 
           {/* MOBILE CONTROLS (Visible on small screens) */}
-          <div className="mt-6 grid grid-cols-3 gap-2 sm:hidden w-full max-w-[200px]">
+          <div className="mt-6 grid grid-cols-3 gap-2 sm:hidden w-full max-w-50">
             <div />
             <Button
               variant="outline"
