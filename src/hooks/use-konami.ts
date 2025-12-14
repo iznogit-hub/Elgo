@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 
 const KONAMI_CODE = [
   "ArrowUp",
@@ -16,28 +16,31 @@ const KONAMI_CODE = [
 ];
 
 export function useKonami(action: () => void) {
-  const [input, setInput] = useState<string[]>([]);
+  // Use Ref instead of State to prevent re-renders on every key press
+  // and to ensure the event listener is stable.
+  const inputRef = useRef<string[]>([]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // 1. Add new key to the buffer
-      const newInput = [...input, e.key];
+      const currentInput = inputRef.current;
+      const newInput = [...currentInput, e.key];
 
-      // 2. Keep buffer strictly 10 keys long (length of Konami Code)
+      // Keep buffer strictly 10 keys long
       if (newInput.length > KONAMI_CODE.length) {
         newInput.shift();
       }
 
-      setInput(newInput);
+      // Update ref
+      inputRef.current = newInput;
 
-      // 3. Check for match
+      // Check for match
       if (newInput.join("") === KONAMI_CODE.join("")) {
         action();
-        setInput([]); // Reset after success to allow re-triggering
+        inputRef.current = []; // Reset after success
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [input, action]);
+  }, [action]);
 }
