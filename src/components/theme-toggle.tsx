@@ -5,7 +5,8 @@ import { useTheme } from "next-themes";
 import { flushSync } from "react-dom";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
-import { useSfx } from "@/hooks/use-sfx"; // Import SFX Hook
+import { useSfx } from "@/hooks/use-sfx";
+import { sendGAEvent } from "@next/third-parties/google";
 
 import { Button } from "@/components/ui/button";
 
@@ -60,11 +61,18 @@ export function ThemeToggle() {
     const isDark = theme === "dark";
     const nextTheme = isDark ? "light" : "dark";
 
+    // --- TRACKING START ---
+    sendGAEvent("event", "theme_change", {
+      event_category: "Preferences",
+      event_label: nextTheme,
+    });
+    // --- TRACKING END ---
+
     const x = e.clientX;
     const y = e.clientY;
     const maxRadius = Math.hypot(
       Math.max(x, window.innerWidth - x),
-      Math.max(y, window.innerHeight - y)
+      Math.max(y, window.innerHeight - y),
     );
 
     // If browser doesn't support View Transitions, just switch state
@@ -99,7 +107,7 @@ export function ThemeToggle() {
         easing: "ease-in-out",
         pseudoElement: "::view-transition-new(root)",
         fill: "forwards", // PREVENTS FLASH: Holds the final state until cleanup
-      }
+      },
     );
 
     // 4. UNLOCK: When animation finishes, allow clicking again

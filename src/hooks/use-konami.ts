@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { sendGAEvent } from "@next/third-parties/google";
 
 const KONAMI_CODE = [
   "ArrowUp",
@@ -16,8 +17,6 @@ const KONAMI_CODE = [
 ];
 
 export function useKonami(action: () => void) {
-  // Use Ref instead of State to prevent re-renders on every key press
-  // and to ensure the event listener is stable.
   const inputRef = useRef<string[]>([]);
 
   useEffect(() => {
@@ -25,18 +24,23 @@ export function useKonami(action: () => void) {
       const currentInput = inputRef.current;
       const newInput = [...currentInput, e.key];
 
-      // Keep buffer strictly 10 keys long
       if (newInput.length > KONAMI_CODE.length) {
         newInput.shift();
       }
 
-      // Update ref
       inputRef.current = newInput;
 
-      // Check for match
       if (newInput.join("") === KONAMI_CODE.join("")) {
+        // --- TRACKING START ---
+        sendGAEvent("event", "easter_egg_found", {
+          event_category: "Engagement",
+          event_label: "Konami Code",
+          value: 1,
+        });
+        // --- TRACKING END ---
+
         action();
-        inputRef.current = []; // Reset after success
+        inputRef.current = [];
       }
     };
 

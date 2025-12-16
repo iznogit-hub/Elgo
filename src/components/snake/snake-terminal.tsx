@@ -17,6 +17,7 @@ import { useSnakeGame } from "@/hooks/use-snake-game";
 import { useSfx } from "@/hooks/use-sfx";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { sendGAEvent } from "@next/third-parties/google";
 
 interface SnakeTerminalProps {
   onClose: () => void;
@@ -49,9 +50,16 @@ export function SnakeTerminal({ onClose }: SnakeTerminalProps) {
     { scope: containerRef },
   );
 
-  // 💥 NEW: Game Over Impact Shake
+  // Game Over Animation & GA Event
   useGSAP(() => {
     if (status === "GAME_OVER") {
+      // --- TRACKING START ---
+      sendGAEvent("event", "game_over", {
+        event_category: "Game",
+        event_label: "Snake",
+        value: score, // Sends the actual score to GA
+      });
+      // --- TRACKING END ---
       gsap.fromTo(
         gridRef.current,
         { x: -5 },
@@ -75,7 +83,7 @@ export function SnakeTerminal({ onClose }: SnakeTerminalProps) {
       );
       play("click"); // Or a specific 'death' sound if available
     }
-  }, [status]);
+  }, [status, score]);
 
   // Keyboard Controls
   useEffect(() => {
@@ -130,6 +138,12 @@ export function SnakeTerminal({ onClose }: SnakeTerminalProps) {
           if (status === "IDLE" || status === "GAME_OVER") {
             play("click");
             startGame();
+
+            // --- TRACKING START ---
+            sendGAEvent("event", "game_started", {
+              event_category: "Game",
+            });
+            // --- TRACKING END ---
           }
           break;
 
@@ -216,6 +230,11 @@ export function SnakeTerminal({ onClose }: SnakeTerminalProps) {
                   onClick={() => {
                     play("click");
                     startGame();
+                    // --- TRACKING START ---
+                    sendGAEvent("event", "game_started", {
+                      event_category: "Game",
+                    });
+                    // --- TRACKING END ---
                   }}
                   className="border border-green-500 bg-green-500/20 font-mono text-green-500 hover:bg-green-500 hover:text-black"
                 >

@@ -4,15 +4,23 @@ import * as React from "react";
 import { Volume2, VolumeX } from "lucide-react";
 import { useSound } from "@/components/sound-provider";
 import { Button } from "@/components/ui/button";
+import { sendGAEvent } from "@next/third-parties/google";
 
 export function SoundToggle() {
   const { isMuted, toggleMute, play } = useSound();
 
   const handleClick = () => {
-    // If we are unmuting, play a test click immediately to confirm
+    const newStatus = isMuted ? "unmuted" : "muted";
+
+    // --- TRACKING START ---
+    sendGAEvent("event", "sound_toggle", {
+      event_category: "Preferences",
+      event_label: newStatus,
+    });
+    // --- TRACKING END ---
+
     if (isMuted) {
       toggleMute();
-      // Small timeout to allow state to update before playing
       setTimeout(() => play("click"), 50);
     } else {
       toggleMute();

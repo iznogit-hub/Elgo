@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { signGuestbook, type GuestbookState } from "@/app/actions/guestbook";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { sendGAEvent } from "@next/third-parties/google";
 import {
   Send,
   AlertCircle,
@@ -66,6 +67,14 @@ export function GuestbookForm({ user }: { user?: User | null }) {
       play("success");
       formRef.current?.reset();
 
+      // --- TRACKING START ---
+      sendGAEvent("event", "guestbook_sign", {
+        event_category: "Engagement",
+        event_label: "Success",
+        method: state.newEntry.provider || "anonymous", // Track auth provider if available
+      });
+      // --- TRACKING END ---
+
       // Dispatch event for the infinite list to pick up immediately
       const event = new CustomEvent("guestbook-new-entry", {
         detail: state.newEntry,
@@ -73,6 +82,12 @@ export function GuestbookForm({ user }: { user?: User | null }) {
       window.dispatchEvent(event);
     } else if (!state.success && state.message) {
       play("error");
+      // --- TRACKING START ---
+      sendGAEvent("event", "guestbook_error", {
+        event_category: "Error",
+        event_label: state.message,
+      });
+      // --- TRACKING END ---
     }
   }, [state, play]);
 
