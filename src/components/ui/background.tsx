@@ -45,7 +45,7 @@ export function Background() {
         window.removeEventListener("mousemove", handleMouseMove);
       };
     },
-    { scope: containerRef }
+    { scope: containerRef },
   );
 
   return (
@@ -67,14 +67,14 @@ export function Background() {
           "dark:bg-[linear-gradient(to_right,#ffffff12_1px,transparent_1px),linear-gradient(to_bottom,#ffffff12_1px,transparent_1px)]",
           "bg-size-[40px_40px]",
           // RESTORED: The gradient mask (Fade out from top-center)
-          "mask-[radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)]"
+          "mask-[radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)]",
         )}
       />
 
       {/* LAYER 2: Static Top Glow (Restored)
           This replaces the "flashlight" with a stable ambient light source at the top.
       */}
-      <div className="absolute left-0 right-0 top-[-10%] h-[500px] w-[500px] rounded-full bg-primary/10 blur-[100px] opacity-20 mx-auto pointer-events-none" />
+      <div className="absolute left-0 right-0 top-[-10%] h-125 w-125 rounded-full bg-primary/10 blur-[100px] opacity-20 mx-auto pointer-events-none" />
 
       {/* LAYER 3: Film Grain Texture */}
       <div className="pointer-events-none absolute inset-0 opacity-[0.03] mix-blend-overlay">
