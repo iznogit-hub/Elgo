@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
-import confetti from "canvas-confetti"; // 👈 Import Confetti
+import confetti from "canvas-confetti";
 import {
   Send,
   CheckCircle2,
@@ -80,7 +80,7 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
 
   const [state, formAction, isPending] = useActionState(
     sendMessage,
-    initialState
+    initialState,
   );
 
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -179,7 +179,7 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
         })();
       }
     },
-    { scope: containerRef, dependencies: [state.success] }
+    { scope: containerRef, dependencies: [state.success] },
   );
 
   // 💥 ANIMATION: Error Shake
@@ -190,12 +190,12 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
         gsap.fromTo(
           formRef.current,
           { x: -10 },
-          { x: 10, duration: 0.1, repeat: 3, yoyo: true, clearProps: "x" }
+          { x: 10, duration: 0.1, repeat: 3, yoyo: true, clearProps: "x" },
         );
         play("error");
       }
     },
-    { scope: containerRef, dependencies: [state.message, state.success] }
+    { scope: containerRef, dependencies: [state.message, state.success] },
   );
 
   // Animation: Step Transition
@@ -205,10 +205,10 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
       gsap.fromTo(
         stepRef.current,
         { x: direction * 50, opacity: 0 },
-        { x: 0, opacity: 1, duration: 0.4, ease: "power2.out" }
+        { x: 0, opacity: 1, duration: 0.4, ease: "power2.out" },
       );
     },
-    { scope: containerRef, dependencies: [currentStep, state.success] }
+    { scope: containerRef, dependencies: [currentStep, state.success] },
   );
 
   const handleNext = async () => {
@@ -256,7 +256,7 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
     return (
       <div
         ref={containerRef}
-        className="flex flex-col items-center justify-center p-8 md:p-12 text-center border border-green-500/30 bg-green-500/5 rounded-2xl backdrop-blur-md min-h-[300px] md:min-h-[400px]"
+        className="flex flex-col items-center justify-center p-8 md:p-12 text-center border border-green-500/30 bg-green-500/5 rounded-2xl backdrop-blur-md min-h-75 md:min-h-100"
       >
         <div className="success-view">
           <CheckCircle2 className="h-12 w-12 md:h-16 md:w-16 text-green-500 mx-auto mb-4" />
@@ -281,7 +281,7 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
   return (
     <div
       ref={containerRef}
-      className="w-full max-w-lg mx-auto min-h-[350px] md:min-h-[400px] flex flex-col justify-center relative"
+      className="w-full max-w-lg mx-auto min-h-87.5 md:min-h-100 flex flex-col justify-center relative"
     >
       {/* Session Restored Indicator */}
       {restored && (
@@ -298,7 +298,7 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
               key={i}
               className={cn(
                 "h-1.5 rounded-full transition-all duration-500",
-                i <= currentStep ? "w-8 bg-primary" : "w-2 bg-primary/20"
+                i <= currentStep ? "w-8 bg-primary" : "w-2 bg-primary/20",
               )}
             />
           ))}
@@ -399,7 +399,7 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
               <Textarea
                 {...register("message")}
                 placeholder="Project details, ideas, or just saying hello..."
-                className="min-h-[120px] md:min-h-[150px] bg-background/50 border-white/10 focus:border-primary/50 transition-all text-base resize-none"
+                className="min-h-30 md:min-h-37.5 bg-background/50 border-white/10 focus:border-primary/50 transition-all text-base resize-none"
                 autoFocus
                 onMouseEnter={() => play("hover")}
                 onFocus={() => play("click")}

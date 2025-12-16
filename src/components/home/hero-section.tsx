@@ -26,7 +26,7 @@ export function HeroSection() {
         ".avatar-layer",
         { opacity: 0, scale: 0.9 },
         { opacity: 1, scale: 1, duration: 1.5, ease: "expo.out" },
-        startDelay
+        startDelay,
       );
 
       tl.fromTo(
@@ -39,10 +39,10 @@ export function HeroSection() {
           duration: 1.2,
           stagger: 0.15,
         },
-        "-=1.2"
+        "-=1.2",
       );
     },
-    { scope: containerRef, dependencies: [assetsLoaded] }
+    { scope: containerRef, dependencies: [assetsLoaded] },
   );
 
   return (
@@ -55,7 +55,7 @@ export function HeroSection() {
       className="relative flex min-h-[60vh] md:min-h-0 md:h-auto w-full flex-col items-center justify-center overflow-hidden px-4 py-12"
     >
       <div className="avatar-layer absolute inset-0 z-0 flex items-center justify-center opacity-0">
-        <div className="relative h-full w-full max-w-[1000px] opacity-90" />
+        <div className="relative h-full w-full max-w-250 opacity-90" />
       </div>
 
       <div className="relative z-10 flex flex-col items-center space-y-8 text-center">
@@ -72,7 +72,7 @@ export function HeroSection() {
           </span>
         </h1>
 
-        <p className="hero-animate opacity-0 mx-auto max-w-[700px] rounded-2xl bg-background/30 p-4 text-muted-foreground backdrop-blur-sm md:text-xl">
+        <p className="hero-animate opacity-0 mx-auto max-w-175 rounded-2xl bg-background/30 p-4 text-muted-foreground backdrop-blur-sm md:text-xl">
           Cyber Security student and Frontend specialist. Whether optimizing
           code or conquering leaderboards in the top 0.1%, I deliver precision,
           security, and speed.
