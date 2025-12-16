@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Send,
@@ -28,6 +27,7 @@ import { Logo } from "@/components/ui/logo";
 import { HackerText } from "@/components/ui/hacker-text";
 import { useSfx } from "@/hooks/use-sfx";
 import { cn } from "@/lib/utils";
+import { TransitionLink } from "@/components/ui/transition-link";
 
 // --- Configuration ---
 const NAV_ITEMS = [
@@ -145,7 +145,7 @@ export function Navbar() {
         {/* Left: Logo */}
         <div className="pointer-events-auto z-50">
           <MagneticWrapper strength={0.2}>
-            <Link
+            <TransitionLink
               href="/"
               aria-label="Home"
               className="block"
@@ -160,7 +160,7 @@ export function Navbar() {
                 id="navbar-logo"
                 className="h-8 w-auto text-foreground transition-transform hover:scale-105"
               />
-            </Link>
+            </TransitionLink>
           </MagneticWrapper>
         </div>
 
@@ -205,14 +205,14 @@ export function Navbar() {
                     onMouseEnter={() => play("hover")}
                     aria-label={item.name}
                   >
-                    <Link
+                    <TransitionLink
                       href={item.href}
                       onClick={() => play("click")}
                       onMouseEnter={() => setHoveredPath(item.href)}
                       onMouseLeave={() => setHoveredPath(null)}
                     >
                       <item.icon className="h-4 w-4" />
-                    </Link>
+                    </TransitionLink>
                   </Button>
                 </MagneticWrapper>
               );
@@ -278,7 +278,7 @@ export function Navbar() {
             {NAV_ITEMS.map((item, index) => {
               const isActive = pathname === item.href;
               return (
-                <Link
+                <TransitionLink
                   key={item.href}
                   href={item.href}
                   onClick={() => play("click")}
@@ -298,7 +298,7 @@ export function Navbar() {
                     {String(index + 1).padStart(2, "0")}
                   </span>
                   {item.name}
-                </Link>
+                </TransitionLink>
               );
             })}
           </div>
