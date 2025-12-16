@@ -5,6 +5,7 @@ import { SoundProvider } from "@/components/sound-provider";
 import { GlobalAppWrapper } from "@/components/global-app-wrapper";
 import { JsonLd } from "@/components/seo/json-ld";
 import "./globals.css";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import { AdminProvider } from "@/providers/admin-provider";
 import { Toaster } from "sonner";
 
@@ -102,6 +103,9 @@ export default function RootLayout({
           </SoundProvider>
         </ThemeProvider>
       </body>
+      {process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID && (
+        <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID} />
+      )}
     </html>
   );
 }
