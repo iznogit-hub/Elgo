@@ -78,7 +78,7 @@ export function AboutClient() {
         gsap.to(".tech-item", {
           y: "10px",
           duration: 2,
-          repeat: -1, // <--- This property creates the infinite loop
+          repeat: -1,
           yoyo: true,
           ease: "sine.inOut",
           stagger: {

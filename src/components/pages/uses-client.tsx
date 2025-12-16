@@ -101,6 +101,22 @@ export function UsesClient() {
         { y: 0, opacity: 1, duration: 0.6, stagger: 0.05 },
         "-=0.4",
       );
+      tl.fromTo(
+        ".decor-item",
+        { opacity: 0 },
+        { opacity: 1, duration: 1 },
+        "-=0.5",
+      );
+      if (!prefersReducedMotion) {
+        gsap.to(".decor-item", {
+          y: "15px",
+          duration: 5,
+          repeat: -1,
+          yoyo: true,
+          ease: "sine.inOut",
+          stagger: { amount: 4, from: "random" },
+        });
+      }
     },
     { scope: containerRef },
   );
@@ -159,17 +175,17 @@ export function UsesClient() {
 
       {/* --- AMBIENT DECOR --- */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-20 hidden md:block z-0">
-        <div className="absolute top-[20%] left-[5%] font-mono text-xs text-primary/60">
+        <div className="decor-item absolute top-[20%] left-[5%] font-mono text-xs text-primary/60 opacity-0">
           {`> SCANNING_HARDWARE...`}
         </div>
-        <div className="absolute top-[30%] right-[8%] font-mono text-xs text-muted-foreground/60">
+        <div className="decor-item absolute top-[30%] right-[8%] font-mono text-xs text-muted-foreground/60 opacity-0">
           {`{ "fps": "uncapped" }`}
         </div>
-        <div className="absolute bottom-[15%] left-[10%] flex items-center gap-2 text-muted-foreground/60">
+        <div className="decor-item absolute bottom-[15%] left-[10%] flex items-center gap-2 text-muted-foreground/60 opacity-0">
           <Cpu className="h-4 w-4" />
           <span className="font-mono text-xs">CPU_LOAD: OPTIMAL</span>
         </div>
-        <div className="absolute bottom-[25%] right-[15%] flex items-center gap-2 text-primary/40">
+        <div className="decor-item absolute bottom-[25%] right-[5%] flex items-center gap-2 text-primary/40 opacity-0">
           <Activity className="h-4 w-4" />
           <span className="font-mono text-xs">SYSTEM_STATUS: ONLINE</span>
         </div>
