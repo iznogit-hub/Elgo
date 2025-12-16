@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef } from "react";
-import Link from "next/link";
+import { TransitionLink } from "@/components/ui/transition-link";
 import { ArrowLeft, Database, Server } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -36,20 +36,20 @@ export function GuestbookClient({
       tl.fromTo(
         ".floating-header",
         { y: -30, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, delay: 0.2 }
+        { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, delay: 0.2 },
       );
 
       tl.fromTo(
         ".gb-item",
         { y: 20, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.8, stagger: 0.15 },
-        "-=0.6"
+        "-=0.6",
       );
       tl.fromTo(
         ".decor-item",
         { opacity: 0 },
         { opacity: 1, duration: 1 },
-        "-=0.5"
+        "-=0.5",
       );
 
       if (!prefersReducedMotion) {
@@ -66,7 +66,7 @@ export function GuestbookClient({
         });
       }
     },
-    { scope: containerRef, dependencies: [prefersReducedMotion] }
+    { scope: containerRef, dependencies: [prefersReducedMotion] },
   );
 
   return (
@@ -76,25 +76,32 @@ export function GuestbookClient({
     >
       <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
         <div className="floating-header pointer-events-auto">
-          <Link href="/" className="cursor-none" onClick={() => play("click")}>
+          <TransitionLink
+            href="/"
+            className="cursor-none"
+            onClick={() => play("click")}
+          >
             <Button
               variant="ghost"
               className="group gap-3 pl-0 hover:bg-transparent hover:text-red-500 transition-colors cursor-none"
               onMouseEnter={() => play("hover")}
+              asChild
             >
-              <div className="flex items-center justify-center w-8 h-8 rounded-full border border-muted-foreground/30 group-hover:border-red-500/50 transition-colors">
-                <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-              </div>
-              <div className="flex flex-col items-start">
-                <span className="font-mono text-xs font-bold tracking-widest text-muted-foreground group-hover:text-red-500">
-                  ABORT
-                </span>
-                <span className="text-[10px] text-muted-foreground/50 hidden sm:block">
-                  RETURN_TO_BASE
-                </span>
-              </div>
+              <span>
+                <div className="flex items-center justify-center w-8 h-8 rounded-full border border-muted-foreground/30 group-hover:border-red-500/50 transition-colors">
+                  <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+                </div>
+                <div className="flex flex-col items-start">
+                  <span className="font-mono text-xs font-bold tracking-widest text-muted-foreground group-hover:text-red-500">
+                    ABORT
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/50 hidden sm:block">
+                    RETURN_TO_BASE
+                  </span>
+                </div>
+              </span>
             </Button>
-          </Link>
+          </TransitionLink>
         </div>
 
         <div className="floating-header flex flex-col items-end gap-2">
@@ -140,7 +147,7 @@ export function GuestbookClient({
           <h1 className="text-4xl md:text-5xl font-black tracking-tighter">
             <HackerText text="Guestbook" />
           </h1>
-          <p className="text-muted-foreground text-sm max-w-[400px] mx-auto">
+          <p className="text-muted-foreground text-sm max-w-100 mx-auto">
             Leave your mark on the digital ledger.
             <br />
             Data is persisted via Redis.
@@ -155,7 +162,7 @@ export function GuestbookClient({
           <div className="h-px bg-linear-to-r from-transparent via-border to-transparent" />
         </div>
 
-        <div className="gb-item w-full h-[400px] md:h-auto md:flex-1 md:min-h-0 flex justify-center opacity-0">
+        <div className="gb-item w-full h-100 md:h-auto md:flex-1 md:min-h-0 flex justify-center opacity-0">
           {children}
         </div>
       </div>

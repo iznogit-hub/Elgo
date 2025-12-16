@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useRef } from "react";
-import Link from "next/link";
+// 1. Remove Link, Import TransitionLink
+import { TransitionLink } from "@/components/ui/transition-link";
 import { AlertTriangle, ArrowLeft, Bug, ServerCrash } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -21,44 +22,39 @@ export default function NotFound() {
     () => {
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
-      // 1. Floating Header Entrance
       tl.fromTo(
         ".floating-header",
         { y: -30, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, delay: 0.2 }
+        { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, delay: 0.2 },
       );
 
-      // 2. The Fracture Line (Expands horizontally)
       tl.fromTo(
         ".fracture-line",
         { scaleX: 0, opacity: 0 },
         { scaleX: 1, opacity: 1, duration: 1.2, ease: "expo.out" },
-        "-=0.4"
+        "-=0.4",
       );
 
-      // 3. The 404 Halves (Slide from opposite sides)
       tl.fromTo(
         ".glitch-top",
         { x: -50, opacity: 0, clipPath: "inset(0 0 100% 0)" },
         { x: 0, opacity: 1, clipPath: "inset(0 0 50% 0)", duration: 1 },
-        "-=1.0"
+        "-=1.0",
       );
       tl.fromTo(
         ".glitch-bottom",
         { x: 50, opacity: 0, clipPath: "inset(100% 0 0 0)" },
         { x: 0, opacity: 1, clipPath: "inset(50% 0 0 0)", duration: 1 },
-        "<"
+        "<",
       );
 
-      // 4. Content Fade Up
       tl.fromTo(
         ".content-item",
         { y: 20, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.8, stagger: 0.1 },
-        "-=0.5"
+        "-=0.5",
       );
 
-      // 5. Idle Hover Animation (Drift)
       gsap.to(".glitch-top", {
         x: -5,
         duration: 3,
@@ -74,7 +70,7 @@ export default function NotFound() {
         ease: "sine.inOut",
       });
     },
-    { scope: containerRef }
+    { scope: containerRef },
   );
 
   return (
@@ -82,7 +78,6 @@ export default function NotFound() {
       ref={containerRef}
       className="relative flex h-screen w-full flex-col items-center justify-center overflow-hidden text-foreground bg-transparent"
     >
-      {/* Glitch Overlay Effect */}
       <div className="pointer-events-none absolute inset-0 z-0 opacity-10">
         <div className="absolute top-0 left-0 w-full h-1 bg-red-500/20 animate-scanline" />
       </div>
@@ -90,25 +85,34 @@ export default function NotFound() {
       {/* --- FLOATING HEADER --- */}
       <div className="absolute top-0 left-0 right-0 pt-20 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
         <div className="floating-header pointer-events-auto opacity-0">
-          <Link href="/" className="cursor-none" onClick={() => play("click")}>
+          {/* ⚡ FIX: Use TransitionLink wrapping Button with asChild */}
+          <TransitionLink
+            href="/"
+            className="cursor-none"
+            onClick={() => play("click")}
+          >
             <Button
               variant="ghost"
               className="group gap-3 pl-0 hover:bg-transparent hover:text-red-500 transition-colors cursor-none"
               onMouseEnter={() => play("hover")}
+              asChild // <--- Merges Button styles into the TransitionLink button
             >
-              <div className="flex items-center justify-center w-8 h-8 rounded-full border border-muted-foreground/30 group-hover:border-red-500/50 transition-colors">
-                <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-              </div>
-              <div className="flex flex-col items-start font-sans">
-                <span className="font-mono text-xs font-bold tracking-widest text-muted-foreground group-hover:text-red-500">
-                  ABORT
-                </span>
-                <span className="text-[10px] text-muted-foreground/50 hidden sm:block">
-                  RETURN_TO_BASE
-                </span>
-              </div>
+              {/* Wrap content in span to be a valid single child */}
+              <span>
+                <div className="flex items-center justify-center w-8 h-8 rounded-full border border-muted-foreground/30 group-hover:border-red-500/50 transition-colors">
+                  <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+                </div>
+                <div className="flex flex-col items-start font-sans">
+                  <span className="font-mono text-xs font-bold tracking-widest text-muted-foreground group-hover:text-red-500">
+                    ABORT
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/50 hidden sm:block">
+                    RETURN_TO_BASE
+                  </span>
+                </div>
+              </span>
             </Button>
-          </Link>
+          </TransitionLink>
         </div>
 
         <div className="floating-header flex flex-col items-end gap-2 opacity-0">
@@ -132,15 +136,11 @@ export default function NotFound() {
 
       {/* --- CENTERED CONTENT --- */}
       <div className="z-10 flex flex-col items-center justify-center relative w-full max-w-4xl px-4">
-        {/* THE FRACTURE TYPOGRAPHY (FIXED) */}
-        {/* 'relative' allows the container to size itself based on the 'invisible' ghost text */}
         <div className="relative font-black text-[25vw] md:text-[20rem] leading-none tracking-tighter select-none">
-          {/* 1. GHOST LAYER (Invisible, but sets the size) */}
           <div className="invisible" aria-hidden="true">
             404
           </div>
 
-          {/* 2. Top Half (Visible Layer) */}
           <div
             className="glitch-top absolute top-0 left-0 right-0 text-center text-red-500/20 blur-sm md:blur-md"
             style={{ clipPath: "inset(0 0 50% 0)" }}
@@ -148,7 +148,6 @@ export default function NotFound() {
             404
           </div>
 
-          {/* 3. Bottom Half (Visible Layer) */}
           <div
             className="glitch-bottom absolute top-0 left-0 right-0 text-center text-red-500/60"
             style={{ clipPath: "inset(50% 0 0 0)" }}
@@ -156,13 +155,10 @@ export default function NotFound() {
             404
           </div>
 
-          {/* Central Line */}
           <div className="fracture-line absolute top-1/2 left-0 right-0 h-0.5 bg-red-500/50 w-full transform -translate-y-1/2" />
         </div>
 
-        {/* Text Content (Positioned Absolute over the giant number) */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center text-center space-y-6 w-full">
-          {/* Icon Badge */}
           <div className="content-item bg-black/80 backdrop-blur-md border border-red-500/20 p-4 rounded-full mb-4 shadow-[0_0_30px_-10px_rgba(239,68,68,0.5)]">
             <ServerCrash className="h-8 w-8 text-red-500" />
           </div>
@@ -177,7 +173,6 @@ export default function NotFound() {
             </p>
           </div>
 
-          {/* Action Buttons */}
           <MagneticWrapper className="content-item flex flex-col sm:flex-row gap-4 pt-4">
             <Button
               variant="outline"

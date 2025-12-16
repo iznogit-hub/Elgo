@@ -2,7 +2,7 @@
 
 import React, { useRef } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import { TransitionLink } from "@/components/ui/transition-link";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { useSfx } from "@/hooks/use-sfx";
@@ -31,10 +31,10 @@ export function AvatarImage({
       gsap.fromTo(
         container,
         { x: -150, opacity: 0 },
-        { x: 0, opacity: 1, duration: 1.0, ease: "power3.out", delay: DELAY }
+        { x: 0, opacity: 1, duration: 1.0, ease: "power3.out", delay: DELAY },
       );
     },
-    { scope: containerRef, dependencies: [startAnimation] }
+    { scope: containerRef, dependencies: [startAnimation] },
   );
 
   return (
@@ -48,7 +48,7 @@ export function AvatarImage({
       // I recommend hiding it on mobile/tablet to give text full focus.
       className="fixed bottom-0 left-0 z-50 hidden xl:block opacity-0"
     >
-      <Link
+      <TransitionLink
         href="/about"
         onClick={() => play("click")}
         onMouseEnter={() => play("hover")}
@@ -64,7 +64,7 @@ export function AvatarImage({
           draggable={false}
           onLoad={onImageLoad}
         />
-      </Link>
+      </TransitionLink>
     </aside>
   );
 }

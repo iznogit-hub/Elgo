@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
-import Link from "next/link";
 import {
   ArrowLeft,
   GitCommit,
@@ -23,6 +22,7 @@ import { useSfx } from "@/hooks/use-sfx";
 import type { DashboardData } from "@/app/actions/dashboard";
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
+import { TransitionLink } from "@/components/ui/transition-link";
 
 interface DashboardClientProps {
   initialData: DashboardData;
@@ -93,7 +93,7 @@ function MatchHistory({
       } else {
         // Fallback: Mock based on winrate
         const results = Array.from({ length: 5 }).map(() =>
-          Math.random() < winRate / 100 ? "W" : "L"
+          Math.random() < winRate / 100 ? "W" : "L",
         );
         setVisualHistory(results);
       }
@@ -108,7 +108,7 @@ function MatchHistory({
           key={i}
           className={cn(
             "h-1.5 w-full rounded-sm",
-            result === "W" ? "bg-green-500" : "bg-red-500/50"
+            result === "W" ? "bg-green-500" : "bg-red-500/50",
           )}
         />
       ))}
@@ -145,19 +145,19 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
       tl.fromTo(
         ".floating-header",
         { y: -30, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, delay: 0.2 }
+        { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, delay: 0.2 },
       );
       tl.fromTo(
         ".dashboard-card",
         { y: 30, opacity: 0, scale: 0.95 },
         { y: 0, opacity: 1, scale: 1, duration: 0.6, stagger: 0.1 },
-        "-=0.4"
+        "-=0.4",
       );
       tl.fromTo(
         ".decor-item",
         { opacity: 0 },
         { opacity: 1, duration: 1 },
-        "-=0.5"
+        "-=0.5",
       );
 
       if (!prefersReducedMotion) {
@@ -171,7 +171,7 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
         });
       }
     },
-    { scope: containerRef }
+    { scope: containerRef },
   );
 
   return (
@@ -182,25 +182,32 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
         <div className="floating-header pointer-events-auto">
-          <Link href="/" className="cursor-none" onClick={() => play("click")}>
+          <TransitionLink
+            href="/"
+            className="cursor-none"
+            onClick={() => play("click")}
+          >
             <Button
               variant="ghost"
               className="group gap-3 pl-0 hover:bg-transparent hover:text-red-500 transition-colors cursor-none"
               onMouseEnter={() => play("hover")}
+              asChild
             >
-              <div className="flex items-center justify-center w-8 h-8 rounded-full border border-muted-foreground/30 group-hover:border-red-500/50 transition-colors">
-                <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-              </div>
-              <div className="flex flex-col items-start">
-                <span className="font-mono text-xs font-bold tracking-widest text-muted-foreground group-hover:text-red-500">
-                  ABORT
-                </span>
-                <span className="text-[10px] text-muted-foreground/50 hidden sm:block">
-                  RETURN_TO_BASE
-                </span>
-              </div>
+              <span>
+                <div className="flex items-center justify-center w-8 h-8 rounded-full border border-muted-foreground/30 group-hover:border-red-500/50 transition-colors">
+                  <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+                </div>
+                <div className="flex flex-col items-start">
+                  <span className="font-mono text-xs font-bold tracking-widest text-muted-foreground group-hover:text-red-500">
+                    ABORT
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/50 hidden sm:block">
+                    RETURN_TO_BASE
+                  </span>
+                </div>
+              </span>
             </Button>
-          </Link>
+          </TransitionLink>
         </div>
         <div className="floating-header flex flex-col items-end gap-2">
           <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 backdrop-blur-sm">
@@ -314,7 +321,7 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
                 </span>
                 <span
                   className={cn(
-                    latency > 100 ? "text-yellow-500" : "text-green-500"
+                    latency > 100 ? "text-yellow-500" : "text-green-500",
                   )}
                 >
                   {latency}ms
@@ -359,13 +366,13 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
                 <span className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase">
                   Contribution Matrix (Last 12 Weeks)
                 </span>
-                <div className="grid grid-rows-7 grid-flow-col gap-1 w-full h-[100px]">
+                <div className="grid grid-rows-7 grid-flow-col gap-1 w-full h-25">
                   {initialData.coding.heatmap.map((day, i) => (
                     <div
                       key={i}
                       className={cn(
                         "w-full h-full rounded-[1px] transition-colors hover:scale-125 hover:z-10",
-                        getHeatmapColor(day.level)
+                        getHeatmapColor(day.level),
                       )}
                       title={`${day.date}: ${day.count} commits`}
                     />
@@ -495,7 +502,7 @@ function DashboardCard({
       <div
         className={cn(
           "relative h-full p-6 rounded-xl border border-white/5 bg-linear-to-br from-white/5 to-white/0 backdrop-blur-md transition-all duration-500 group",
-          border
+          border,
         )}
       >
         <div className="absolute inset-0 bg-noise opacity-[0.03] pointer-events-none" />

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
+import { TransitionLink } from "@/components/ui/transition-link";
 import { usePathname } from "next/navigation";
 import {
   Send,
@@ -27,7 +28,6 @@ import { Logo } from "@/components/ui/logo";
 import { HackerText } from "@/components/ui/hacker-text";
 import { useSfx } from "@/hooks/use-sfx";
 import { cn } from "@/lib/utils";
-import { TransitionLink } from "@/components/ui/transition-link";
 
 // --- Configuration ---
 const NAV_ITEMS = [
@@ -59,7 +59,6 @@ export function Navbar() {
   const activeItem = NAV_ITEMS.find((item) => item.href === pathname);
   const hoveredItem = NAV_ITEMS.find((item) => item.href === hoveredPath);
 
-  // Logic: Hovered Item > Active Item > "Home" (if on root) > "Terminal" (fallback)
   let displayName = "TERMINAL";
   if (hoveredPath === "/") {
     displayName = "HOME";
@@ -71,7 +70,6 @@ export function Navbar() {
     displayName = activeItem.name.toUpperCase();
   }
 
-  // 1. Setup Animation Timeline (Once)
   useGSAP(
     () => {
       if (!mobileMenuRef.current) return;
@@ -100,7 +98,6 @@ export function Navbar() {
     { scope: containerRef },
   );
 
-  // 2. Control Animation based on State
   useEffect(() => {
     if (timeline.current) {
       if (isMobileMenuOpen) {
@@ -111,13 +108,11 @@ export function Navbar() {
     }
   }, [isMobileMenuOpen]);
 
-  // 3. Close on Route Change
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
-  // 4. Lock Body Scroll
   useEffect(() => {
     if (isMobileMenuOpen) {
       document.body.style.overflow = "hidden";
@@ -142,9 +137,9 @@ export function Navbar() {
     <nav ref={containerRef}>
       {/* --- TOP BAR (FIXED) --- */}
       <div className="fixed top-0 left-0 right-0 z-50 flex w-full items-center justify-between p-4 md:p-6 md:px-12 pointer-events-none">
-        {/* Left: Logo */}
         <div className="pointer-events-auto z-50">
           <MagneticWrapper strength={0.2}>
+            {/* ⚡ FIX: Used TransitionLink here */}
             <TransitionLink
               href="/"
               aria-label="Home"
@@ -164,17 +159,12 @@ export function Navbar() {
           </MagneticWrapper>
         </div>
 
-        {/* Right: Desktop Dock (Hidden on Mobile) */}
         <div
           className={cn(
             "hidden md:flex pointer-events-auto items-center gap-2 rounded-full border border-border/40 p-1.5 backdrop-blur-md shadow-lg shadow-black/5",
-            // UPDATED: Adaptive Backgrounds
-            // Light Mode: White with 60% opacity (Clean Glass)
-            // Dark Mode: Neutral-950 with 60% opacity (Dark Glass)
             "bg-white/60 dark:bg-neutral-950/60",
           )}
         >
-          {/* 1. Page Name Indicator (Left) */}
           <div className="hidden lg:flex items-center justify-center min-w-25 overflow-hidden px-2">
             <HackerText
               key={displayName}
@@ -186,7 +176,6 @@ export function Navbar() {
 
           <div className="h-6 w-px bg-border/50 mx-1 hidden lg:block" />
 
-          {/* 2. Navigation Links (Middle) */}
           <div className="flex items-center">
             {NAV_ITEMS.map((item) => {
               const isActive = pathname === item.href;
@@ -205,6 +194,7 @@ export function Navbar() {
                     onMouseEnter={() => play("hover")}
                     aria-label={item.name}
                   >
+                    {/* ⚡ FIX: TransitionLink inside Button asChild */}
                     <TransitionLink
                       href={item.href}
                       onClick={() => play("click")}
@@ -221,7 +211,6 @@ export function Navbar() {
 
           <div className="h-6 w-px bg-border/50 mx-1" />
 
-          {/* 3. Utilities (Right) */}
           <div className="flex items-center gap-1">
             <MagneticWrapper strength={0.6}>
               <CommandTrigger />
@@ -235,7 +224,6 @@ export function Navbar() {
           </div>
         </div>
 
-        {/* Right: Mobile Toggle (Visible on Mobile) */}
         <div className="flex md:hidden pointer-events-auto items-center gap-2 z-50">
           <MagneticWrapper strength={0.2}>
             <Button
@@ -261,7 +249,6 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* --- FULL SCREEN OVERLAY --- */}
       <div
         ref={mobileMenuRef}
         className={cn(
@@ -281,7 +268,10 @@ export function Navbar() {
                 <TransitionLink
                   key={item.href}
                   href={item.href}
-                  onClick={() => play("click")}
+                  onClick={() => {
+                    play("click");
+                    setIsMobileMenuOpen(false);
+                  }}
                   className={cn(
                     "mobile-nav-item text-4xl font-black tracking-tighter flex items-center gap-4 transition-colors",
                     isActive
@@ -321,6 +311,7 @@ export function Navbar() {
             </Button>
 
             <div className="flex gap-2 h-14">
+              {/* ⚡ RESTORED: Specific styling for ThemeToggle container */}
               <div
                 className={cn(
                   "flex-1 h-full",
@@ -331,6 +322,8 @@ export function Navbar() {
               >
                 <ThemeToggle />
               </div>
+
+              {/* ⚡ RESTORED: Specific styling for SoundToggle container */}
               <div
                 className={cn(
                   "flex-1 h-full",

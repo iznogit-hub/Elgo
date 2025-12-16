@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
-import Link from "next/link";
+import { TransitionLink } from "@/components/ui/transition-link";
 import { ArrowLeft, Cpu, Activity, Zap, Box } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -129,7 +129,7 @@ export function UsesClient() {
       {/* --- FLOATING HEADER --- */}
       <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-50">
         <div className="floating-header pointer-events-auto">
-          <Link
+          <TransitionLink
             href="/"
             className="cursor-none group"
             onClick={() => play("click")}
@@ -138,20 +138,23 @@ export function UsesClient() {
               variant="ghost"
               className="group gap-3 pl-0 hover:bg-transparent hover:text-red-500 dark:hover:text-red-400 transition-colors cursor-none"
               onMouseEnter={() => play("hover")}
+              asChild
             >
-              <div className="flex items-center justify-center w-8 h-8 rounded-full border border-border/50 group-hover:border-red-500/50 transition-colors">
-                <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-              </div>
-              <div className="flex flex-col items-start">
-                <span className="font-mono text-xs font-bold tracking-widest text-muted-foreground group-hover:text-red-500 dark:group-hover:text-red-400">
-                  ABORT
-                </span>
-                <span className="text-[10px] text-muted-foreground/50 hidden sm:block">
-                  RETURN_TO_BASE
-                </span>
-              </div>
+              <span>
+                <div className="flex items-center justify-center w-8 h-8 rounded-full border border-border/50 group-hover:border-red-500/50 transition-colors">
+                  <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+                </div>
+                <div className="flex flex-col items-start">
+                  <span className="font-mono text-xs font-bold tracking-widest text-muted-foreground group-hover:text-red-500 dark:group-hover:text-red-400">
+                    ABORT
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/50 hidden sm:block">
+                    RETURN_TO_BASE
+                  </span>
+                </div>
+              </span>
             </Button>
-          </Link>
+          </TransitionLink>
         </div>
 
         <div className="floating-header flex flex-col items-end gap-2">

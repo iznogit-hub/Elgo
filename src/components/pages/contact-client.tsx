@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef } from "react";
-import Link from "next/link";
 import { ArrowLeft, Wifi, Terminal, Cpu } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -11,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useSfx } from "@/hooks/use-sfx";
 import { ContactForm } from "@/components/contact/contact-form";
 import { HackerText } from "@/components/ui/hacker-text";
+import { TransitionLink } from "@/components/ui/transition-link";
 
 gsap.registerPlugin(useGSAP);
 
@@ -33,14 +33,14 @@ export function ContactClient() {
       tl.fromTo(
         ".floating-header",
         { y: -30, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, delay: 0.2 }
+        { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, delay: 0.2 },
       );
 
       tl.fromTo(
         ".floating-content",
         { y: 40, opacity: 0 },
         { y: 0, opacity: 1, duration: 1, stagger: 0.15 },
-        "-=0.6"
+        "-=0.6",
       );
 
       if (!prefersReducedMotion) {
@@ -54,7 +54,7 @@ export function ContactClient() {
         });
       }
     },
-    { scope: containerRef, dependencies: [prefersReducedMotion] }
+    { scope: containerRef, dependencies: [prefersReducedMotion] },
   );
 
   return (
@@ -70,25 +70,32 @@ export function ContactClient() {
       <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
         {/* ABORT BUTTON */}
         <div className="floating-header pointer-events-auto">
-          <Link href="/" className="cursor-none" onClick={() => play("click")}>
+          <TransitionLink
+            href="/"
+            className="cursor-none"
+            onClick={() => play("click")}
+          >
             <Button
               variant="ghost"
               className="group gap-3 pl-0 hover:bg-transparent hover:text-red-500 transition-colors cursor-none"
               onMouseEnter={() => play("hover")}
+              asChild
             >
-              <div className="flex items-center justify-center w-8 h-8 rounded-full border border-muted-foreground/30 group-hover:border-red-500/50 transition-colors">
-                <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-              </div>
-              <div className="flex flex-col items-start">
-                <span className="font-mono text-xs font-bold tracking-widest text-muted-foreground group-hover:text-red-500">
-                  ABORT
-                </span>
-                <span className="text-[10px] text-muted-foreground/50 hidden sm:block">
-                  RETURN_TO_BASE
-                </span>
-              </div>
+              <span>
+                <div className="flex items-center justify-center w-8 h-8 rounded-full border border-muted-foreground/30 group-hover:border-red-500/50 transition-colors">
+                  <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+                </div>
+                <div className="flex flex-col items-start">
+                  <span className="font-mono text-xs font-bold tracking-widest text-muted-foreground group-hover:text-red-500">
+                    ABORT
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/50 hidden sm:block">
+                    RETURN_TO_BASE
+                  </span>
+                </div>
+              </span>
             </Button>
-          </Link>
+          </TransitionLink>
         </div>
 
         {/* CONNECTION STATUS */}

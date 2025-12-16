@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useRef } from "react";
-import Link from "next/link";
 import Image from "next/image";
 import {
   ArrowLeft,
@@ -22,6 +21,7 @@ import { HackerText } from "@/components/ui/hacker-text";
 import { Globe } from "@/components/ui/globe";
 import { cn } from "@/lib/utils";
 import { TECH_STACK } from "@/data/about";
+import { TransitionLink } from "@/components/ui/transition-link";
 
 gsap.registerPlugin(useGSAP);
 
@@ -115,25 +115,32 @@ export function AboutClient() {
 
       <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
         <div className="floating-header pointer-events-auto">
-          <Link href="/" className="cursor-none" onClick={() => play("click")}>
+          <TransitionLink
+            href="/"
+            className="cursor-none"
+            onClick={() => play("click")}
+          >
             <Button
               variant="ghost"
               className="group gap-3 pl-0 hover:bg-transparent hover:text-red-500 transition-colors cursor-none"
               onMouseEnter={() => play("hover")}
+              asChild
             >
-              <div className="flex items-center justify-center w-8 h-8 rounded-full border border-muted-foreground/30 group-hover:border-red-500/50 transition-colors">
-                <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-              </div>
-              <div className="flex flex-col items-start">
-                <span className="font-mono text-xs font-bold tracking-widest text-muted-foreground group-hover:text-red-500">
-                  ABORT
-                </span>
-                <span className="text-[10px] text-muted-foreground/50 hidden sm:block">
-                  RETURN_TO_BASE
-                </span>
-              </div>
+              <span>
+                <div className="flex items-center justify-center w-8 h-8 rounded-full border border-muted-foreground/30 group-hover:border-red-500/50 transition-colors">
+                  <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+                </div>
+                <div className="flex flex-col items-start">
+                  <span className="font-mono text-xs font-bold tracking-widest text-muted-foreground group-hover:text-red-500">
+                    ABORT
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/50 hidden sm:block">
+                    RETURN_TO_BASE
+                  </span>
+                </div>
+              </span>
             </Button>
-          </Link>
+          </TransitionLink>
         </div>
 
         <div className="floating-header flex flex-col items-end gap-2">
