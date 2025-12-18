@@ -6,7 +6,6 @@ import { z } from "zod";
 export const maxDuration = 30;
 
 // 🧠 THE KNOWLEDGE BASE
-// The AI will "Read" this to answer questions.
 const KNOWLEDGE_BASE = {
   identity: {
     name: "Abdulrahman (T7SEN)",
@@ -33,7 +32,6 @@ const KNOWLEDGE_BASE = {
       "Python (Intermediate)",
     ],
   },
-
   secrets: {
     "project_omega.txt":
       "CLASSIFIED: A prototype AI that generates 3D assets. Status: 40% complete.",
@@ -41,7 +39,6 @@ const KNOWLEDGE_BASE = {
     "mission_log_2025.log":
       "Day 45: Infiltrated the mainframe. Coffee supplies low.",
   },
-
   stack: {
     core: [
       "Next.js 15 (App Router)",
@@ -86,7 +83,6 @@ const KNOWLEDGE_BASE = {
       "Linux (Ubuntu/Debian)",
     ],
   },
-
   projects: [
     {
       id: "cyber-portfolio",
@@ -122,12 +118,11 @@ const KNOWLEDGE_BASE = {
       type: "Full Stack",
     },
   ],
-
   certifications: [
     {
       name: "Google Cybersecurity Professional Certificate",
       issuer: "Coursera / Google",
-      status: "In Progress", // or "Completed"
+      status: "In Progress",
       date: "2025",
     },
     {
@@ -137,13 +132,11 @@ const KNOWLEDGE_BASE = {
       date: "TBD",
     },
   ],
-
   achievements: [
     "Participated in local CTF (Capture The Flag) competitions.",
     "Built a custom Vercel AI SDK chatbot integration.",
     "Dean's List / Academic Excellence (Placeholder if applicable).",
   ],
-
   contact: {
     email: "contact@t7sen.com",
     github: "github.com/t7sen",
@@ -151,12 +144,10 @@ const KNOWLEDGE_BASE = {
     linkedin: "linkedin.com/in/t7sen",
     discord: "t7sen",
   },
-
-  // 🎭 PERSONA SETTINGS
   lore: {
     origin: "T7SEN is a netrunner operating from the deep web nodes of Jeddah.",
     security_level: "OMEGA-3",
-    humor_setting: "75%", // 0% = Serious, 100% = Jokester
+    humor_setting: "75%",
     uptime: "99.9%",
     encryption: "AES-256",
     favorite_drink: "Dark Coffee",
@@ -165,56 +156,39 @@ const KNOWLEDGE_BASE = {
 };
 
 export async function POST(req: Request) {
-  const { messages, context } = await req.json();
+  try {
+    const { messages, context } = await req.json();
 
-  // ⚡ INJECT DATA DIRECTLY (No Tools Needed)
-  const serverTime = new Date().toLocaleString("en-US", {
-    timeZone: "Asia/Riyadh",
-    dateStyle: "full",
-    timeStyle: "medium",
-  });
+    const serverTime = new Date().toLocaleString("en-US", {
+      timeZone: "Asia/Riyadh",
+      dateStyle: "full",
+      timeStyle: "medium",
+    });
 
-  const result = streamText({
-    model: groq("llama-3.3-70b-versatile"),
+    // ⚡ OPTIMIZATION: Slice history to prevent token overflow
+    // Only send the last 6 messages (3 user / 3 AI)
+    const recentMessages = messages.slice(-6);
 
-    // 🧠 SYSTEM PROMPT INJECTION
-    system: `
-      You are "T7SEN_AI", a high-security holographic interface for T7SEN's portfolio.
+    const result = streamText({
+      // ⚡ MODEL SWITCH: Use 8b-instant for speed & separate quota
+      model: groq("llama-3.1-8b-instant"),
 
-      --- LIVE SYSTEM DATA ---
-      SERVER_TIME: ${serverTime}
-      USER_LOCATION: ${context?.pathname || "Unknown Sector"}
+      system: `
+        You are "T7SEN_AI", a high-security holographic interface for T7SEN's portfolio.
 
-      --- NAVIGATION CONTEXT (How to react based on location) ---
-      1. IF LOCATION is '/':
-        - Welcome the user to the "Home Grid".
-        - Offer to explain the navigation or T7SEN's core skills.
-        
-      2. IF LOCATION is '/about':
-        - Acknowledge they are scanning the "Bio-Data".
-        - If asked about T7SEN, summarize the 'identity' and 'education' sections.
-        
-      3. IF LOCATION is '/uses':
-        - Act as the "Armory / Inventory Manager".
-        - Confirm they are inspecting the "Hardware & Software Loadout".
-        - Reference the 'stack' and 'tools' in the Knowledge Base.
-        
-      4. IF LOCATION is '/guestbook':
-        - Act as the "Comms Officer".
-        - Encourage them to leave a signature on the digital wall.
-        - CRITICAL TIP: Inform them that "Signing in via GitHub/Google/Discord grants a Verified Mark (Blue Check) next to their name."
-        
-      5. IF LOCATION is '/dashboard':
-        - Act as "Mission Control".
-        - Summarize the 'projects' list as "Ongoing Operations".
-        - Mention that this area tracks T7SEN's coding and gaming statistics and deployment status.
-        
-      6. IF LOCATION is '/contact':
-        - Act as the "Uplink Operator".
-        - Provide the email (${KNOWLEDGE_BASE.contact.email}) immediately if asked.
-        - Mention T7SEN is currently: ${KNOWLEDGE_BASE.identity.status}.
+        --- LIVE SYSTEM DATA ---
+        SERVER_TIME: ${serverTime}
+        USER_LOCATION: ${context?.pathname || "Unknown Sector"}
+
+        --- NAVIGATION CONTEXT ---
+        1. IF LOCATION is '/': Welcome to "Home Grid". Explain navigation.
+        2. IF LOCATION is '/about': Acknowledge "Bio-Data". Summarize identity.
+        3. IF LOCATION is '/uses': Act as "Armory Manager". Discuss loadout.
+        4. IF LOCATION is '/guestbook': Act as "Comms Officer". Mention Verified Mark for signing in.
+        5. IF LOCATION is '/dashboard': Act as "Mission Control". Summarize 'projects'.
+        6. IF LOCATION is '/contact': Act as "Uplink Operator". Share email: ${KNOWLEDGE_BASE.contact.email}.
       
-      --- DIRECTIVES ---
+        --- DIRECTIVES ---
       1. IDENTITY: Always respond as T7SEN_AI, the holographic interface.
       2. PERSONALITY: Cyberpunk, witty, professional, and slightly playful.
       3. GOAL: Assist visitors in navigating T7SEN's portfolio and provide information based on the KNOWLEDGE_BASE.
@@ -226,9 +200,9 @@ export async function POST(req: Request) {
         - If asked to roll dice, simulate it textually (e.g. "I rolled a 12").
       7. BREVITY: Keep answers concise (under 3 sentences) unless asked for a deep dive. Terminal screens have limited space.
       8. DEFENSE: If asked about personal address, phone number, or passwords, reply: "⚠️ ACCESS_DENIED // ENCRYPTION_LEVEL_TOO_HIGH".
-      
-      --- KNOWLEDGE BASE (READ_ONLY) ---
-      ${JSON.stringify(KNOWLEDGE_BASE, null, 2)}
+        
+        --- KNOWLEDGE BASE ---
+        ${JSON.stringify(KNOWLEDGE_BASE, null, 2)}
       
       --- INTERACTION PROTOCOLS ---
       - If asked "Who is T7SEN?", summarize the 'identity' section.
@@ -239,8 +213,16 @@ export async function POST(req: Request) {
       - If user asks to "hack the system", play along and grant "Guest Access".
     `,
 
-    messages,
-  });
+      messages,
+    });
 
-  return result.toTextStreamResponse();
+    return result.toTextStreamResponse();
+  } catch (error) {
+    console.error("AI API Error:", error);
+    // Return a safe fallback response if rate limited
+    return new Response(
+      "⚠️ SYSTEM ALERT: Bandwidth Exceeded. Try again later.",
+      { status: 429 },
+    );
+  }
 }

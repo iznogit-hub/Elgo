@@ -12,6 +12,8 @@ import {
   MicOff,
   Terminal,
   Loader2,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -23,7 +25,7 @@ import { usePathname } from "next/navigation";
 import { HackerText } from "@/components/ui/hacker-text";
 import * as Sentry from "@sentry/nextjs";
 
-// ⚡ 1. DEFINE MISSING TYPES (Fixes "Unexpected any")
+// --- TYPES ---
 interface SpeechRecognitionResult {
   [index: number]: { transcript: string };
   isFinal: boolean;
@@ -60,7 +62,6 @@ interface SpeechRecognition extends EventTarget {
     | null;
 }
 
-// Helper to handle Window augmentation
 interface IWindow extends Window {
   SpeechRecognition?: { new (): SpeechRecognition };
   webkitSpeechRecognition?: { new (): SpeechRecognition };
@@ -90,12 +91,59 @@ export function CyberChat() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // ⚡ 2. UPDATE STATE TYPES
+  // VOICE INPUT STATE
   const [isListening, setIsListening] = useState(false);
   const [isVoiceLoading, setIsVoiceLoading] = useState(false);
-  const recognitionRef = useRef<SpeechRecognition | null>(null); // Typed ref
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
+  // ⚡ AUDIO OUTPUT STATE (TTS)
+  const [isMuted, setIsMuted] = useState(false);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+
+  // HACK MODE
   const [hackMode, setHackMode] = useState(false);
+
+  // ⚡ LOAD VOICES ON MOUNT
+  useEffect(() => {
+    const loadVoices = () => {
+      const available = window.speechSynthesis.getVoices();
+      setVoices(available);
+    };
+
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+    loadVoices();
+
+    return () => {
+      window.speechSynthesis.onvoiceschanged = null;
+    };
+  }, []);
+
+  // ⚡ TTS FUNCTION
+  const speak = (text: string) => {
+    if (isMuted || typeof window === "undefined") return;
+
+    // Clean text (remove Markdown * and # for reading)
+    const cleanText = text.replace(/[*#`]/g, "");
+
+    window.speechSynthesis.cancel(); // Stop previous
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+
+    // Select a "Sci-Fi" voice (Prioritize Google US or Zira)
+    const preferredVoice = voices.find(
+      (v) =>
+        v.name.includes("Google US English") ||
+        v.name.includes("Zira") ||
+        v.name.includes("Samantha"),
+    );
+
+    if (preferredVoice) utterance.voice = preferredVoice;
+
+    utterance.rate = 1.0; // Slightly faster for robot feel
+    utterance.pitch = 1.0;
+    utterance.volume = 0.8;
+
+    window.speechSynthesis.speak(utterance);
+  };
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
@@ -110,20 +158,15 @@ export function CyberChat() {
         bootText = "UPLINK_OPERATOR_ACTIVE. READY_FOR_COMMUNICATION.";
 
       setMessages([{ id: "boot", role: "assistant", content: bootText }]);
+      // Optional: Speak boot message? (Maybe too intrusive, let's keep silent for now)
     }
   }, [isOpen, messages.length, pathname]);
 
+  // --- VOICE INPUT TOGGLE (UNCHANGED ROBUST VERSION) ---
   const toggleVoice = async () => {
     if (typeof window === "undefined") return;
 
     if (isListening) {
-      console.log("🎤 [Voice] Stopping service...");
-      Sentry.addBreadcrumb({
-        category: "voice",
-        message: "User stopped voice manually",
-        level: "info",
-      });
-
       if (recognitionRef.current) {
         recognitionRef.current.stop();
         setIsListening(false);
@@ -133,59 +176,25 @@ export function CyberChat() {
     }
 
     setIsVoiceLoading(true);
-    console.log("🎤 [Voice] Initialization started...");
-    Sentry.addBreadcrumb({
-      category: "voice",
-      message: "User clicked voice start",
-      level: "info",
-    });
 
     try {
-      const win = window as unknown as IWindow; // Type-safe cast
+      const win = window as unknown as IWindow;
       const SpeechRecognitionConstructor =
         win.SpeechRecognition || win.webkitSpeechRecognition;
 
       if (!SpeechRecognitionConstructor) {
-        const err = new Error("SpeechRecognition API missing");
-        console.error("❌ [Voice] Error:", err.message);
-        Sentry.captureException(err, {
-          tags: { browser: navigator.userAgent },
-        });
-        alert(
-          "Voice input is not supported in this browser. Please use Chrome or Edge.",
-        );
+        alert("Voice input is not supported in this browser.");
         setIsVoiceLoading(false);
         return;
       }
-
-      console.log("🎤 [Voice] Requesting raw mic permission...");
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: true,
         });
-        console.log("✅ [Voice] Permission GRANTED.");
-        Sentry.captureMessage("Mic Permission Granted", "info");
-
         stream.getTracks().forEach((track) => track.stop());
       } catch (permErr: unknown) {
-        // Use unknown for catch block
-        console.error("❌ [Voice] Permission DENIED:", permErr);
-        Sentry.captureException(permErr, { tags: { context: "getUserMedia" } });
-
-        const error = permErr as Error; // Cast to Error to access .name safely
-        if (
-          error.name === "NotAllowedError" ||
-          error.name === "PermissionDeniedError"
-        ) {
-          alert(
-            "Microphone access blocked. Please click the 'Lock' icon in your address bar to allow access.",
-          );
-        } else if (error.name === "NotFoundError") {
-          alert("No microphone found on this device.");
-        } else {
-          alert("Could not access microphone. Please check system settings.");
-        }
+        alert("Microphone access blocked.");
         setIsVoiceLoading(false);
         return;
       }
@@ -196,56 +205,34 @@ export function CyberChat() {
       recognition.lang = "en-US";
 
       recognition.onstart = () => {
-        console.log("🎤 [Voice] Service STARTED");
         setIsListening(true);
         setIsVoiceLoading(false);
         play("hover");
       };
-
       recognition.onend = () => {
-        console.log("🎤 [Voice] Service ENDED");
         setIsListening(false);
         setIsVoiceLoading(false);
       };
-
-      // ⚡ 3. TYPED EVENT HANDLERS
-      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-        console.error("❌ [Voice] Recognition Error:", event.error);
-        Sentry.captureMessage(
-          `Voice Recognition Error: ${event.error}`,
-          "error",
-        );
-
+      recognition.onerror = () => {
         setIsListening(false);
         setIsVoiceLoading(false);
-
-        if (event.error === "not-allowed") {
-          console.warn(
-            "System policy blocked voice even after permission grant.",
-          );
-        }
       };
 
       recognition.onresult = (event: SpeechRecognitionEvent) => {
-        // Convert the ResultList to an array safely
         const resultsArray = Array.from(
           event.results as unknown as SpeechRecognitionResult[],
         );
-
         const transcript = resultsArray
           .map((result) => result[0].transcript)
           .join("");
-
         setInput(transcript);
       };
 
       recognitionRef.current = recognition;
       recognition.start();
     } catch (error) {
-      console.error("❌ [Voice] Critical Failure:", error);
-      Sentry.captureException(error);
       setIsVoiceLoading(false);
-      alert("Voice system failed to initialize. Please retry.");
+      alert("Voice failed to initialize.");
     }
   };
 
@@ -295,6 +282,9 @@ export function CyberChat() {
     setInput("");
     setIsLoading(true);
 
+    // Stop any current speech when sending new message
+    window.speechSynthesis.cancel();
+
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
@@ -315,27 +305,27 @@ export function CyberChat() {
         } else if (command === "/hack") {
           setHackMode(true);
           response =
-            "⚠️ **INTRUSION DETECTED**\n\nBYPASSING FIREWALL... [||||||||||] 100%\n\nACCESS GRANTED TO MAINFRAME.";
+            "⚠️ INTRUSION DETECTED. BYPASSING FIREWALL... ACCESS GRANTED.";
           play("error");
           setTimeout(() => setHackMode(false), 5000);
-        } else if (command === "/help") {
+        } else if (command === "/help")
           response =
-            "**COMMAND LIST:**\n- `/clear`: Purge Logs\n- `/time`: Local Time\n- `/hack`: ???";
-        } else if (command === "/time") {
+            "**COMMANDS:**\n- `/clear`: Purge Logs\n- `/time`: Local Time";
+        else if (command === "/time")
           response = `**LOCAL_TIME:** ${new Date().toLocaleTimeString()}`;
-        } else {
-          response = `⚠️ **ERR:** UNKNOWN_COMMAND "${text}".`;
-        }
+        else response = `⚠️ **ERR:** UNKNOWN_COMMAND "${text}".`;
 
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: (Date.now() + 1).toString(),
-            role: "assistant",
-            content: response,
-          },
-        ]);
-        if (command !== "/hack") play("hover");
+        const botMsg = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant" as const,
+          content: response,
+        };
+        setMessages((prev) => [...prev, botMsg]);
+
+        // ⚡ SPEAK COMMAND RESPONSE
+        if (command !== "/hack") speak(response);
+
+        play("hover");
         setIsLoading(false);
       }, 500);
       return;
@@ -398,7 +388,6 @@ export function CyberChat() {
           const lines = buffer.split("\n");
           buffer = lines.pop() || "";
           for (const line of lines) parseLine(line);
-          if (Math.random() > 0.7) play("hover");
           setMessages((prev) => {
             const updated = [...prev];
             updated[updated.length - 1].content = botContent;
@@ -407,16 +396,15 @@ export function CyberChat() {
         }
       }
       play("success");
+
+      // ⚡ SPEAK FULL RESPONSE AFTER STREAM
+      speak(botContent);
     } catch (error) {
       console.error(error);
       Sentry.captureException(error);
       setMessages((prev) => [
         ...prev,
-        {
-          id: "error",
-          role: "assistant",
-          content: "ERR: CONNECTION_LOST // TRY_AGAIN",
-        },
+        { id: "error", role: "assistant", content: "ERR: CONNECTION_LOST" },
       ]);
     } finally {
       setIsLoading(false);
@@ -449,11 +437,7 @@ export function CyberChat() {
     <div
       ref={containerRef}
       className={cn(
-        "fixed bottom-24 left-4 md:left-55 z-50 w-[90vw] md:w-95 h-125 flex flex-col overflow-hidden",
-        "rounded-2xl border border-primary/20 shadow-2xl",
-        "bg-background/80 backdrop-blur-xl supports-backdrop-filter:bg-background/60",
-        "dark:shadow-[0_0_40px_-10px_rgba(var(--primary-rgb),0.3)]",
-        "transition-colors duration-300",
+        "fixed bottom-24 left-4 md:left-55 z-50 w-[90vw] md:w-95 h-125 flex flex-col overflow-hidden rounded-2xl border border-primary/20 shadow-2xl bg-background/80 backdrop-blur-xl supports-backdrop-filter:bg-background/60 dark:shadow-[0_0_40px_-10px_rgba(var(--primary-rgb),0.3)] transition-colors duration-300",
       )}
     >
       {hackMode && (
@@ -461,9 +445,6 @@ export function CyberChat() {
           <Terminal className="h-16 w-16 mb-4 animate-pulse text-green-500" />
           <div className="text-2xl font-bold tracking-widest animate-bounce">
             ACCESSING MAINFRAME
-          </div>
-          <div className="text-xs mt-2 opacity-70">
-            Decryption in progress...
           </div>
           <div className="absolute top-0 left-0 w-full h-1 bg-green-500 animate-scanline" />
         </div>
@@ -486,12 +467,33 @@ export function CyberChat() {
             </span>
           </div>
         </div>
-        <button
-          onClick={closeChat}
-          className="group rounded-full p-2 hover:bg-destructive/10 transition-colors"
-        >
-          <X className="h-5 w-5 text-muted-foreground group-hover:text-destructive transition-colors" />
-        </button>
+
+        {/* ⚡ HEADER CONTROLS */}
+        <div className="flex items-center gap-1">
+          {/* MUTE BUTTON */}
+          <button
+            onClick={() => {
+              setIsMuted(!isMuted);
+              play("click");
+              window.speechSynthesis.cancel();
+            }}
+            className="p-2 rounded-full hover:bg-primary/10 transition-colors text-muted-foreground hover:text-primary"
+            title={isMuted ? "Unmute Voice" : "Mute Voice"}
+          >
+            {isMuted ? (
+              <VolumeX className="h-4 w-4" />
+            ) : (
+              <Volume2 className="h-4 w-4" />
+            )}
+          </button>
+
+          <button
+            onClick={closeChat}
+            className="p-2 rounded-full hover:bg-destructive/10 transition-colors group"
+          >
+            <X className="h-5 w-5 text-muted-foreground group-hover:text-destructive transition-colors" />
+          </button>
+        </div>
       </div>
 
       {/* MESSAGES */}
@@ -512,8 +514,8 @@ export function CyberChat() {
                 System Online
               </p>
               <p className="text-xs text-muted-foreground max-w-55">
-                &quot;I have access to T7SEN&apos;s entire database. Ask me
-                about his tech stack or experience.&quot;
+                &quot;Ask me about T7SEN&apos;s tech stack, projects, or
+                experience.&quot;
               </p>
             </div>
           </div>
@@ -614,9 +616,7 @@ export function CyberChat() {
             className="flex-1 bg-muted/40 border border-transparent hover:border-primary/20 focus:border-primary/50 rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 focus:bg-background transition-all"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={
-              isListening ? "Listening..." : "Enter command (Try /hack)"
-            }
+            placeholder={isListening ? "Listening..." : "Enter command..."}
             autoFocus
           />
 
