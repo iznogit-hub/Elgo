@@ -2,7 +2,17 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Cpu, X, Sparkles, Zap } from "lucide-react";
+import {
+  Send,
+  Cpu,
+  X,
+  Sparkles,
+  Zap,
+  Mic,
+  MicOff,
+  Terminal,
+  Loader2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useSfx } from "@/hooks/use-sfx";
@@ -11,6 +21,50 @@ import { useGSAP } from "@gsap/react";
 import ReactMarkdown from "react-markdown";
 import { usePathname } from "next/navigation";
 import { HackerText } from "@/components/ui/hacker-text";
+import * as Sentry from "@sentry/nextjs";
+
+// ⚡ 1. DEFINE MISSING TYPES (Fixes "Unexpected any")
+interface SpeechRecognitionResult {
+  [index: number]: { transcript: string };
+  isFinal: boolean;
+}
+
+interface SpeechRecognitionResultList {
+  [index: number]: SpeechRecognitionResult;
+  length: number;
+}
+
+interface SpeechRecognitionEvent {
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionErrorEvent {
+  error: string;
+  message: string;
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+  onstart: ((this: SpeechRecognition, ev: Event) => void) | null;
+  onend: ((this: SpeechRecognition, ev: Event) => void) | null;
+  onerror:
+    | ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => void)
+    | null;
+  onresult:
+    | ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void)
+    | null;
+}
+
+// Helper to handle Window augmentation
+interface IWindow extends Window {
+  SpeechRecognition?: { new (): SpeechRecognition };
+  webkitSpeechRecognition?: { new (): SpeechRecognition };
+}
 
 interface Message {
   id: string;
@@ -36,10 +90,16 @@ export function CyberChat() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // ⚡ 2. UPDATE STATE TYPES
+  const [isListening, setIsListening] = useState(false);
+  const [isVoiceLoading, setIsVoiceLoading] = useState(false);
+  const recognitionRef = useRef<SpeechRecognition | null>(null); // Typed ref
+
+  const [hackMode, setHackMode] = useState(false);
+
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       let bootText = "SYSTEM_ONLINE... WAITING_FOR_INPUT.";
-
       if (pathname === "/guestbook")
         bootText = "COMMS_STATION_ACTIVE. SIGN_IN_TO_LEAVE_TRACE.";
       else if (pathname === "/about")
@@ -49,17 +109,146 @@ export function CyberChat() {
       else if (pathname === "/contact")
         bootText = "UPLINK_OPERATOR_ACTIVE. READY_FOR_COMMUNICATION.";
 
-      setMessages([
-        {
-          id: "boot",
-          role: "assistant",
-          content: bootText,
-        },
-      ]);
+      setMessages([{ id: "boot", role: "assistant", content: bootText }]);
     }
   }, [isOpen, messages.length, pathname]);
 
-  // --- ANIMATION: HOLOGRAPHIC PROJECTION ---
+  const toggleVoice = async () => {
+    if (typeof window === "undefined") return;
+
+    if (isListening) {
+      console.log("🎤 [Voice] Stopping service...");
+      Sentry.addBreadcrumb({
+        category: "voice",
+        message: "User stopped voice manually",
+        level: "info",
+      });
+
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        setIsListening(false);
+        play("click");
+      }
+      return;
+    }
+
+    setIsVoiceLoading(true);
+    console.log("🎤 [Voice] Initialization started...");
+    Sentry.addBreadcrumb({
+      category: "voice",
+      message: "User clicked voice start",
+      level: "info",
+    });
+
+    try {
+      const win = window as unknown as IWindow; // Type-safe cast
+      const SpeechRecognitionConstructor =
+        win.SpeechRecognition || win.webkitSpeechRecognition;
+
+      if (!SpeechRecognitionConstructor) {
+        const err = new Error("SpeechRecognition API missing");
+        console.error("❌ [Voice] Error:", err.message);
+        Sentry.captureException(err, {
+          tags: { browser: navigator.userAgent },
+        });
+        alert(
+          "Voice input is not supported in this browser. Please use Chrome or Edge.",
+        );
+        setIsVoiceLoading(false);
+        return;
+      }
+
+      console.log("🎤 [Voice] Requesting raw mic permission...");
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+        console.log("✅ [Voice] Permission GRANTED.");
+        Sentry.captureMessage("Mic Permission Granted", "info");
+
+        stream.getTracks().forEach((track) => track.stop());
+      } catch (permErr: unknown) {
+        // Use unknown for catch block
+        console.error("❌ [Voice] Permission DENIED:", permErr);
+        Sentry.captureException(permErr, { tags: { context: "getUserMedia" } });
+
+        const error = permErr as Error; // Cast to Error to access .name safely
+        if (
+          error.name === "NotAllowedError" ||
+          error.name === "PermissionDeniedError"
+        ) {
+          alert(
+            "Microphone access blocked. Please click the 'Lock' icon in your address bar to allow access.",
+          );
+        } else if (error.name === "NotFoundError") {
+          alert("No microphone found on this device.");
+        } else {
+          alert("Could not access microphone. Please check system settings.");
+        }
+        setIsVoiceLoading(false);
+        return;
+      }
+
+      const recognition = new SpeechRecognitionConstructor();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = "en-US";
+
+      recognition.onstart = () => {
+        console.log("🎤 [Voice] Service STARTED");
+        setIsListening(true);
+        setIsVoiceLoading(false);
+        play("hover");
+      };
+
+      recognition.onend = () => {
+        console.log("🎤 [Voice] Service ENDED");
+        setIsListening(false);
+        setIsVoiceLoading(false);
+      };
+
+      // ⚡ 3. TYPED EVENT HANDLERS
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+        console.error("❌ [Voice] Recognition Error:", event.error);
+        Sentry.captureMessage(
+          `Voice Recognition Error: ${event.error}`,
+          "error",
+        );
+
+        setIsListening(false);
+        setIsVoiceLoading(false);
+
+        if (event.error === "not-allowed") {
+          console.warn(
+            "System policy blocked voice even after permission grant.",
+          );
+        }
+      };
+
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        // Convert the ResultList to an array safely
+        const resultsArray = Array.from(
+          event.results as unknown as SpeechRecognitionResult[],
+        );
+
+        const transcript = resultsArray
+          .map((result) => result[0].transcript)
+          .join("");
+
+        setInput(transcript);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (error) {
+      console.error("❌ [Voice] Critical Failure:", error);
+      Sentry.captureException(error);
+      setIsVoiceLoading(false);
+      alert("Voice system failed to initialize. Please retry.");
+    }
+  };
+
   useGSAP(() => {
     if (isOpen && containerRef.current) {
       gsap.fromTo(
@@ -83,7 +272,6 @@ export function CyberChat() {
     }
   }, [isOpen]);
 
-  // Listen for the Avatar Trigger
   useEffect(() => {
     const handleOpen = () => {
       if (!isOpen) {
@@ -95,11 +283,9 @@ export function CyberChat() {
     return () => window.removeEventListener("open-ai-chat", handleOpen);
   }, [isOpen, play]);
 
-  // Auto-scroll
   useEffect(() => {
-    if (scrollRef.current) {
+    if (scrollRef.current)
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
   }, [messages]);
 
   const sendMessage = async (text: string) => {
@@ -109,7 +295,6 @@ export function CyberChat() {
     setInput("");
     setIsLoading(true);
 
-    // ⚡ 1. ADD USER MESSAGE
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
@@ -117,37 +302,31 @@ export function CyberChat() {
     };
     setMessages((prev) => [...prev, userMessage]);
 
-    // ⚡ 2. SLASH COMMAND INTERCEPTOR
     if (text.startsWith("/")) {
       const command = text.toLowerCase().trim();
       let response = "";
 
-      // Delay slightly to simulate processing
       setTimeout(() => {
-        if (command === "/clear" || command === "/cls") {
-          setMessages([]); // Wipe history
+        if (command === "/clear") {
+          setMessages([]);
           play("success");
           setIsLoading(false);
           return;
+        } else if (command === "/hack") {
+          setHackMode(true);
+          response =
+            "⚠️ **INTRUSION DETECTED**\n\nBYPASSING FIREWALL... [||||||||||] 100%\n\nACCESS GRANTED TO MAINFRAME.";
+          play("error");
+          setTimeout(() => setHackMode(false), 5000);
         } else if (command === "/help") {
           response =
-            "**AVAILABLE COMMANDS:**\n\n- `/clear` : Purge terminal logs.\n- `/time` : Check local system time.\n- `/roll` : Simulate D20 roll.";
+            "**COMMAND LIST:**\n- `/clear`: Purge Logs\n- `/time`: Local Time\n- `/hack`: ???";
         } else if (command === "/time") {
-          response = `**LOCAL_SYSTEM_TIME:** ${new Date().toLocaleTimeString()}`;
-        } else if (command === "/roll") {
-          const roll = Math.floor(Math.random() * 20) + 1;
-          const crit =
-            roll === 20
-              ? " (CRITICAL HIT)"
-              : roll === 1
-                ? " (CRITICAL FAIL)"
-                : "";
-          response = `**RNG_OUTPUT:** ${roll} / 20${crit}`;
+          response = `**LOCAL_TIME:** ${new Date().toLocaleTimeString()}`;
         } else {
-          response = `⚠️ **ERR:** UNKNOWN_COMMAND "${text}". Type \`/help\` for list.`;
+          response = `⚠️ **ERR:** UNKNOWN_COMMAND "${text}".`;
         }
 
-        // Add System Response
         setMessages((prev) => [
           ...prev,
           {
@@ -156,14 +335,12 @@ export function CyberChat() {
             content: response,
           },
         ]);
-        play("hover");
+        if (command !== "/hack") play("hover");
         setIsLoading(false);
-      }, 400);
-
-      return; // 🛑 STOP HERE - Do not send to API
+      }, 500);
+      return;
     }
 
-    // ⚡ 3. STANDARD API CALL (If not a command)
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -175,7 +352,6 @@ export function CyberChat() {
       });
 
       if (!response.ok) throw new Error(response.statusText);
-
       const botId = (Date.now() + 1).toString();
       setMessages((prev) => [
         ...prev,
@@ -184,7 +360,6 @@ export function CyberChat() {
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
-
       let botContent = "";
       let buffer = "";
 
@@ -195,11 +370,8 @@ export function CyberChat() {
           if (trimmed.startsWith("0:")) {
             try {
               const jsonStr = trimmed.slice(2);
-              if (jsonStr.startsWith('"')) {
-                botContent += JSON.parse(jsonStr);
-              } else {
-                botContent += jsonStr;
-              }
+              if (jsonStr.startsWith('"')) botContent += JSON.parse(jsonStr);
+              else botContent += jsonStr;
             } catch (e) {
               botContent += trimmed.slice(2);
             }
@@ -215,34 +387,21 @@ export function CyberChat() {
               parseLine(buffer);
               setMessages((prev) => {
                 const updated = [...prev];
-                const lastMsg = updated[updated.length - 1];
-                if (lastMsg.role === "assistant") lastMsg.content = botContent;
+                updated[updated.length - 1].content = botContent;
                 return updated;
               });
             }
             break;
           }
-
           const chunk = decoder.decode(value, { stream: true });
           buffer += chunk;
-
           const lines = buffer.split("\n");
           buffer = lines.pop() || "";
-
-          for (const line of lines) {
-            parseLine(line);
-          }
-
-          if (Math.random() > 0.7) {
-            play("hover");
-          }
-
+          for (const line of lines) parseLine(line);
+          if (Math.random() > 0.7) play("hover");
           setMessages((prev) => {
             const updated = [...prev];
-            const lastMsg = updated[updated.length - 1];
-            if (lastMsg.role === "assistant") {
-              lastMsg.content = botContent;
-            }
+            updated[updated.length - 1].content = botContent;
             return updated;
           });
         }
@@ -250,6 +409,7 @@ export function CyberChat() {
       play("success");
     } catch (error) {
       console.error(error);
+      Sentry.captureException(error);
       setMessages((prev) => [
         ...prev,
         {
@@ -267,11 +427,9 @@ export function CyberChat() {
     e.preventDefault();
     sendMessage(input);
   };
-
   const handleChipClick = (action: string) => {
     sendMessage(action);
   };
-
   const closeChat = () => {
     play("click");
     gsap.to(containerRef.current, {
@@ -298,6 +456,19 @@ export function CyberChat() {
         "transition-colors duration-300",
       )}
     >
+      {hackMode && (
+        <div className="absolute inset-0 z-50 bg-black/90 flex flex-col items-center justify-center font-mono text-green-500 pointer-events-none">
+          <Terminal className="h-16 w-16 mb-4 animate-pulse text-green-500" />
+          <div className="text-2xl font-bold tracking-widest animate-bounce">
+            ACCESSING MAINFRAME
+          </div>
+          <div className="text-xs mt-2 opacity-70">
+            Decryption in progress...
+          </div>
+          <div className="absolute top-0 left-0 w-full h-1 bg-green-500 animate-scanline" />
+        </div>
+      )}
+
       {/* HEADER */}
       <div className="relative z-10 flex h-14 shrink-0 items-center justify-between border-b border-primary/10 bg-primary/5 px-4">
         <div className="flex items-center gap-3">
@@ -310,11 +481,9 @@ export function CyberChat() {
             <span className="text-xs font-bold tracking-widest text-foreground font-mono">
               <HackerText text="AI_NET_LINK" />
             </span>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-primary font-mono uppercase tracking-widest opacity-80">
-                Neural Link Active
-              </span>
-            </div>
+            <span className="text-[10px] text-primary font-mono uppercase tracking-widest opacity-80">
+              Neural Link Active
+            </span>
           </div>
         </div>
         <button
@@ -325,7 +494,7 @@ export function CyberChat() {
         </button>
       </div>
 
-      {/* CHAT AREA */}
+      {/* MESSAGES */}
       <div
         ref={scrollRef}
         className="relative z-10 flex-1 overflow-y-auto p-4 space-y-6 font-sans text-sm scrollbar-hide"
@@ -349,7 +518,6 @@ export function CyberChat() {
             </div>
           </div>
         )}
-
         {messages.map((m) => (
           <div
             key={m.id}
@@ -411,7 +579,6 @@ export function CyberChat() {
             </span>
           </div>
         ))}
-
         {isLoading && (
           <div className="flex items-start ml-2">
             <div className="bg-card border border-border/50 rounded-2xl rounded-tl-sm px-4 py-3 flex gap-1 shadow-sm">
@@ -423,7 +590,7 @@ export function CyberChat() {
         )}
       </div>
 
-      {/* QUICK CHIPS */}
+      {/* SUGGESTIONS */}
       <div className="px-3 pb-2 pt-2 flex gap-2 overflow-x-auto scrollbar-hide">
         {SUGGESTED_ACTIONS.map((chip) => (
           <button
@@ -437,38 +604,60 @@ export function CyberChat() {
         ))}
       </div>
 
-      {/* INPUT AREA */}
+      {/* INPUT */}
       <form
         onSubmit={handleSubmit}
         className="relative z-10 p-3 bg-background/50 backdrop-blur-md border-t border-primary/10"
       >
-        <div className="relative flex items-center">
+        <div className="relative flex items-center gap-2">
           <input
             className="flex-1 bg-muted/40 border border-transparent hover:border-primary/20 focus:border-primary/50 rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 focus:bg-background transition-all"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Enter command (or type /help)..."
+            placeholder={
+              isListening ? "Listening..." : "Enter command (Try /hack)"
+            }
             autoFocus
           />
-          <div className="absolute right-2 flex items-center">
-            <Button
-              type="submit"
-              size="icon"
-              disabled={isLoading || !input.trim()}
-              className={cn(
-                "h-8 w-8 rounded-lg transition-all",
-                input.trim()
-                  ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(var(--primary),0.3)] hover:scale-105"
-                  : "bg-transparent text-muted-foreground hover:bg-muted",
-              )}
-            >
-              {isLoading ? (
-                <Zap className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
+
+          <Button
+            type="button"
+            size="icon"
+            onClick={toggleVoice}
+            disabled={isVoiceLoading}
+            className={cn(
+              "h-10 w-10 rounded-xl transition-all border border-transparent",
+              isListening
+                ? "bg-red-500/20 text-red-500 border-red-500/50 animate-pulse hover:bg-red-500/30"
+                : "bg-muted/40 text-muted-foreground hover:text-primary hover:bg-primary/10",
+            )}
+          >
+            {isVoiceLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : isListening ? (
+              <MicOff className="h-4 w-4" />
+            ) : (
+              <Mic className="h-4 w-4" />
+            )}
+          </Button>
+
+          <Button
+            type="submit"
+            size="icon"
+            disabled={isLoading || !input.trim()}
+            className={cn(
+              "h-10 w-10 rounded-xl transition-all",
+              input.trim()
+                ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(var(--primary),0.3)] hover:scale-105"
+                : "bg-muted/40 text-muted-foreground hover:bg-muted",
+            )}
+          >
+            {isLoading ? (
+              <Zap className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </Button>
         </div>
       </form>
     </div>
