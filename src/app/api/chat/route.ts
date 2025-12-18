@@ -221,8 +221,13 @@ export async function POST(req: Request) {
     console.error("AI API Error:", error);
     // Return a safe fallback response if rate limited
     return new Response(
-      "⚠️ SYSTEM ALERT: Bandwidth Exceeded. Try again later.",
-      { status: 429 },
+      JSON.stringify({
+        error: "⚠️ SYSTEM ALERT: Bandwidth Exceeded. Try again later.",
+      }),
+      {
+        status: 429,
+        headers: { "Content-Type": "application/json" },
+      },
     );
   }
 }

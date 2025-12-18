@@ -91,7 +91,7 @@ export function CyberChat() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // VOICE INPUT STATE
+  // ⚡ VOICE INPUT STATE
   const [isListening, setIsListening] = useState(false);
   const [isVoiceLoading, setIsVoiceLoading] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -100,35 +100,58 @@ export function CyberChat() {
   const [isMuted, setIsMuted] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
 
+  // ⚡ PERSISTENCE STATE
+  const [isClient, setIsClient] = useState(false);
+
   // HACK MODE
   const [hackMode, setHackMode] = useState(false);
 
-  // ⚡ LOAD VOICES ON MOUNT
+  // 1. LOAD VOICES
   useEffect(() => {
     const loadVoices = () => {
       const available = window.speechSynthesis.getVoices();
       setVoices(available);
     };
-
     window.speechSynthesis.onvoiceschanged = loadVoices;
     loadVoices();
-
     return () => {
       window.speechSynthesis.onvoiceschanged = null;
     };
   }, []);
 
+  // 2. LOAD HISTORY FROM STORAGE
+  useEffect(() => {
+    setIsClient(true);
+    const saved = localStorage.getItem("t7sen_chat_history");
+    if (saved) {
+      try {
+        setMessages(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to load chat history", e);
+      }
+    }
+  }, []);
+
+  // 3. SAVE HISTORY TO STORAGE
+  useEffect(() => {
+    if (isClient && messages.length > 0) {
+      localStorage.setItem("t7sen_chat_history", JSON.stringify(messages));
+    } else if (isClient && messages.length === 0) {
+      localStorage.removeItem("t7sen_chat_history");
+    }
+  }, [messages, isClient]);
+
   // ⚡ TTS FUNCTION
   const speak = (text: string) => {
     if (isMuted || typeof window === "undefined") return;
 
-    // Clean text (remove Markdown * and # for reading)
+    // Clean text (remove Markdown symbols)
     const cleanText = text.replace(/[*#`]/g, "");
 
-    window.speechSynthesis.cancel(); // Stop previous
+    window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(cleanText);
 
-    // Select a "Sci-Fi" voice (Prioritize Google US or Zira)
+    // Pick a good voice
     const preferredVoice = voices.find(
       (v) =>
         v.name.includes("Google US English") ||
@@ -138,7 +161,7 @@ export function CyberChat() {
 
     if (preferredVoice) utterance.voice = preferredVoice;
 
-    utterance.rate = 1.0; // Slightly faster for robot feel
+    utterance.rate = 1.0;
     utterance.pitch = 1.0;
     utterance.volume = 0.8;
 
@@ -146,6 +169,7 @@ export function CyberChat() {
   };
 
   useEffect(() => {
+    // Only show boot message if NO history exists
     if (isOpen && messages.length === 0) {
       let bootText = "SYSTEM_ONLINE... WAITING_FOR_INPUT.";
       if (pathname === "/guestbook")
@@ -158,11 +182,10 @@ export function CyberChat() {
         bootText = "UPLINK_OPERATOR_ACTIVE. READY_FOR_COMMUNICATION.";
 
       setMessages([{ id: "boot", role: "assistant", content: bootText }]);
-      // Optional: Speak boot message? (Maybe too intrusive, let's keep silent for now)
     }
   }, [isOpen, messages.length, pathname]);
 
-  // --- VOICE INPUT TOGGLE (UNCHANGED ROBUST VERSION) ---
+  // --- VOICE INPUT TOGGLE ---
   const toggleVoice = async () => {
     if (typeof window === "undefined") return;
 
@@ -282,8 +305,7 @@ export function CyberChat() {
     setInput("");
     setIsLoading(true);
 
-    // Stop any current speech when sending new message
-    window.speechSynthesis.cancel();
+    window.speechSynthesis.cancel(); // Stop current speech
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -322,7 +344,6 @@ export function CyberChat() {
         };
         setMessages((prev) => [...prev, botMsg]);
 
-        // ⚡ SPEAK COMMAND RESPONSE
         if (command !== "/hack") speak(response);
 
         play("hover");
@@ -397,7 +418,7 @@ export function CyberChat() {
       }
       play("success");
 
-      // ⚡ SPEAK FULL RESPONSE AFTER STREAM
+      // ⚡ SPEAK RESPONSE
       speak(botContent);
     } catch (error) {
       console.error(error);
@@ -468,9 +489,8 @@ export function CyberChat() {
           </div>
         </div>
 
-        {/* ⚡ HEADER CONTROLS */}
+        {/* CONTROLS */}
         <div className="flex items-center gap-1">
-          {/* MUTE BUTTON */}
           <button
             onClick={() => {
               setIsMuted(!isMuted);
@@ -486,7 +506,6 @@ export function CyberChat() {
               <Volume2 className="h-4 w-4" />
             )}
           </button>
-
           <button
             onClick={closeChat}
             className="p-2 rounded-full hover:bg-destructive/10 transition-colors group"
@@ -616,7 +635,11 @@ export function CyberChat() {
             className="flex-1 bg-muted/40 border border-transparent hover:border-primary/20 focus:border-primary/50 rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 focus:bg-background transition-all"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={isListening ? "Listening..." : "Enter command..."}
+            placeholder={
+              isListening
+                ? "Listening..."
+                : "Enter command use /help for list of commands..."
+            }
             autoFocus
           />
 
