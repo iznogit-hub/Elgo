@@ -2,10 +2,10 @@
 
 import React, { useRef } from "react";
 import Image from "next/image";
-import { TransitionLink } from "@/components/ui/transition-link";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { useSfx } from "@/hooks/use-sfx";
+import { useCyberChat } from "@/hooks/use-cyber-chat"; // 1. Import the hook
 
 gsap.registerPlugin(useGSAP);
 
@@ -20,6 +20,7 @@ export function AvatarImage({
 }: AvatarImageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { play } = useSfx();
+  const { openChat } = useCyberChat(); // 2. Initialize hook
 
   useGSAP(
     () => {
@@ -41,18 +42,17 @@ export function AvatarImage({
     <aside
       aria-label="Avatar Image"
       ref={containerRef}
-      // UPDATED CLASS:
-      // 'hidden' by default
-      // 'xl:block' -> Only show on XL screens (Desktop) to keep mobile clean
-      // OR 'lg:block' if you want it on smaller laptops.
-      // I recommend hiding it on mobile/tablet to give text full focus.
       className="fixed bottom-0 left-0 z-50 hidden xl:block opacity-0"
     >
-      <TransitionLink
-        href="/about"
-        onClick={() => play("click")}
+      {/* 3. Changed to button (interactive element) */}
+      <button
+        onClick={() => {
+          play("click");
+          openChat(); // 4. Trigger the chat opening
+        }}
         onMouseEnter={() => play("hover")}
-        className="relative block h-64 w-[256px] cursor-none magnetic-target transition-transform hover:scale-105 active:scale-95"
+        className="relative block h-64 w-[256px] cursor-none magnetic-target transition-transform hover:scale-105 active:scale-95 focus:outline-none"
+        aria-label="Open Neural Interface"
       >
         <Image
           src="/Avatar_waving.png"
@@ -64,7 +64,7 @@ export function AvatarImage({
           draggable={false}
           onLoad={onImageLoad}
         />
-      </TransitionLink>
+      </button>
     </aside>
   );
 }

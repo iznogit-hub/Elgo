@@ -8,6 +8,7 @@ import "./globals.css";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { AdminProvider } from "@/providers/admin-provider";
 import { Toaster } from "sonner";
+import { CyberChat } from "@/components/cyber-chat";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -96,6 +97,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <SoundProvider>
+            <CyberChat />
             <AdminProvider>
               <GlobalAppWrapper>{children}</GlobalAppWrapper>
               <Toaster position="top-center" richColors />
