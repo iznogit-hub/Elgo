@@ -3,8 +3,12 @@ import { ContactClient } from "@/components/pages/contact-client";
 
 export const metadata: Metadata = {
   title: "Contact",
-  description:
-    "Get in touch with t7sen for collaborations, inquiries, or feedback.",
+  description: "Open a secure channel.",
+  openGraph: {
+    images: [
+      "/api/og?title=SECURE_UPLINK&section=CONTACT&description=Initiate%20encrypted%20communication%20channel.",
+    ],
+  },
 };
 
 export default function ContactPage() {

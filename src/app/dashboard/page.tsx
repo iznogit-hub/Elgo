@@ -3,8 +3,13 @@ import { DashboardClient } from "@/components/pages/dashboard-client";
 import { fetchDashboardData } from "@/app/actions/dashboard";
 
 export const metadata: Metadata = {
-  title: "Command Center",
-  description: "Real-time metrics: Coding, Gaming, and System Status.",
+  title: "Dashboard",
+  description: "Real-time system metrics.",
+  openGraph: {
+    images: [
+      "/api/og?title=LIVE_FEED&section=DASHBOARD&description=Real-time%20metrics:%20Coding%20activity,%20music,%20and%20status.",
+    ],
+  },
 };
 
 // Revalidate data every 60 seconds to keep it fresh but cache-friendly

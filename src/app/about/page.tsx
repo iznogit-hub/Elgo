@@ -3,7 +3,12 @@ import { AboutClient } from "@/components/pages/about-client";
 
 export const metadata: Metadata = {
   title: "About",
-  description: "Learn more about t7sen, the developer behind this portfolio.",
+  description: "The architect behind the code.",
+  openGraph: {
+    images: [
+      "/api/og?title=BIO_DATA&section=ABOUT&description=Architecting%20scalable%20systems%20and%20digital%20realities.",
+    ],
+  },
 };
 
 export default function AboutPage() {
