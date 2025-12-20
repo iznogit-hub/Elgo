@@ -7,7 +7,6 @@ import { Shield, Fingerprint } from "lucide-react";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 
 import { HeroSection } from "@/components/home/hero-section";
-import { SocialLinks } from "@/components/home/social-links";
 
 gsap.registerPlugin(useGSAP);
 
@@ -22,7 +21,7 @@ export function HomeClient() {
       gsap.fromTo(
         ".decor-item",
         { opacity: 0 },
-        { opacity: 1, duration: 1, delay: 0.5, stagger: 0.2 }
+        { opacity: 1, duration: 1, delay: 0.5, stagger: 0.2 },
       );
 
       gsap.to(".decor-item", {
@@ -34,7 +33,7 @@ export function HomeClient() {
         stagger: { amount: 3, from: "random" },
       });
     },
-    { scope: containerRef, dependencies: [prefersReducedMotion] }
+    { scope: containerRef, dependencies: [prefersReducedMotion] },
   );
 
   return (
@@ -66,10 +65,6 @@ export function HomeClient() {
         </div>
         <HeroSection />
       </div>
-
-      <footer className="flex w-full flex-col items-center gap-6 pb-8 pt-8 z-10 shrink-0">
-        <SocialLinks />
-      </footer>
     </main>
   );
 }

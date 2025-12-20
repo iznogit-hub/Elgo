@@ -5,7 +5,6 @@ import Image from "next/image";
 import {
   ArrowLeft,
   Cpu,
-  Globe2,
   ScanFace,
   Terminal,
   MapPin,
@@ -259,10 +258,6 @@ export function AboutClient() {
             <span className="animate-pulse text-primary">{`> player_status: TOP_0.1%`}</span>
           </div>
         </div>
-      </div>
-
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-30 pointer-events-none mix-blend-difference">
-        <Globe2 className="h-12 w-12 animate-[spin_10s_linear_infinite]" />
       </div>
     </main>
   );

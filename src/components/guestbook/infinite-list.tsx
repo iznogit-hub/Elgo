@@ -185,7 +185,7 @@ export function InfiniteGuestbookList({
   }
 
   return (
-    <ScrollArea className="h-full w-full max-w-lg rounded-md border border-border/40 bg-background/20 backdrop-blur-sm p-4 relative">
+    <ScrollArea className="h-90 w-full max-w-lg rounded-md border border-border/40 bg-background/20 backdrop-blur-sm p-4 relative">
       {/* Admin Header */}
       {isAdmin && (
         <div className="sticky top-0 left-0 right-0 z-50 flex flex-col items-center gap-2 pb-6 -mt-2 pointer-events-none">
