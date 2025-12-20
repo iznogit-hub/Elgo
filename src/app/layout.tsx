@@ -9,6 +9,7 @@ import { GoogleAnalytics } from "@next/third-parties/google";
 import { AdminProvider } from "@/providers/admin-provider";
 import { Toaster } from "sonner";
 import { CyberChat } from "@/components/cyber-chat";
+import { Footer } from "@/components/footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -64,7 +65,7 @@ export const metadata: Metadata = {
     description:
       "Crafting digital reality through code. Specialized in high-performance web graphics and scalable architecture.",
     images: ["/opengraph-image"],
-    creator: "@T7SEN", // Replace with your actual handle if different
+    creator: "@T7SEN",
   },
   robots: {
     index: true,
@@ -99,7 +100,18 @@ export default function RootLayout({
           <SoundProvider>
             <CyberChat />
             <AdminProvider>
-              <GlobalAppWrapper>{children}</GlobalAppWrapper>
+              <GlobalAppWrapper>
+                <div className="flex min-h-screen flex-col">
+                  <main className="flex-1">
+                    {children}
+                    <div
+                      className="h-24 w-full block lg:hidden"
+                      aria-hidden="true"
+                    />
+                  </main>
+                  <Footer />
+                </div>
+              </GlobalAppWrapper>
               <Toaster position="top-center" richColors />
             </AdminProvider>
           </SoundProvider>
