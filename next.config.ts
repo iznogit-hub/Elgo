@@ -7,6 +7,7 @@ const bundleAnalyzer = withBundleAnalyzer({
 });
 
 const nextConfig: NextConfig = {
+  cacheComponents: true,
   images: {
     remotePatterns: [
       {
