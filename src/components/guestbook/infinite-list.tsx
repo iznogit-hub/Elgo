@@ -122,6 +122,7 @@ function GuestbookCard({
       {/* 3. Footer */}
       <div className="flex items-center justify-between shrink-0 pt-2 border-t border-white/5">
         <span
+          suppressHydrationWarning
           className="text-[9px] text-muted-foreground/50 font-medium hover:text-foreground/80 transition-colors cursor-help"
           title={new Date(entry.timestamp).toLocaleString()}
         >
