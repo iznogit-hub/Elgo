@@ -27,7 +27,8 @@ interface InfiniteGuestbookListProps {
   initialEntries: GuestbookEntry[];
 }
 
-// --- HELPER COMPONENTS ---
+const CARD_WIDTH = 280;
+const GAP = 16; // gap-4 = 1rem = 16px
 
 const ProviderIcon = ({ provider }: { provider?: string }) => {
   if (provider === "github")
@@ -54,7 +55,6 @@ const ProviderIcon = ({ provider }: { provider?: string }) => {
   return null;
 };
 
-// --- ANIMATED CARD COMPONENT ---
 function GuestbookCard({
   entry,
   index,
@@ -77,7 +77,7 @@ function GuestbookCard({
       ([entry]) => {
         if (entry.isIntersecting) {
           setIsVisible(true);
-          observer.disconnect(); // Only animate once
+          observer.disconnect();
         }
       },
       { threshold: 0.1 },
@@ -91,16 +91,17 @@ function GuestbookCard({
     <div
       ref={ref}
       className={cn(
-        "w-75 md:w-87.5 shrink-0 flex flex-col gap-3 rounded-lg border border-border/40 bg-background/40 p-5 backdrop-blur-md group relative hover:bg-background/60 transition-all duration-500 whitespace-normal select-none",
+        "shrink-0 flex flex-col gap-3 rounded-xl border border-border/40 bg-background/40 p-5 backdrop-blur-md group relative hover:bg-background/60 transition-all duration-500 whitespace-normal select-none",
         isVisible ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10",
       )}
       style={{
+        width: `${CARD_WIDTH}px`,
+        height: "170px",
         transitionDelay: `${(index % 5) * 100}ms`,
       }}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3 w-full">
-          {/* Avatar */}
           <div className="relative h-8 w-8 shrink-0 rounded-full border border-border/50 bg-muted overflow-hidden">
             <Image
               src={entry.avatar || "/Avatar.png"}
@@ -147,14 +148,13 @@ function GuestbookCard({
         </div>
       </div>
 
-      <p className="text-sm text-foreground/90 wrap-break-word whitespace-pre-wrap leading-relaxed h-full overflow-y-auto max-h-37.5 scrollbar-hide">
+      <p className="text-sm text-foreground/90 wrap-break-word whitespace-pre-wrap leading-relaxed h-full overflow-y-auto max-h-35 scrollbar-hide">
         {entry.message}
       </p>
     </div>
   );
 }
 
-// --- MAIN LIST COMPONENT ---
 export function InfiniteGuestbookList({
   initialEntries,
 }: InfiniteGuestbookListProps) {
@@ -163,7 +163,6 @@ export function InfiniteGuestbookList({
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
-  // AUTO-SCROLL STATE
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isPaused, setIsPaused] = useState(false);
   const animationRef = useRef<number>(0);
@@ -171,6 +170,10 @@ export function InfiniteGuestbookList({
   const { isAdmin } = useAdmin();
   const { play } = useSfx();
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Calculate the exact pixel width of one full set of cards
+  // (Card Width + Gap) * Number of Cards
+  const singleSetWidth = entries.length * (CARD_WIDTH + GAP);
 
   const isDuplicate = (
     newEntry: GuestbookEntry,
@@ -219,14 +222,31 @@ export function InfiniteGuestbookList({
     }
   };
 
-  // --- AUTO SCROLL LOGIC ---
+  // --- 1. UNIFIED SCROLL HANDLER (MANUAL & AUTO) ---
+  // This ensures the loop resets seamlessly regardless of how the scroll happens
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      // If we've scrolled past the first set, snap back to 0
+      if (container.scrollLeft >= singleSetWidth) {
+        container.scrollLeft -= singleSetWidth;
+      }
+    };
+
+    container.addEventListener("scroll", handleScroll);
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [singleSetWidth]);
+
+  // --- 2. ANIMATION LOOP ---
+  // Only handles movement. The reset is handled by the scroll listener above.
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
 
     const animate = () => {
       if (!isPaused) {
-        // Scroll Speed: 0.5px per frame
         container.scrollLeft += 0.5;
       }
       animationRef.current = requestAnimationFrame(animate);
@@ -236,7 +256,7 @@ export function InfiniteGuestbookList({
     return () => cancelAnimationFrame(animationRef.current);
   }, [isPaused]);
 
-  // --- MOUSE WHEEL HANDLER (Horizontal Scroll) ---
+  // --- 3. MOUSE WHEEL HANDLER ---
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
@@ -247,13 +267,11 @@ export function InfiniteGuestbookList({
         container.scrollLeft += e.deltaY;
       }
     };
-
-    // Passive: false is required to preventDefault
     container.addEventListener("wheel", handleWheel, { passive: false });
     return () => container.removeEventListener("wheel", handleWheel);
   }, []);
 
-  // --- REALTIME UPDATES ---
+  // --- DATA SYNC ---
   useEffect(() => {
     const handleNewEntry = (event: Event) => {
       const customEvent = event as CustomEvent<GuestbookEntry>;
@@ -338,7 +356,10 @@ export function InfiniteGuestbookList({
         </div>
       )}
 
-      {/* SCROLLAREA */}
+      {/* Scroll Container
+        Note: Using 'gap-4' instead of 'space-x-4' for consistent math calculation.
+        'items-start' is maintained to keep cards at the top.
+      */}
       <div
         ref={scrollRef}
         className="w-full h-full overflow-x-auto whitespace-nowrap scrollbar-none [&::-webkit-scrollbar]:hidden"
@@ -347,10 +368,22 @@ export function InfiniteGuestbookList({
         onTouchStart={() => setIsPaused(true)}
         onTouchEnd={() => setIsPaused(false)}
       >
-        <div className="flex w-max space-x-4 p-1 pt-2 pb-4 items-start h-full">
+        <div className="flex w-max gap-4 p-1 pt-2 pb-4 items-start h-full px-4">
+          {/* ORIGINAL SET */}
           {entries.map((entry, i) => (
             <GuestbookCard
-              key={`${entry.timestamp}-${entry.name}-${i}`}
+              key={`orig-${entry.timestamp}-${entry.name}-${i}`}
+              entry={entry}
+              index={i}
+              isAdmin={isAdmin}
+              onDelete={handleDelete}
+            />
+          ))}
+
+          {/* DUPLICATE SET (For Infinite Loop) */}
+          {entries.map((entry, i) => (
+            <GuestbookCard
+              key={`dup-${entry.timestamp}-${entry.name}-${i}`}
               entry={entry}
               index={i}
               isAdmin={isAdmin}
