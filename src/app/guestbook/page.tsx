@@ -1,7 +1,8 @@
+import { auth } from "@/auth";
 import { Metadata } from "next";
-import { auth } from "@/auth"; // <--- Import auth
-import { GuestbookList } from "@/components/guestbook/list";
 import { GuestbookClient } from "@/components/pages/guestbook-client";
+import { InfiniteGuestbookList } from "@/components/guestbook/infinite-list";
+import { fetchGuestbookEntries } from "@/app/actions/guestbook";
 
 export const metadata: Metadata = {
   title: "Guestbook",
@@ -13,15 +14,20 @@ export const metadata: Metadata = {
   },
 };
 
-export const dynamic = "force-dynamic";
-
 export default async function GuestbookPage() {
+  // 1. Fetch User Session (Dynamic)
   const session = await auth();
 
+  // 2. Fetch Initial Data (Cached via "use cache" in the action)
+  // We fetch the first 20 items server-side for immediate SEO and performance.
+  const initialEntries = await fetchGuestbookEntries(0, 20);
+
+  // 3. Render Composition
+  // GuestbookClient handles the layout/animations.
+  // InfiniteGuestbookList handles the interactive list and "load more" logic.
   return (
-    // Pass the user object (or null) to the client wrapper
     <GuestbookClient user={session?.user}>
-      <GuestbookList />
+      <InfiniteGuestbookList initialEntries={initialEntries} />
     </GuestbookClient>
   );
 }
