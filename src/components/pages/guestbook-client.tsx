@@ -177,16 +177,7 @@ export function GuestbookClient({
         </div>
 
         {/* FULL WIDTH: Horizontal List */}
-        <div
-          className="gb-list-container w-full max-w-400 mx-auto min-h-0 flex-1 opacity-0 relative overflow-hidden px-0 md:px-8"
-          style={{
-            // Uses rgb(0 0 0 / 0) for smoother alpha interpolation at the very edges compared to 'transparent'
-            maskImage:
-              "linear-gradient(to right, rgb(0 0 0 / 0) 0%, rgb(0 0 0 / 1) 400px, rgb(0 0 0 / 1) calc(100% - 400px), rgb(0 0 0 / 0) 100%)",
-            WebkitMaskImage:
-              "linear-gradient(to right, rgb(0 0 0 / 0) 0%, rgb(0 0 0 / 1) 400px, rgb(0 0 0 / 1) calc(100% - 400px), rgb(0 0 0 / 0) 100%)",
-          }}
-        >
+        <div className="gb-list-container w-full max-w-400 mx-auto min-h-0 flex-1 opacity-0 relative overflow-hidden px-0 md:px-8">
           {children}
         </div>
       </div>

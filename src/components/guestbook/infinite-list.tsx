@@ -42,7 +42,7 @@ const ProviderIcon = ({ provider }: { provider?: string }) => {
   return null;
 };
 
-// --- REDESIGNED CARD ---
+// --- CARD COMPONENT ---
 function GuestbookCard({
   entry,
   index,
@@ -88,7 +88,7 @@ function GuestbookCard({
         transitionDelay: `${(index % 5) * 100}ms`,
       }}
     >
-      {/* 1. Header Row: Avatar | Name | Provider */}
+      {/* 1. Header Row */}
       <div className="flex items-center gap-3 shrink-0">
         <div className="relative h-6 w-6 shrink-0 overflow-hidden rounded-full ring-1 ring-white/10 shadow-sm">
           <Image
@@ -111,20 +111,19 @@ function GuestbookCard({
         </div>
       </div>
 
-      {/* 2. Message Body: Takes available space */}
+      {/* 2. Message Body */}
       <div className="relative flex-1 min-h-0 group/text my-2">
         <p className="text-xs text-foreground/80 leading-relaxed font-normal whitespace-pre-wrap overflow-y-auto scrollbar-none h-full pr-1">
           {entry.message}
         </p>
-        {/* Fade effect at bottom */}
         <div className="absolute bottom-0 left-0 right-0 h-4 bg-linear-to-t from-background/5 to-transparent pointer-events-none opacity-0 group-hover/text:opacity-100 transition-opacity" />
       </div>
 
-      {/* 3. Footer: Date & Admin Controls */}
+      {/* 3. Footer */}
       <div className="flex items-center justify-between shrink-0 pt-2 border-t border-white/5">
         <span
           className="text-[9px] text-muted-foreground/50 font-medium hover:text-foreground/80 transition-colors cursor-help"
-          title={new Date(entry.timestamp).toLocaleString()} // HOVER RESTORED
+          title={new Date(entry.timestamp).toLocaleString()}
         >
           {formatDistanceToNow(entry.timestamp, { addSuffix: true })}
         </span>
@@ -155,6 +154,7 @@ export function InfiniteGuestbookList({
 
   // Auto-scroll logic
   const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollAccumulator = useRef(0); // FIX: Accumulates sub-pixel movements
   const [isPaused, setIsPaused] = useState(false);
   const animationRef = useRef<number>(0);
 
@@ -162,7 +162,6 @@ export function InfiniteGuestbookList({
   const { play } = useSfx();
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // Calculate width for infinite loop reset
   const singleSetWidth = entries.length * (CARD_WIDTH + GAP);
 
   const isDuplicate = (
@@ -212,13 +211,12 @@ export function InfiniteGuestbookList({
     }
   };
 
-  // --- UNIFIED SCROLL HANDLER ---
+  // --- LOOP RESET LOGIC ---
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
 
     const handleScroll = () => {
-      // Loop Reset Logic
       if (container.scrollLeft >= singleSetWidth) {
         container.scrollLeft -= singleSetWidth;
       }
@@ -228,14 +226,22 @@ export function InfiniteGuestbookList({
     return () => container.removeEventListener("scroll", handleScroll);
   }, [singleSetWidth]);
 
-  // --- ANIMATION LOOP ---
+  // --- ANIMATION LOOP (ACCUMULATOR FIX) ---
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
 
     const animate = () => {
       if (!isPaused) {
-        container.scrollLeft += 0.5;
+        // Accumulate speed (0.5 is slow and smooth)
+        scrollAccumulator.current += 0.5;
+
+        // Only move when we have a full pixel to move
+        const movePixels = Math.floor(scrollAccumulator.current);
+        if (movePixels > 0) {
+          container.scrollLeft += movePixels;
+          scrollAccumulator.current -= movePixels;
+        }
       }
       animationRef.current = requestAnimationFrame(animate);
     };
@@ -317,7 +323,12 @@ export function InfiniteGuestbookList({
       <div className="flex h-40 w-full items-center justify-center rounded-md border border-border/40 bg-background/20 backdrop-blur-sm p-4">
         <p className="text-sm italic text-muted-foreground">No messages yet.</p>
         {isAdmin && (
-          <div className="text-[10px] text-red-500 font-mono">ADMIN ACTIVE</div>
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4">
+            <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/50 text-green-500 px-3 py-1 rounded-full text-[10px] font-mono font-bold tracking-widest backdrop-blur-md shadow-sm">
+              <ShieldCheck className="w-3 h-3" />
+              <span>ADMIN_ACTIVE</span>
+            </div>
+          </div>
         )}
       </div>
     );
@@ -325,9 +336,13 @@ export function InfiniteGuestbookList({
 
   return (
     <div className="relative w-full h-full">
+      {/* ADMIN PURGE BUTTON 
+         - Positioned absolute top/left relative to this container (which is now unmasked)
+         - z-50 ensures it's above the scroll list
+      */}
       {isAdmin && (
-        <div className="absolute top-0 left-0 z-50 flex items-center gap-4 mb-4 -mt-10 pl-2">
-          <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/50 text-green-500 px-3 py-1 rounded-full text-[10px] font-mono font-bold tracking-widest backdrop-blur-md">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4">
+          <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/50 text-green-500 px-3 py-1 rounded-full text-[10px] font-mono font-bold tracking-widest backdrop-blur-md shadow-sm">
             <ShieldCheck className="w-3 h-3" />
             <span>ADMIN_ACTIVE</span>
           </div>
@@ -343,10 +358,18 @@ export function InfiniteGuestbookList({
         </div>
       )}
 
-      {/* Scroll Container */}
+      {/* SCROLL CONTAINER
+         - Mask applied here.
+      */}
       <div
         ref={scrollRef}
         className="w-full h-full overflow-x-auto whitespace-nowrap scrollbar-none [&::-webkit-scrollbar]:hidden"
+        style={{
+          maskImage:
+            "linear-gradient(to right, rgb(0 0 0 / 0) 0%, rgb(0 0 0 / 1) 200px, rgb(0 0 0 / 1) calc(100% - 200px), rgb(0 0 0 / 0) 100%)",
+          WebkitMaskImage:
+            "linear-gradient(to right, rgb(0 0 0 / 0) 0%, rgb(0 0 0 / 1) 200px, rgb(0 0 0 / 1) calc(100% - 200px), rgb(0 0 0 / 0) 100%)",
+        }}
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
         onTouchStart={() => setIsPaused(true)}
