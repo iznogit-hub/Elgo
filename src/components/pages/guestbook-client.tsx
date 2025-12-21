@@ -153,7 +153,7 @@ export function GuestbookClient({
       </div>
 
       {/* --- Main Content Area --- */}
-      <div className="z-10 w-full flex flex-col items-center gap-8 mt-0 h-full pt-32 md:pt-40 pb-6 grow">
+      <div className="z-10 w-full flex flex-col items-center gap-4 mt-0 h-full pt-32 md:pt-40 pb-6 grow">
         {/* CENTERED: Header & Form */}
         <div className="w-full max-w-2xl px-6 flex flex-col gap-6 shrink-0">
           <div className="gb-item text-center space-y-2 shrink-0 opacity-0">

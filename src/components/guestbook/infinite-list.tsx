@@ -7,7 +7,6 @@ import {
   purgeGuestbook,
   type GuestbookEntry,
 } from "@/app/actions/guestbook";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Loader2,
   Trash2,
@@ -92,11 +91,11 @@ function GuestbookCard({
     <div
       ref={ref}
       className={cn(
-        "w-75 md:w-87.5 shrink-0 flex flex-col gap-3 rounded-lg border border-border/40 bg-background/40 p-5 backdrop-blur-md group relative hover:bg-background/60 transition-all duration-500 whitespace-normal",
-        isVisible ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10", // Scroll Reveal Animation
+        "w-75 md:w-87.5 shrink-0 flex flex-col gap-3 rounded-lg border border-border/40 bg-background/40 p-5 backdrop-blur-md group relative hover:bg-background/60 transition-all duration-500 whitespace-normal select-none",
+        isVisible ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10",
       )}
       style={{
-        transitionDelay: `${(index % 5) * 100}ms`, // Stagger effect
+        transitionDelay: `${(index % 5) * 100}ms`,
       }}
     >
       <div className="flex items-center justify-between">
@@ -164,6 +163,11 @@ export function InfiniteGuestbookList({
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
+  // AUTO-SCROLL STATE
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const animationRef = useRef<number>(0);
+
   const { isAdmin } = useAdmin();
   const { play } = useSfx();
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -215,6 +219,41 @@ export function InfiniteGuestbookList({
     }
   };
 
+  // --- AUTO SCROLL LOGIC ---
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const animate = () => {
+      if (!isPaused) {
+        // Scroll Speed: 0.5px per frame
+        container.scrollLeft += 0.5;
+      }
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationRef.current);
+  }, [isPaused]);
+
+  // --- MOUSE WHEEL HANDLER (Horizontal Scroll) ---
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        container.scrollLeft += e.deltaY;
+      }
+    };
+
+    // Passive: false is required to preventDefault
+    container.addEventListener("wheel", handleWheel, { passive: false });
+    return () => container.removeEventListener("wheel", handleWheel);
+  }, []);
+
+  // --- REALTIME UPDATES ---
   useEffect(() => {
     const handleNewEntry = (event: Event) => {
       const customEvent = event as CustomEvent<GuestbookEntry>;
@@ -252,6 +291,7 @@ export function InfiniteGuestbookList({
     }
   }, [offset, isLoading, hasMore]);
 
+  // Sentinel Observer
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
@@ -298,11 +338,16 @@ export function InfiniteGuestbookList({
         </div>
       )}
 
-      <ScrollArea
-        className="w-full h-full whitespace-nowrap"
-        orientation="horizontal"
+      {/* SCROLLAREA */}
+      <div
+        ref={scrollRef}
+        className="w-full h-full overflow-x-auto whitespace-nowrap scrollbar-none [&::-webkit-scrollbar]:hidden"
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+        onTouchStart={() => setIsPaused(true)}
+        onTouchEnd={() => setIsPaused(false)}
       >
-        <div className="flex w-max space-x-4 p-1 pb-4 items-stretch h-full">
+        <div className="flex w-max space-x-4 p-1 pt-2 pb-4 items-start h-full">
           {entries.map((entry, i) => (
             <GuestbookCard
               key={`${entry.timestamp}-${entry.name}-${i}`}
@@ -325,7 +370,7 @@ export function InfiniteGuestbookList({
             )}
           </div>
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }
