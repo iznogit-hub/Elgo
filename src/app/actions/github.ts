@@ -10,6 +10,8 @@ export async function getLatestCommit() {
         headers: {
           "User-Agent": "t7sen-portfolio",
           Accept: "application/vnd.github.v3+json",
+          // Use your custom variable name here
+          Authorization: `Bearer ${process.env.GITPULSE_API_KEY}`,
         },
       },
     );
