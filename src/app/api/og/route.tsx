@@ -2,10 +2,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable react/jsx-no-comment-textnodes */
 import { ImageResponse } from "next/og";
+import { NextRequest } from "next/server"; // FIX: Import NextRequest
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-
-export const runtime = "nodejs";
 
 // --- HELPERS ---
 async function fetchFont(url: string) {
@@ -32,9 +31,12 @@ async function loadLocalImage(filename: string) {
   }
 }
 
-export async function GET(request: Request) {
+// FIX: Change argument type to NextRequest
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    // FIX: Use request.nextUrl instead of new URL(request.url)
+    // This prevents the "Prerender Interrupted" build error.
+    const { searchParams } = request.nextUrl;
 
     // --- CONFIG ---
     const title = (searchParams.get("title") || "SYSTEM")
@@ -46,8 +48,6 @@ export async function GET(request: Request) {
     const section = (searchParams.get("section") || "CORE").toUpperCase();
 
     // PARALLEL FETCH
-    // 1. Fetch Fonts from GitHub (Reliable)
-    // 2. Load Avatar from Local File System
     const [fontBold, fontRegular, avatarData] = await Promise.all([
       fetchFont(
         "https://raw.githubusercontent.com/JetBrains/JetBrainsMono/master/fonts/ttf/JetBrainsMono-Bold.ttf",
@@ -96,7 +96,7 @@ export async function GET(request: Request) {
             {/* LEFT: CONTENT AREA */}
             <div tw="flex flex-col justify-between w-[65%] h-full p-12 border-r border-white/10 bg-black">
               {/* Header */}
-              <div tw="flex items-center gap-3">
+              <div tw="flex items-center" style={{ gap: "12px" }}>
                 <div tw="w-3 h-3 bg-green-500 flex" />
                 <span tw="text-green-500 font-mono text-sm tracking-widest flex">
                   //{section}_PROTOCOL
@@ -162,7 +162,8 @@ export async function GET(request: Request) {
                       src={avatarData}
                       width="192"
                       height="192"
-                      tw="w-full h-full object-cover"
+                      tw="w-full h-full"
+                      style={{ objectFit: "cover" }}
                     />
                   ) : (
                     // Fallback in case file read fails
