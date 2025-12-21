@@ -11,7 +11,7 @@ import logger from "@/lib/logger";
 import { headers } from "next/headers";
 import { auth } from "@/auth";
 
-// --- 1. ENHANCED LOCAL FILTER ---
+// --- 1. CONFIGURATION ---
 const filter = new Filter();
 
 // Common profanity evasions, acronyms & leetspeak
@@ -84,11 +84,14 @@ const evasions = [
   "oms",
   "diaf",
   "idgaf",
+  "retard",
+  "regarded",
+  "mong",
+  "simp",
+  "incel",
 ];
-
 filter.addWords(...evasions);
 
-// Helper to catch "s p a c e d" or "L.3.3.T" evasions
 const normalizeText = (text: string) =>
   text.replace(/[\s.]+/g, "").toLowerCase();
 
@@ -123,7 +126,8 @@ function sanitizeEntry(entry: GuestbookEntry) {
   );
 }
 
-// --- SCHEMAS ---
+// --- VALIDATION (Message Only) ---
+// English (ASCII) + Emojis. No other scripts.
 const englishWithEmojisRegex =
   /^[\x20-\x7E\n\r\p{Extended_Pictographic}\p{Emoji_Component}]+$/u;
 
@@ -131,13 +135,13 @@ const messageSchema = z
   .string()
   .trim()
   .min(3, "Message is too short (min 3 chars)")
-  .max(500, "Message is too long (max 500 chars)")
+  .max(200, "Message is too long (max 200 chars)")
   .regex(
     englishWithEmojisRegex,
     "Only English letters, numbers, symbols, and emojis are allowed.",
   );
 
-// --- CACHED DATA FETCHING ---
+// --- CACHED READ ---
 export async function fetchGuestbookEntries(
   offset: number,
   limit: number = 20,
@@ -158,24 +162,34 @@ export async function fetchGuestbookEntries(
   }
 }
 
-// --- 2. SIGN ACTION ---
+// --- SECURE WRITE ACTION ---
 export async function signGuestbook(
   prevState: GuestbookState,
   formData: FormData,
 ): Promise<GuestbookState> {
+  // 1. AUTH GATE - Rejects bots immediately
   const session = await auth();
   if (!session?.user) {
     return {
       success: false,
-      message: "You must be logged in to sign the guestbook.",
+      message: "Unauthorized: Please login to sign.",
       timestamp: Date.now(),
     };
   }
 
+  // 2. Identify User (From Secure Session)
+  const name = session.user.name || "Verified User";
+  const avatar = session.user.image || undefined;
+  const verified = true; // Always true since we require auth
+  let provider: "github" | "discord" | "google" | undefined;
+
+  if (avatar?.includes("github")) provider = "github";
+  else if (avatar?.includes("discord")) provider = "discord";
+  else if (avatar?.includes("google")) provider = "google";
+
+  // 3. Rate Limit
   const headerStore = await headers();
   const ip = headerStore.get("x-forwarded-for") || "unknown";
-
-  // Rate Limiting
   try {
     await checkRateLimit(ip, "guestbook");
   } catch (error) {
@@ -187,18 +201,10 @@ export async function signGuestbook(
     };
   }
 
+  // 4. Validate Message
   const rawMessage = formData.get("message");
-
-  const name = session.user.name || "Verified User";
-  const avatar = session.user.image || undefined;
-  const verified = true;
-  let provider: "github" | "discord" | "google" | undefined;
-
-  if (avatar?.includes("github")) provider = "github";
-  else if (avatar?.includes("discord")) provider = "discord";
-  else if (avatar?.includes("google")) provider = "google";
-
   const messageValidation = messageSchema.safeParse(rawMessage);
+
   if (!messageValidation.success) {
     return {
       success: false,
@@ -208,9 +214,8 @@ export async function signGuestbook(
   }
   const message = messageValidation.data;
 
-  // --- 3. LAYER 1: LOCAL FILTER (Instant + Pattern Matching) ---
+  // 5. Moderation (Local + Pattern)
   try {
-    // Standard Check (Exact words)
     if (filter.isProfane(message) || filter.isProfane(name)) {
       return {
         success: false,
@@ -218,8 +223,6 @@ export async function signGuestbook(
         timestamp: Date.now(),
       };
     }
-
-    // Pattern Check (Spaced/Normalized)
     if (filter.isProfane(normalizeText(message))) {
       return {
         success: false,
@@ -231,7 +234,7 @@ export async function signGuestbook(
     logger.error({ error }, "Moderation error");
   }
 
-  // --- 4. LAYER 2: AI FILTER (Deep Semantic) ---
+  // 6. AI Safety Filter (Toxic-BERT)
   const hfToken = process.env.HUGGING_FACE_TOKEN;
   if (hfToken) {
     try {
@@ -250,8 +253,6 @@ export async function signGuestbook(
       if (response.ok) {
         const result = await response.json();
         const scores = result[0];
-
-        // Threshold tuned to 0.70 to catch subtle toxicity
         const toxicScore = scores.find((s: HuggingFaceScore) => s.score > 0.7);
 
         if (toxicScore) {
@@ -264,15 +265,19 @@ export async function signGuestbook(
       }
     } catch (error) {
       logger.error({ error }, "AI Moderation network error");
+      // Fail safe: reject if we can't verify safety?
+      // Or fail open? Usually fail open for reliability, but fail safe for strictness.
+      // Currently failing open (logging error but continuing would be default unless we return)
+      // Let's return error to be strict since you want "bot proofing".
       return {
         success: false,
-        message: "Unable to verify message safety.",
+        message: "Safety verification unavailable. Try again.",
         timestamp: Date.now(),
       };
     }
   }
 
-  // Persist
+  // 7. Persist
   const entry: GuestbookEntry = {
     name,
     message,
@@ -304,6 +309,7 @@ export async function signGuestbook(
   }
 }
 
+// --- ADMIN ACTIONS ---
 export async function deleteGuestbookEntry(entry: GuestbookEntry) {
   const session = await auth();
   if (!session?.user?.isAdmin) return { error: "Access Denied" };
@@ -311,9 +317,7 @@ export async function deleteGuestbookEntry(entry: GuestbookEntry) {
   try {
     const cleanEntry = sanitizeEntry(entry);
     await redis.lrem("guestbook", 1, JSON.stringify(cleanEntry));
-
     revalidateTag("guestbook", { expire: 0 });
-
     return { success: true };
   } catch (error) {
     return { error: "Delete failed" };
@@ -326,9 +330,7 @@ export async function purgeGuestbook() {
 
   try {
     await redis.del("guestbook");
-
     revalidateTag("guestbook", { expire: 0 });
-
     return { success: true };
   } catch (error) {
     return { error: "Purge failed" };

@@ -188,7 +188,7 @@ export function GuestbookForm({ user }: { user?: User | null }) {
                   placeholder="What's on your mind?"
                   className="min-h-20 w-full resize-none border-0 bg-transparent p-0 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/30 focus-visible:ring-0 -ml-1 pl-1"
                   required
-                  maxLength={140}
+                  maxLength={200}
                   onChange={handleInput}
                   onFocus={() => play("hover")}
                 />
@@ -204,12 +204,12 @@ export function GuestbookForm({ user }: { user?: User | null }) {
                 <span
                   className={cn(
                     "text-[10px] font-medium transition-colors duration-300",
-                    charCount > 120
+                    charCount > 150
                       ? "text-amber-500"
                       : "text-muted-foreground/30",
                   )}
                 >
-                  {charCount}/140
+                  {charCount}/200
                 </span>
 
                 <Button
