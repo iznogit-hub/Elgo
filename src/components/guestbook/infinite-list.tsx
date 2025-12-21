@@ -28,33 +28,21 @@ interface InfiniteGuestbookListProps {
 }
 
 const CARD_WIDTH = 280;
-const GAP = 16; // gap-4 = 1rem = 16px
+const GAP = 16;
 
 const ProviderIcon = ({ provider }: { provider?: string }) => {
+  const style =
+    "w-3 h-3 text-muted-foreground/40 transition-colors group-hover:text-primary/60";
   if (provider === "github")
-    return (
-      <Icons.github
-        className="w-3 h-3 text-muted-foreground/50"
-        aria-hidden="true"
-      />
-    );
+    return <Icons.github className={style} aria-hidden="true" />;
   if (provider === "discord")
-    return (
-      <Icons.discord
-        className="w-3 h-3 text-muted-foreground/50"
-        aria-hidden="true"
-      />
-    );
+    return <Icons.discord className={style} aria-hidden="true" />;
   if (provider === "google")
-    return (
-      <Icons.google
-        className="w-3 h-3 text-muted-foreground/50"
-        aria-hidden="true"
-      />
-    );
+    return <Icons.google className={style} aria-hidden="true" />;
   return null;
 };
 
+// --- REDESIGNED CARD ---
 function GuestbookCard({
   entry,
   index,
@@ -91,7 +79,7 @@ function GuestbookCard({
     <div
       ref={ref}
       className={cn(
-        "shrink-0 flex flex-col gap-3 rounded-xl border border-border/40 bg-background/40 p-5 backdrop-blur-md group relative hover:bg-background/60 transition-all duration-500 whitespace-normal select-none",
+        "relative shrink-0 flex flex-col justify-between rounded-2xl border border-white/5 bg-zinc-50/5 dark:bg-zinc-900/5 p-4 backdrop-blur-md transition-all duration-500 hover:bg-zinc-50/10 dark:hover:bg-zinc-900/10 hover:border-white/10 hover:shadow-lg hover:shadow-primary/5 select-none overflow-hidden group",
         isVisible ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10",
       )}
       style={{
@@ -100,57 +88,59 @@ function GuestbookCard({
         transitionDelay: `${(index % 5) * 100}ms`,
       }}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3 w-full">
-          <div className="relative h-8 w-8 shrink-0 rounded-full border border-border/50 bg-muted overflow-hidden">
-            <Image
-              src={entry.avatar || "/Avatar.png"}
-              alt={entry.name}
-              fill
-              sizes="32px"
-              className="object-cover"
-            />
-          </div>
+      {/* 1. Header Row: Avatar | Name | Provider */}
+      <div className="flex items-center gap-3 shrink-0">
+        <div className="relative h-6 w-6 shrink-0 overflow-hidden rounded-full ring-1 ring-white/10 shadow-sm">
+          <Image
+            src={entry.avatar || "/Avatar.png"}
+            alt={entry.name}
+            fill
+            sizes="24px"
+            className="object-cover"
+          />
+        </div>
 
-          <div className="flex flex-col min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <span className="font-mono text-sm font-bold text-primary truncate">
-                {entry.name}
-              </span>
-              {entry.verified && (
-                <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 fill-blue-400/10 shrink-0" />
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span
-                className="text-[10px] text-muted-foreground hover:text-primary transition-colors cursor-help"
-                suppressHydrationWarning
-                title={new Date(entry.timestamp).toLocaleString()}
-              >
-                {formatDistanceToNow(entry.timestamp, { addSuffix: true })}
-              </span>
-              <ProviderIcon provider={entry.provider} />
-            </div>
-          </div>
-
-          {isAdmin && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 text-red-500 hover:text-white hover:bg-red-600 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={() => onDelete(entry)}
-              title="Delete Entry"
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
-          )}
+        <div className="flex items-center justify-between flex-1 min-w-0">
+          <span className="text-[11px] font-semibold text-foreground/90 flex items-center gap-1 tracking-tight truncate">
+            {entry.name}
+            {entry.verified && (
+              <CheckCircle2 className="w-2.5 h-2.5 text-blue-400" />
+            )}
+          </span>
+          <ProviderIcon provider={entry.provider} />
         </div>
       </div>
 
-      <p className="text-sm text-foreground/90 wrap-break-word whitespace-pre-wrap leading-relaxed h-full overflow-y-auto max-h-35 scrollbar-hide">
-        {entry.message}
-      </p>
+      {/* 2. Message Body: Takes available space */}
+      <div className="relative flex-1 min-h-0 group/text my-2">
+        <p className="text-xs text-foreground/80 leading-relaxed font-normal whitespace-pre-wrap overflow-y-auto scrollbar-none h-full pr-1">
+          {entry.message}
+        </p>
+        {/* Fade effect at bottom */}
+        <div className="absolute bottom-0 left-0 right-0 h-4 bg-linear-to-t from-background/5 to-transparent pointer-events-none opacity-0 group-hover/text:opacity-100 transition-opacity" />
+      </div>
+
+      {/* 3. Footer: Date & Admin Controls */}
+      <div className="flex items-center justify-between shrink-0 pt-2 border-t border-white/5">
+        <span
+          className="text-[9px] text-muted-foreground/50 font-medium hover:text-foreground/80 transition-colors cursor-help"
+          title={new Date(entry.timestamp).toLocaleString()} // HOVER RESTORED
+        >
+          {formatDistanceToNow(entry.timestamp, { addSuffix: true })}
+        </span>
+
+        {isAdmin && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-5 w-5 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-full transition-all -mr-1"
+            onClick={() => onDelete(entry)}
+            title="Delete Entry"
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
@@ -163,6 +153,7 @@ export function InfiniteGuestbookList({
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Auto-scroll logic
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isPaused, setIsPaused] = useState(false);
   const animationRef = useRef<number>(0);
@@ -171,8 +162,7 @@ export function InfiniteGuestbookList({
   const { play } = useSfx();
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  // Calculate the exact pixel width of one full set of cards
-  // (Card Width + Gap) * Number of Cards
+  // Calculate width for infinite loop reset
   const singleSetWidth = entries.length * (CARD_WIDTH + GAP);
 
   const isDuplicate = (
@@ -222,14 +212,13 @@ export function InfiniteGuestbookList({
     }
   };
 
-  // --- 1. UNIFIED SCROLL HANDLER (MANUAL & AUTO) ---
-  // This ensures the loop resets seamlessly regardless of how the scroll happens
+  // --- UNIFIED SCROLL HANDLER ---
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
 
     const handleScroll = () => {
-      // If we've scrolled past the first set, snap back to 0
+      // Loop Reset Logic
       if (container.scrollLeft >= singleSetWidth) {
         container.scrollLeft -= singleSetWidth;
       }
@@ -239,8 +228,7 @@ export function InfiniteGuestbookList({
     return () => container.removeEventListener("scroll", handleScroll);
   }, [singleSetWidth]);
 
-  // --- 2. ANIMATION LOOP ---
-  // Only handles movement. The reset is handled by the scroll listener above.
+  // --- ANIMATION LOOP ---
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
@@ -256,7 +244,7 @@ export function InfiniteGuestbookList({
     return () => cancelAnimationFrame(animationRef.current);
   }, [isPaused]);
 
-  // --- 3. MOUSE WHEEL HANDLER ---
+  // --- MOUSE WHEEL HANDLER ---
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
@@ -309,7 +297,6 @@ export function InfiniteGuestbookList({
     }
   }, [offset, isLoading, hasMore]);
 
-  // Sentinel Observer
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
@@ -356,10 +343,7 @@ export function InfiniteGuestbookList({
         </div>
       )}
 
-      {/* Scroll Container
-        Note: Using 'gap-4' instead of 'space-x-4' for consistent math calculation.
-        'items-start' is maintained to keep cards at the top.
-      */}
+      {/* Scroll Container */}
       <div
         ref={scrollRef}
         className="w-full h-full overflow-x-auto whitespace-nowrap scrollbar-none [&::-webkit-scrollbar]:hidden"
@@ -380,7 +364,7 @@ export function InfiniteGuestbookList({
             />
           ))}
 
-          {/* DUPLICATE SET (For Infinite Loop) */}
+          {/* DUPLICATE SET */}
           {entries.map((entry, i) => (
             <GuestbookCard
               key={`dup-${entry.timestamp}-${entry.name}-${i}`}
