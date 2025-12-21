@@ -5,6 +5,8 @@ import { GuestbookClient } from "@/components/pages/guestbook-client";
 import { InfiniteGuestbookList } from "@/components/guestbook/infinite-list";
 import { fetchGuestbookEntries } from "@/app/actions/guestbook";
 import { Loader2 } from "lucide-react";
+// 1. IMPORT: The specialized skeleton
+import { GuestbookSkeleton } from "@/components/skeletons/guestbook-skeleton";
 
 export const metadata: Metadata = {
   title: "Guestbook",
@@ -19,27 +21,20 @@ export const metadata: Metadata = {
 // --- COMPONENTS ---
 
 // 1. The Data Component (Fetches List)
-// This is isolated so it can stream in independently of the shell.
 async function GuestbookEntries() {
   const initialEntries = await fetchGuestbookEntries(0, 20);
   return <InfiniteGuestbookList initialEntries={initialEntries} />;
 }
 
 // 2. The Auth/Shell Component (Fetches Session)
-// We move `auth()` here so we can wrap THIS component in Suspense,
-// preventing the root page from blocking.
 async function GuestbookContent() {
   const session = await auth();
 
   return (
     <GuestbookClient user={session?.user}>
-      <Suspense
-        fallback={
-          <div className="flex h-40 w-full items-center justify-center rounded-md border border-border/40 bg-background/20 backdrop-blur-sm">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/50" />
-          </div>
-        }
-      >
+      {/* 2. APPLY: Replace generic Loader with Skeleton */}
+      {/* The form above loads instantly; the list below shimmers. */}
+      <Suspense fallback={<GuestbookSkeleton />}>
         <GuestbookEntries />
       </Suspense>
     </GuestbookClient>
@@ -47,7 +42,7 @@ async function GuestbookContent() {
 }
 
 // 3. The Root Page (Non-Blocking)
-// It immediately renders the Suspense boundary, satisfying Next.js 16 requirements.
+// We keep the generic spinner for the brief authentication check
 export default function GuestbookPage() {
   return (
     <Suspense
