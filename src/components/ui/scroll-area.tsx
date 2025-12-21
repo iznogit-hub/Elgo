@@ -5,22 +5,47 @@ import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 
 import { cn } from "@/lib/utils";
 
+type ScrollAreaProps = React.ComponentPropsWithoutRef<
+  typeof ScrollAreaPrimitive.Root
+> & {
+  orientation?: "vertical" | "horizontal" | "both";
+};
+
 const ScrollArea = React.forwardRef<
   React.ComponentRef<typeof ScrollAreaPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root>
->(({ className, children, ...props }, ref) => (
+  ScrollAreaProps
+>(({ className, children, orientation = "vertical", ...props }, ref) => (
   <ScrollAreaPrimitive.Root
     ref={ref}
     className={cn("relative overflow-hidden", className)}
     {...props}
   >
     <ScrollAreaPrimitive.Viewport
-      className="h-full w-full rounded-[inherit]"
-      tabIndex={0} // <--- FIX: Makes the scrollable area focusable
+      className="h-full w-full rounded-[inherit] scroll-smooth"
+      tabIndex={0}
+      onWheel={(e) => {
+        if (orientation === "horizontal") {
+          if (e.deltaY !== 0 && e.deltaX === 0) {
+            e.preventDefault();
+            // Use scrollBy with smooth behavior for a less jerky feel
+            e.currentTarget.scrollBy({
+              left: e.deltaY,
+              behavior: "smooth",
+            });
+          }
+        }
+      }}
     >
       {children}
     </ScrollAreaPrimitive.Viewport>
-    <ScrollBar />
+
+    {(orientation === "vertical" || orientation === "both") && (
+      <ScrollBar orientation="vertical" />
+    )}
+    {(orientation === "horizontal" || orientation === "both") && (
+      <ScrollBar orientation="horizontal" />
+    )}
+
     <ScrollAreaPrimitive.Corner />
   </ScrollAreaPrimitive.Root>
 ));
@@ -34,16 +59,16 @@ const ScrollBar = React.forwardRef<
     ref={ref}
     orientation={orientation}
     className={cn(
-      "flex touch-none select-none transition-colors",
+      "flex touch-none select-none transition-colors z-50",
       orientation === "vertical" &&
         "h-full w-2.5 border-l border-l-transparent p-px",
       orientation === "horizontal" &&
         "h-2.5 flex-col border-t border-t-transparent p-px",
-      className
+      className,
     )}
     {...props}
   >
-    <ScrollAreaPrimitive.ScrollAreaThumb className="relative flex-1 rounded-full bg-border" />
+    <ScrollAreaPrimitive.ScrollAreaThumb className="relative flex-1 rounded-full bg-border hover:bg-muted-foreground/50 transition-colors" />
   </ScrollAreaPrimitive.ScrollAreaScrollbar>
 ));
 ScrollBar.displayName = ScrollAreaPrimitive.ScrollAreaScrollbar.displayName;

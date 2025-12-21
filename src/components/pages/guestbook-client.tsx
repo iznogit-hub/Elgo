@@ -17,7 +17,7 @@ export function GuestbookClient({
   user,
 }: {
   children: React.ReactNode;
-  user?: User | null; // <--- Accept User
+  user?: User | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const prefersReducedMotion = usePrefersReducedMotion();
@@ -39,12 +39,22 @@ export function GuestbookClient({
         { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, delay: 0.2 },
       );
 
+      // Animate form items vertically
       tl.fromTo(
         ".gb-item",
         { y: 20, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.8, stagger: 0.15 },
         "-=0.6",
       );
+
+      // Animate the list sliding in from the right
+      tl.fromTo(
+        ".gb-list-container",
+        { x: 50, opacity: 0 },
+        { x: 0, opacity: 1, duration: 1 },
+        "-=0.6",
+      );
+
       tl.fromTo(
         ".decor-item",
         { opacity: 0 },
@@ -74,6 +84,7 @@ export function GuestbookClient({
       ref={containerRef}
       className="flex min-h-dvh md:h-dvh w-full flex-col items-center md:overflow-hidden relative"
     >
+      {/* --- Floating Header --- */}
       <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
         <div className="floating-header pointer-events-auto">
           <TransitionLink
@@ -123,7 +134,7 @@ export function GuestbookClient({
         </div>
       </div>
 
-      {/* --- Ambient Decor (Guestbook) --- */}
+      {/* --- Ambient Decor --- */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-20 hidden md:block z-0">
         <div className="decor-item absolute top-[18%] left-[6%] font-mono text-xs text-primary/60 opacity-0">
           {`> ACCESSING_ARCHIVES...`}
@@ -141,28 +152,41 @@ export function GuestbookClient({
         </div>
       </div>
 
-      {/* UPDATED: Increased pt-32 to pt-48 */}
-      <div className="z-10 w-full max-w-2xl flex flex-col items-center gap-4 md:gap-6 mt-0 h-auto md:h-full pt-48 md:pt-32 pb-6 px-6 grow">
-        <div className="gb-item text-center space-y-2 shrink-0 opacity-0">
-          <h1 className="text-4xl md:text-5xl font-black tracking-tighter">
-            <HackerText text="Guestbook" />
-          </h1>
-          <p className="text-muted-foreground text-sm max-w-100 mx-auto">
-            Leave your mark on the digital ledger.
-            <br />
-            Data is persisted via Redis.
-          </p>
+      {/* --- Main Content Area --- */}
+      <div className="z-10 w-full flex flex-col items-center gap-8 mt-0 h-full pt-32 md:pt-40 pb-6 grow">
+        {/* CENTERED: Header & Form */}
+        <div className="w-full max-w-2xl px-6 flex flex-col gap-6 shrink-0">
+          <div className="gb-item text-center space-y-2 shrink-0 opacity-0">
+            <h1 className="text-4xl md:text-5xl font-black tracking-tighter">
+              <HackerText text="Guestbook" />
+            </h1>
+            <p className="text-muted-foreground text-sm max-w-100 mx-auto">
+              Leave your mark on the digital ledger.
+              <br />
+              Data is persisted via Redis.
+            </p>
+          </div>
+
+          <div className="gb-item w-full flex justify-center shrink-0 opacity-0">
+            <GuestbookForm user={user} />
+          </div>
+
+          <div className="gb-item w-full shrink-0 opacity-0">
+            <div className="h-px bg-linear-to-r from-transparent via-border to-transparent" />
+          </div>
         </div>
 
-        <div className="gb-item w-full flex justify-center shrink-0 opacity-0">
-          <GuestbookForm user={user} />
-        </div>
-
-        <div className="gb-item w-full shrink-0 opacity-0">
-          <div className="h-px bg-linear-to-r from-transparent via-border to-transparent" />
-        </div>
-
-        <div className="gb-item w-full h-100 md:h-auto md:flex-1 md:min-h-0 flex justify-center opacity-0">
+        {/* FULL WIDTH: Horizontal List */}
+        <div
+          className="gb-list-container w-full max-w-400 mx-auto min-h-0 flex-1 opacity-0 relative overflow-hidden px-0 md:px-8"
+          style={{
+            // Uses rgb(0 0 0 / 0) for smoother alpha interpolation at the very edges compared to 'transparent'
+            maskImage:
+              "linear-gradient(to right, rgb(0 0 0 / 0) 0%, rgb(0 0 0 / 1) 400px, rgb(0 0 0 / 1) calc(100% - 400px), rgb(0 0 0 / 0) 100%)",
+            WebkitMaskImage:
+              "linear-gradient(to right, rgb(0 0 0 / 0) 0%, rgb(0 0 0 / 1) 400px, rgb(0 0 0 / 1) calc(100% - 400px), rgb(0 0 0 / 0) 100%)",
+          }}
+        >
           {children}
         </div>
       </div>

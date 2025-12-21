@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { useActionState } from "react";
 import Image from "next/image";
 import { User } from "next-auth";
@@ -9,97 +9,84 @@ import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { signGuestbook, type GuestbookState } from "@/app/actions/guestbook";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { sendGAEvent } from "@next/third-parties/google";
-import {
-  Send,
-  AlertCircle,
-  LogOut,
-  CheckCircle2,
-  Terminal,
-} from "lucide-react";
+import { Send, Loader2, LogOut, Fingerprint, Wifi, X } from "lucide-react";
 import { useSfx } from "@/hooks/use-sfx";
-import { HackerText } from "@/components/ui/hacker-text";
 import { Icons } from "@/components/ui/icons";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 const initialState: GuestbookState = {
   success: false,
   message: "",
 };
 
-// --- TERMINAL LOADER ---
-function TerminalLoader() {
-  const [text, setText] = React.useState("INITIALIZING...");
-
-  React.useEffect(() => {
-    const steps = ["ENCRYPTING...", "SIGNING...", "UPLOADING...", "SYNCING..."];
-    let i = 0;
-    const interval = setInterval(() => {
-      setText(steps[i]);
-      i = (i + 1) % steps.length;
-    }, 500);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <span className="font-mono text-xs animate-pulse flex items-center gap-2">
-      <Terminal className="h-3 w-3" />
-      {text}
-    </span>
-  );
-}
-
 export function GuestbookForm({ user }: { user?: User | null }) {
   const formRef = useRef<HTMLFormElement>(null);
   const { play } = useSfx();
   const router = useRouter();
   const { update } = useSession();
+  const [charCount, setCharCount] = useState(0);
 
-  // React 19 Hook
+  // Animation States
+  const [isAuthenticating, setIsAuthenticating] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const popupRef = useRef<Window | null>(null);
+
   const [state, formAction, isPending] = useActionState(
     signGuestbook,
     initialState,
   );
 
-  // --- Effect: Handle Success & Events ---
   useEffect(() => {
     if (state.success && state.newEntry) {
       play("success");
       formRef.current?.reset();
-
-      // --- TRACKING START ---
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCharCount(0);
       sendGAEvent("event", "guestbook_sign", {
         event_category: "Engagement",
         event_label: "Success",
-        method: state.newEntry.provider || "anonymous", // Track auth provider if available
+        method: state.newEntry.provider || "anonymous",
       });
-      // --- TRACKING END ---
-
-      // Dispatch event for the infinite list to pick up immediately
       const event = new CustomEvent("guestbook-new-entry", {
         detail: state.newEntry,
       });
       window.dispatchEvent(event);
     } else if (!state.success && state.message) {
       play("error");
-      // --- TRACKING START ---
       sendGAEvent("event", "guestbook_error", {
         event_category: "Error",
         event_label: state.message,
       });
-      // --- TRACKING END ---
     }
   }, [state, play]);
 
-  // --- Auth Popup Logic ---
+  // --- Popup Watcher ---
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isAuthenticating) {
+      interval = setInterval(() => {
+        if (popupRef.current?.closed) {
+          setIsAuthenticating(null);
+          popupRef.current = null;
+        }
+      }, 500);
+    }
+    return () => clearInterval(interval);
+  }, [isAuthenticating]);
+
   const openLoginPopup = (provider: string) => {
+    if (isAuthenticating) return;
     play("click");
+    setIsAuthenticating(provider);
+
     const width = 500;
     const height = 600;
     const left = window.screenX + (window.outerWidth - width) / 2;
     const top = window.screenY + (window.outerHeight - height) / 2;
 
-    window.open(
+    popupRef.current = window.open(
       `/auth/popup?provider=${provider}`,
       `Login with ${provider}`,
       `width=${width},height=${height},left=${left},top=${top}`,
@@ -113,6 +100,7 @@ export function GuestbookForm({ user }: { user?: User | null }) {
         play("on");
         await update();
         router.refresh();
+        setIsAuthenticating(null);
       }
     };
     window.addEventListener("message", handleMessage);
@@ -121,164 +109,228 @@ export function GuestbookForm({ user }: { user?: User | null }) {
 
   const handleLogout = async () => {
     play("click");
+    setIsLoggingOut(true);
+    await new Promise((resolve) => setTimeout(resolve, 600));
     await signOut({ redirect: false });
     router.refresh();
+    setIsLoggingOut(false);
+  };
+
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setCharCount(e.target.value.length);
   };
 
   return (
-    <div className="w-full max-w-lg mb-8 flex flex-col gap-4">
-      {/* Identity Card */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3 rounded-lg border border-border/40 bg-background/30 backdrop-blur-md">
+    <div className="w-full max-w-lg mx-auto">
+      {/* Elegant Glass Container */}
+      <div className="group relative overflow-hidden rounded-3xl bg-zinc-50/5 dark:bg-zinc-900/5 backdrop-blur-3xl border border-white/10 dark:border-white/5 transition-all duration-500 hover:border-white/20 hover:bg-zinc-50/10 dark:hover:bg-zinc-900/10 hover:shadow-2xl hover:shadow-primary/5 min-h-55 flex flex-col justify-center">
         {user ? (
-          <>
-            <div className="flex items-center gap-3">
-              <div className="relative h-10 w-10 shrink-0 rounded-full border-2 border-green-500/50 p-0.5">
+          /* --- LOGGED IN: CONVERSATIONAL UI --- */
+          <div
+            className={cn(
+              "relative flex w-full p-6 gap-5 transition-all duration-700 ease-in-out",
+              isLoggingOut
+                ? "opacity-0 scale-95 blur-md"
+                : "opacity-100 scale-100 blur-0",
+            )}
+          >
+            {/* Absolute Logout (Top Right) */}
+            <div className="absolute top-4 right-4 z-10">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleLogout}
+                className="h-6 w-6 rounded-full text-muted-foreground/30 hover:text-red-500 hover:bg-red-500/10 transition-all"
+                title="Sign out"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+
+            {/* Left: Avatar Anchor */}
+            <div className="shrink-0 pt-1">
+              <div className="relative h-11 w-11 overflow-hidden rounded-full ring-2 ring-white/10 shadow-sm">
                 <Image
                   src={user.image || "/Avatar.png"}
                   alt={user.name || "User"}
                   fill
-                  sizes="40px"
-                  className="rounded-full object-cover"
+                  sizes="44px"
+                  className="object-cover"
                 />
-                <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5 z-10">
-                  <CheckCircle2 className="w-4 h-4 text-green-500 fill-current" />
+              </div>
+            </div>
+
+            {/* Right: Input Stream */}
+            <form
+              ref={formRef}
+              action={formAction}
+              className="flex-1 flex flex-col gap-3"
+            >
+              {/* Identity Header */}
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-foreground/90 leading-none">
+                    {user.name}
+                  </span>
+                  <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium leading-none">
+                    Verified
+                  </span>
+                </div>
+                <span className="text-[11px] text-muted-foreground/50 font-medium">
+                  @{user.email?.split("@")[0] || "user"}
+                </span>
+              </div>
+
+              {/* Text Area */}
+              <div className="relative group/input">
+                <Textarea
+                  name="message"
+                  placeholder="What's on your mind?"
+                  className="min-h-20 w-full resize-none border-0 bg-transparent p-0 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/30 focus-visible:ring-0 -ml-1 pl-1"
+                  required
+                  maxLength={140}
+                  onChange={handleInput}
+                  onFocus={() => play("hover")}
+                />
+                {state.errors?.message && (
+                  <p className="text-[10px] font-medium text-red-400 mt-1 animate-in slide-in-from-top-1">
+                    {state.errors.message[0]}
+                  </p>
+                )}
+              </div>
+
+              {/* Action Bar */}
+              <div className="flex items-center justify-between pt-1">
+                <span
+                  className={cn(
+                    "text-[10px] font-medium transition-colors duration-300",
+                    charCount > 120
+                      ? "text-amber-500"
+                      : "text-muted-foreground/30",
+                  )}
+                >
+                  {charCount}/140
+                </span>
+
+                <Button
+                  type="submit"
+                  disabled={isPending}
+                  onClick={() => play("click")}
+                  className={cn(
+                    "h-8 px-4 rounded-full text-xs font-semibold shadow-sm transition-all duration-300",
+                    isPending
+                      ? "bg-muted text-muted-foreground shadow-none cursor-wait"
+                      : "bg-foreground text-background hover:scale-105 hover:shadow-md active:scale-95",
+                  )}
+                >
+                  {isPending ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      Post <Send className="w-3 h-3" />
+                    </div>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
+        ) : (
+          /* --- LOGGED OUT: IDENTITY PORTAL --- */
+          <div className="relative w-full h-full flex flex-col items-center justify-center p-8">
+            {/* CONTENT: Visible when NOT authenticating */}
+            <div
+              className={cn(
+                "flex flex-col items-center justify-center space-y-8 w-full transition-all duration-500",
+                isAuthenticating
+                  ? "opacity-0 scale-95 pointer-events-none absolute"
+                  : "opacity-100 scale-100 relative",
+              )}
+            >
+              <div className="relative">
+                <div className="absolute inset-0 bg-linear-to-tr from-primary/20 to-purple-500/20 blur-2xl opacity-50 rounded-full" />
+                <div className="relative h-14 w-14 rounded-2xl bg-linear-to-b from-white/10 to-white/5 border border-white/20 flex items-center justify-center shadow-inner backdrop-blur-md">
+                  <Fingerprint className="w-6 h-6 text-foreground/80" />
                 </div>
               </div>
 
-              <div className="flex flex-col">
-                <span className="text-sm font-bold flex items-center gap-2">
-                  {user.name}
-                  <span className="text-[10px] bg-green-500/10 text-green-500 px-1.5 py-0.5 rounded border border-green-500/20">
-                    VERIFIED
-                  </span>
-                </span>
-                <span className="text-[10px] text-muted-foreground font-mono">
-                  ID: {user.email?.split("@")[0] || "UNKNOWN"}
-                </span>
+              <div className="space-y-2 max-w-65 text-center">
+                <h3 className="text-lg font-semibold tracking-tight text-foreground">
+                  Sign the Guestbook
+                </h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Authenticate to leave your mark on the permanent ledger.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-center gap-3 w-full">
+                {[
+                  { id: "github", Icon: Icons.github, label: "GitHub" },
+                  { id: "google", Icon: Icons.google, label: "Google" },
+                  { id: "discord", Icon: Icons.discord, label: "Discord" },
+                ].map(({ id, Icon, label }) => (
+                  <button
+                    key={id}
+                    onClick={() => openLoginPopup(id)}
+                    className="group relative flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 transition-all hover:bg-foreground hover:text-background hover:scale-110 active:scale-95"
+                    title={`Sign in with ${label}`}
+                  >
+                    <Icon className="h-4 w-4 transition-transform group-hover:scale-110" />
+                  </button>
+                ))}
               </div>
             </div>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLogout}
-              className="text-muted-foreground hover:text-red-500 gap-2 h-8"
+            {/* LOADING STATE: Visible when authenticating */}
+            <div
+              className={cn(
+                "absolute inset-0 flex flex-col items-center justify-center transition-all duration-500 z-20",
+                isAuthenticating
+                  ? "opacity-100 scale-100"
+                  : "opacity-0 scale-105 pointer-events-none",
+              )}
             >
-              <LogOut className="w-3 h-3" />
-              <span className="text-xs">Disconnect</span>
-            </Button>
-          </>
-        ) : (
-          <>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <AlertCircle className="w-4 h-4" />
-              <span className="hidden sm:inline">
-                Connect ID for verified status
-              </span>
-              <span className="sm:hidden">Connect ID</span>
-            </div>
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse" />
+                <div className="relative h-16 w-16 rounded-full border border-primary/20 flex items-center justify-center bg-background/50 backdrop-blur-md">
+                  <Loader2 className="w-6 h-6 text-primary animate-spin" />
+                </div>
+                {/* Orbiting particles */}
+                <div className="absolute inset-0 w-full h-full animate-[spin_3s_linear_infinite]">
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 w-2 h-2 bg-primary rounded-full shadow-[0_0_10px_rgba(var(--primary),0.8)]" />
+                </div>
+              </div>
 
-            <div className="flex items-center gap-1">
+              <div className="text-center space-y-1">
+                <h3 className="text-sm font-semibold tracking-wide flex items-center gap-2 justify-center">
+                  <Wifi className="w-3 h-3 animate-pulse text-primary" />
+                  Connecting...
+                </h3>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-widest opacity-70">
+                  Waiting for {isAuthenticating}
+                </p>
+              </div>
+
               <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8 hover:border-primary/50 transition-colors"
-                onClick={() => openLoginPopup("github")}
-                title="Connect GitHub"
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsAuthenticating(null)}
+                className="mt-6 h-7 text-[10px] text-muted-foreground hover:text-red-400 gap-1"
               >
-                <Icons.github className="w-4 h-4" aria-hidden="true" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8 hover:border-primary/50 transition-colors"
-                onClick={() => openLoginPopup("discord")}
-                title="Connect Discord"
-              >
-                <Icons.discord className="w-4 h-4" aria-hidden="true" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8 hover:border-primary/50 transition-colors"
-                onClick={() => openLoginPopup("google")}
-                title="Connect Google"
-              >
-                <Icons.google className="w-4 h-4" aria-hidden="true" />
+                <X className="w-3 h-3" /> Cancel
               </Button>
             </div>
-          </>
+          </div>
         )}
       </div>
 
-      {/* The Form */}
-      <form
-        ref={formRef}
-        action={formAction}
-        className="flex flex-col w-full gap-4"
-      >
-        <div className="flex flex-col sm:flex-row gap-3 w-full items-start">
-          {!user && (
-            <div className="flex-1 w-full sm:w-auto">
-              <Input
-                name="name"
-                placeholder="Alias"
-                className="bg-background/50 backdrop-blur-sm"
-                required
-                maxLength={32}
-                onFocus={() => play("click")}
-                aria-invalid={!!state.errors?.name}
-              />
-              {state.errors?.name && (
-                <p className="text-[10px] text-red-500 mt-1 pl-1 font-mono">
-                  {state.errors.name[0]}
-                </p>
-              )}
-            </div>
-          )}
-
-          <div className="flex-2 w-full sm:w-auto">
-            <Input
-              name="message"
-              placeholder="Leave a mark in the matrix..."
-              className="bg-background/50 backdrop-blur-sm"
-              required
-              maxLength={140}
-              onFocus={() => play("click")}
-              aria-invalid={!!state.errors?.message}
-            />
-            {state.errors?.message && (
-              <p className="text-[10px] text-red-500 mt-1 pl-1 font-mono">
-                {state.errors.message[0]}
-              </p>
-            )}
-          </div>
-
-          <Button
-            type="submit"
-            disabled={isPending}
-            className="w-full sm:w-auto min-w-30 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20"
-            onClick={() => play("click")}
-          >
-            {isPending ? (
-              <TerminalLoader />
-            ) : (
-              <>
-                <Send className="mr-2 h-4 w-4" />
-                <HackerText text="SIGN" speed={50} />
-              </>
-            )}
-          </Button>
+      {/* Global Toast for Success/Error Text */}
+      {state.message && !state.success && (
+        <div className="mt-4 text-center animate-in fade-in slide-in-from-top-2">
+          <span className="inline-block px-4 py-2 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-medium">
+            {state.message}
+          </span>
         </div>
-
-        {/* Global Error/Success Message */}
-        {state.message && !state.success && (
-          <div className="flex items-center gap-3 rounded-md bg-red-500/10 border border-red-500/50 p-3 text-red-500 animate-in slide-in-from-top-1 fade-in duration-300">
-            <AlertCircle className="h-5 w-5 shrink-0" />
-            <p className="text-sm font-medium font-mono">{state.message}</p>
-          </div>
-        )}
-      </form>
+      )}
     </div>
   );
 }
