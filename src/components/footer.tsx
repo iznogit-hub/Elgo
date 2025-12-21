@@ -1,8 +1,14 @@
 import Link from "next/link";
+import { cacheLife } from "next/cache";
 import { GitPulse } from "@/components/ui/git-pulse";
 import { SocialLinks } from "@/components/home/social-links";
 
-export function Footer() {
+export async function Footer() {
+  "use cache";
+  // Cache for days since the year and layout rarely change.
+  // This also fixes the "new Date()" error by memoizing the result.
+  cacheLife("days");
+
   const currentYear = new Date().getFullYear();
 
   return (

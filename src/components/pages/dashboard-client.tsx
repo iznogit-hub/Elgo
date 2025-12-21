@@ -126,13 +126,17 @@ export function DashboardClient({ initialData }: DashboardClientProps) {
     const checkLatency = async () => {
       const start = performance.now();
       try {
-        await fetch("/api/health");
+        // FIX: Add timestamp query param to bypass browser cache
+        await fetch(`/api/health?t=${Date.now()}`, {
+          cache: "no-store", // Explicitly tell fetch not to cache
+        });
         const end = performance.now();
         setLatency(Math.round(end - start));
       } catch {
         setLatency(999);
       }
     };
+
     checkLatency();
     const interval = setInterval(checkLatency, 5000);
     return () => clearInterval(interval);

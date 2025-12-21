@@ -1,16 +1,20 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use server";
 
+import { cacheLife, cacheTag } from "next/cache";
+
 export async function getLatestCommit() {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("github-latest");
+
   try {
     const res = await fetch(
       "https://api.github.com/repos/t7sen/portfolio/commits/main",
       {
-        next: { revalidate: 3600 },
         headers: {
           "User-Agent": "t7sen-portfolio",
           Accept: "application/vnd.github.v3+json",
-          // Use your custom variable name here
           Authorization: `Bearer ${process.env.GITPULSE_API_KEY}`,
         },
       },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   fetchGuestbookEntries,
   deleteGuestbookEntry,
@@ -29,6 +29,7 @@ interface InfiniteGuestbookListProps {
 
 const CARD_WIDTH = 280;
 const GAP = 16;
+const MIN_ITEMS_FOR_SCROLL = 6; // Ensures width > ~1800px
 
 const ProviderIcon = ({ provider }: { provider?: string }) => {
   const style =
@@ -155,7 +156,7 @@ export function InfiniteGuestbookList({
 
   // Auto-scroll logic
   const scrollRef = useRef<HTMLDivElement>(null);
-  const scrollAccumulator = useRef(0); // FIX: Accumulates sub-pixel movements
+  const scrollAccumulator = useRef(0);
   const [isPaused, setIsPaused] = useState(false);
   const animationRef = useRef<number>(0);
 
@@ -163,7 +164,17 @@ export function InfiniteGuestbookList({
   const { play } = useSfx();
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const singleSetWidth = entries.length * (CARD_WIDTH + GAP);
+  // FIX: Inflate entries to ensure marquee always scrolls (even with 1 item)
+  const displayEntries = useMemo(() => {
+    if (entries.length === 0) return [];
+    let inflated = [...entries];
+    while (inflated.length < MIN_ITEMS_FOR_SCROLL) {
+      inflated = [...inflated, ...entries];
+    }
+    return inflated;
+  }, [entries]);
+
+  const singleSetWidth = displayEntries.length * (CARD_WIDTH + GAP);
 
   const isDuplicate = (
     newEntry: GuestbookEntry,
@@ -227,17 +238,14 @@ export function InfiniteGuestbookList({
     return () => container.removeEventListener("scroll", handleScroll);
   }, [singleSetWidth]);
 
-  // --- ANIMATION LOOP (ACCUMULATOR FIX) ---
+  // --- ANIMATION LOOP ---
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
 
     const animate = () => {
       if (!isPaused) {
-        // Accumulate speed (0.5 is slow and smooth)
         scrollAccumulator.current += 0.5;
-
-        // Only move when we have a full pixel to move
         const movePixels = Math.floor(scrollAccumulator.current);
         if (movePixels > 0) {
           container.scrollLeft += movePixels;
@@ -337,10 +345,6 @@ export function InfiniteGuestbookList({
 
   return (
     <div className="relative w-full h-full">
-      {/* ADMIN PURGE BUTTON 
-         - Positioned absolute top/left relative to this container (which is now unmasked)
-         - z-50 ensures it's above the scroll list
-      */}
       {isAdmin && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4">
           <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/50 text-green-500 px-3 py-1 rounded-full text-[10px] font-mono font-bold tracking-widest backdrop-blur-md shadow-sm">
@@ -359,9 +363,6 @@ export function InfiniteGuestbookList({
         </div>
       )}
 
-      {/* SCROLL CONTAINER
-         - Mask applied here.
-      */}
       <div
         ref={scrollRef}
         className="w-full h-full overflow-x-auto whitespace-nowrap scrollbar-none [&::-webkit-scrollbar]:hidden"
@@ -377,8 +378,8 @@ export function InfiniteGuestbookList({
         onTouchEnd={() => setIsPaused(false)}
       >
         <div className="flex w-max gap-4 p-1 pt-2 pb-4 items-start h-full px-4">
-          {/* ORIGINAL SET */}
-          {entries.map((entry, i) => (
+          {/* ORIGINAL SET (Inflated) */}
+          {displayEntries.map((entry, i) => (
             <GuestbookCard
               key={`orig-${entry.timestamp}-${entry.name}-${i}`}
               entry={entry}
@@ -388,8 +389,8 @@ export function InfiniteGuestbookList({
             />
           ))}
 
-          {/* DUPLICATE SET */}
-          {entries.map((entry, i) => (
+          {/* DUPLICATE SET (Inflated) - For seamless loop */}
+          {displayEntries.map((entry, i) => (
             <GuestbookCard
               key={`dup-${entry.timestamp}-${entry.name}-${i}`}
               entry={entry}

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use server";
 
-import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
+import { cacheLife, cacheTag, revalidateTag } from "next/cache";
 import { z } from "zod";
 import * as Sentry from "@sentry/nextjs";
 import { Filter } from "bad-words";
@@ -66,20 +66,25 @@ const nameSchema = z
   );
 
 // --- CACHED DATA FETCHING ---
-const getCachedEntries = unstable_cache(
-  async (start: number, end: number) => {
-    try {
-      return await redis.lrange<GuestbookEntry>("guestbook", start, end);
-    } catch (error) {
-      return [];
-    }
-  },
-  ["guestbook-entries"],
-  {
-    revalidate: 3600,
-    tags: ["guestbook"],
-  },
-);
+export async function fetchGuestbookEntries(
+  offset: number,
+  limit: number = 20,
+): Promise<GuestbookEntry[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag("guestbook-entries", "guestbook");
+
+  const start = offset;
+  const end = offset + limit - 1;
+
+  try {
+    const entries = await redis.lrange<GuestbookEntry>("guestbook", start, end);
+    return entries ?? [];
+  } catch (error) {
+    console.error("Redis Read Error:", error);
+    return [];
+  }
+}
 
 // --- 2. Sign Guestbook Action ---
 export async function signGuestbook(
@@ -90,9 +95,8 @@ export async function signGuestbook(
   const headerStore = await headers();
   const ip = headerStore.get("x-forwarded-for") || "unknown";
 
-  // Rate Limiting (Targeted)
+  // Rate Limiting
   try {
-    // FIX: Applied "guestbook" limit (5 req/min)
     await checkRateLimit(ip, "guestbook");
   } catch (error) {
     logger.warn({ ip }, "Guestbook rate limit exceeded");
@@ -209,8 +213,8 @@ export async function signGuestbook(
     await redis.lpush("guestbook", entry);
     logger.info({ name, verified }, "Guestbook signed successfully");
 
+    // FIX: Use 2-argument signature to satisfy strict types and ensure immediate invalidation
     revalidateTag("guestbook", { expire: 0 });
-    revalidatePath("/guestbook", "page");
 
     return {
       success: true,
@@ -228,16 +232,6 @@ export async function signGuestbook(
   }
 }
 
-export async function fetchGuestbookEntries(
-  offset: number,
-  limit: number = 20,
-): Promise<GuestbookEntry[]> {
-  const start = offset;
-  const end = offset + limit - 1;
-  const entries = await getCachedEntries(start, end);
-  return entries ?? [];
-}
-
 export async function deleteGuestbookEntry(entry: GuestbookEntry) {
   const session = await auth();
   if (!session?.user?.isAdmin) return { error: "Access Denied" };
@@ -246,8 +240,8 @@ export async function deleteGuestbookEntry(entry: GuestbookEntry) {
     const cleanEntry = sanitizeEntry(entry);
     await redis.lrem("guestbook", 1, JSON.stringify(cleanEntry));
 
+    // FIX: Use 2-argument signature
     revalidateTag("guestbook", { expire: 0 });
-    revalidatePath("/guestbook", "page");
 
     return { success: true };
   } catch (error) {
@@ -262,8 +256,8 @@ export async function purgeGuestbook() {
   try {
     await redis.del("guestbook");
 
+    // FIX: Use 2-argument signature
     revalidateTag("guestbook", { expire: 0 });
-    revalidatePath("/guestbook", "page");
 
     return { success: true };
   } catch (error) {

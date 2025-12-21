@@ -1,8 +1,10 @@
+import { Suspense } from "react";
 import { auth } from "@/auth";
 import { Metadata } from "next";
 import { GuestbookClient } from "@/components/pages/guestbook-client";
 import { InfiniteGuestbookList } from "@/components/guestbook/infinite-list";
 import { fetchGuestbookEntries } from "@/app/actions/guestbook";
+import { Loader2 } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Guestbook",
@@ -14,20 +16,48 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function GuestbookPage() {
-  // 1. Fetch User Session (Dynamic)
+// --- COMPONENTS ---
+
+// 1. The Data Component (Fetches List)
+// This is isolated so it can stream in independently of the shell.
+async function GuestbookEntries() {
+  const initialEntries = await fetchGuestbookEntries(0, 20);
+  return <InfiniteGuestbookList initialEntries={initialEntries} />;
+}
+
+// 2. The Auth/Shell Component (Fetches Session)
+// We move `auth()` here so we can wrap THIS component in Suspense,
+// preventing the root page from blocking.
+async function GuestbookContent() {
   const session = await auth();
 
-  // 2. Fetch Initial Data (Cached via "use cache" in the action)
-  // We fetch the first 20 items server-side for immediate SEO and performance.
-  const initialEntries = await fetchGuestbookEntries(0, 20);
-
-  // 3. Render Composition
-  // GuestbookClient handles the layout/animations.
-  // InfiniteGuestbookList handles the interactive list and "load more" logic.
   return (
     <GuestbookClient user={session?.user}>
-      <InfiniteGuestbookList initialEntries={initialEntries} />
+      <Suspense
+        fallback={
+          <div className="flex h-40 w-full items-center justify-center rounded-md border border-border/40 bg-background/20 backdrop-blur-sm">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/50" />
+          </div>
+        }
+      >
+        <GuestbookEntries />
+      </Suspense>
     </GuestbookClient>
+  );
+}
+
+// 3. The Root Page (Non-Blocking)
+// It immediately renders the Suspense boundary, satisfying Next.js 16 requirements.
+export default function GuestbookPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="w-full h-[50vh] flex items-center justify-center">
+          <Loader2 className="h-10 w-10 animate-spin text-primary/20" />
+        </div>
+      }
+    >
+      <GuestbookContent />
+    </Suspense>
   );
 }
