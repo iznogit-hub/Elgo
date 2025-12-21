@@ -11,7 +11,86 @@ import logger from "@/lib/logger";
 import { headers } from "next/headers";
 import { auth } from "@/auth";
 
+// --- 1. ENHANCED LOCAL FILTER ---
 const filter = new Filter();
+
+// Common profanity evasions, acronyms & leetspeak
+const evasions = [
+  // F-Word Variants
+  "fk",
+  "fck",
+  "fuk",
+  "fuhk",
+  "fugh",
+  "f.u.c.k",
+  "f u c k",
+  "f*ck",
+  "f@ck",
+  "dafuk",
+  "dafuq",
+  "mf",
+  "mfer",
+  "mofo",
+
+  // S-Word Variants
+  "sh1t",
+  "sh!t",
+  "shyt",
+  "shiit",
+  "sh*t",
+  "sh.it",
+  "sheet",
+
+  // B-Word Variants
+  "b1tch",
+  "b!tch",
+  "biatch",
+  "b*tch",
+  "b.i.t.c.h",
+
+  // Anatomy / Sexual
+  "dik",
+  "d1k",
+  "d1ck",
+  "c0ck",
+  "pp",
+  "puss",
+  "pussi",
+  "pussy",
+  "wank",
+  "wanker",
+  "jerko",
+  "bj",
+  "succ",
+
+  // Insults / Ableist / Hate
+  "smooth brain",
+  "regarded",
+  "rtd",
+  "autist",
+  "spaz",
+  "mong",
+  "simp",
+  "incel",
+  "virgin",
+  "cuck",
+  "soyboy",
+  "retard",
+
+  // Hostile Acronyms
+  "stfu",
+  "gtfo",
+  "kys",
+  "oms",
+  "diaf",
+  "idgaf",
+];
+
+filter.addWords(...evasions);
+
+// Helper to catch "s p a c e d" or "L.3.3.T" evasions
+const normalizeText = (text: string) =>
+  text.replace(/[\s.]+/g, "").toLowerCase();
 
 // --- Types ---
 interface HuggingFaceScore {
@@ -28,12 +107,10 @@ export type GuestbookEntry = {
   provider?: "github" | "discord" | "google";
 };
 
-// 1. Standardized State Interface
 export interface GuestbookState {
   success: boolean;
   message?: string;
   errors?: {
-    name?: string[];
     message?: string[];
   };
   timestamp?: number;
@@ -46,23 +123,18 @@ function sanitizeEntry(entry: GuestbookEntry) {
   );
 }
 
-// --- Validation Schemas ---
+// --- SCHEMAS ---
+const englishWithEmojisRegex =
+  /^[\x20-\x7E\n\r\p{Extended_Pictographic}\p{Emoji_Component}]+$/u;
+
 const messageSchema = z
   .string()
-  .min(2, "Message is too short")
-  .max(140, "Message is too long")
+  .trim()
+  .min(3, "Message is too short (min 3 chars)")
+  .max(500, "Message is too long (max 500 chars)")
   .regex(
-    /^[\x20-\x7E]+$/,
-    "Only English letters, numbers, and symbols are allowed.",
-  );
-
-const nameSchema = z
-  .string()
-  .min(2, "Name must be at least 2 characters")
-  .max(32, "Name is too long")
-  .regex(
-    /^[\x20-\x7E]+$/,
-    "Only English letters, numbers, and symbols are allowed.",
+    englishWithEmojisRegex,
+    "Only English letters, numbers, symbols, and emojis are allowed.",
   );
 
 // --- CACHED DATA FETCHING ---
@@ -86,12 +158,20 @@ export async function fetchGuestbookEntries(
   }
 }
 
-// --- 2. Sign Guestbook Action ---
+// --- 2. SIGN ACTION ---
 export async function signGuestbook(
   prevState: GuestbookState,
   formData: FormData,
 ): Promise<GuestbookState> {
   const session = await auth();
+  if (!session?.user) {
+    return {
+      success: false,
+      message: "You must be logged in to sign the guestbook.",
+      timestamp: Date.now(),
+    };
+  }
+
   const headerStore = await headers();
   const ip = headerStore.get("x-forwarded-for") || "unknown";
 
@@ -108,35 +188,16 @@ export async function signGuestbook(
   }
 
   const rawMessage = formData.get("message");
-  const rawName = formData.get("name");
 
-  // Determine Identity
-  let name: string;
-  let avatar: string | undefined;
-  let verified = false;
+  const name = session.user.name || "Verified User";
+  const avatar = session.user.image || undefined;
+  const verified = true;
   let provider: "github" | "discord" | "google" | undefined;
 
-  if (session?.user) {
-    name = session.user.name || "Verified User";
-    avatar = session.user.image || undefined;
-    verified = true;
+  if (avatar?.includes("github")) provider = "github";
+  else if (avatar?.includes("discord")) provider = "discord";
+  else if (avatar?.includes("google")) provider = "google";
 
-    if (avatar?.includes("github")) provider = "github";
-    else if (avatar?.includes("discord")) provider = "discord";
-    else if (avatar?.includes("google")) provider = "google";
-  } else {
-    const nameValidation = nameSchema.safeParse(rawName);
-    if (!nameValidation.success) {
-      return {
-        success: false,
-        errors: { name: [nameValidation.error.issues[0].message] },
-        timestamp: Date.now(),
-      };
-    }
-    name = nameValidation.data;
-  }
-
-  // Validate Message
   const messageValidation = messageSchema.safeParse(rawMessage);
   if (!messageValidation.success) {
     return {
@@ -147,12 +208,22 @@ export async function signGuestbook(
   }
   const message = messageValidation.data;
 
-  // Moderation
+  // --- 3. LAYER 1: LOCAL FILTER (Instant + Pattern Matching) ---
   try {
-    if (filter.isProfane(message) || (!verified && filter.isProfane(name))) {
+    // Standard Check (Exact words)
+    if (filter.isProfane(message) || filter.isProfane(name)) {
       return {
         success: false,
         message: "Profanity detected. Please keep it clean.",
+        timestamp: Date.now(),
+      };
+    }
+
+    // Pattern Check (Spaced/Normalized)
+    if (filter.isProfane(normalizeText(message))) {
+      return {
+        success: false,
+        message: "Nice try. Please keep it clean.",
         timestamp: Date.now(),
       };
     }
@@ -160,7 +231,7 @@ export async function signGuestbook(
     logger.error({ error }, "Moderation error");
   }
 
-  // AI Safety Check
+  // --- 4. LAYER 2: AI FILTER (Deep Semantic) ---
   const hfToken = process.env.HUGGING_FACE_TOKEN;
   if (hfToken) {
     try {
@@ -179,7 +250,9 @@ export async function signGuestbook(
       if (response.ok) {
         const result = await response.json();
         const scores = result[0];
-        const toxicScore = scores.find((s: HuggingFaceScore) => s.score > 0.85);
+
+        // Threshold tuned to 0.70 to catch subtle toxicity
+        const toxicScore = scores.find((s: HuggingFaceScore) => s.score > 0.7);
 
         if (toxicScore) {
           return {
@@ -213,7 +286,6 @@ export async function signGuestbook(
     await redis.lpush("guestbook", entry);
     logger.info({ name, verified }, "Guestbook signed successfully");
 
-    // FIX: Use 2-argument signature to satisfy strict types and ensure immediate invalidation
     revalidateTag("guestbook", { expire: 0 });
 
     return {
@@ -240,7 +312,6 @@ export async function deleteGuestbookEntry(entry: GuestbookEntry) {
     const cleanEntry = sanitizeEntry(entry);
     await redis.lrem("guestbook", 1, JSON.stringify(cleanEntry));
 
-    // FIX: Use 2-argument signature
     revalidateTag("guestbook", { expire: 0 });
 
     return { success: true };
@@ -256,7 +327,6 @@ export async function purgeGuestbook() {
   try {
     await redis.del("guestbook");
 
-    // FIX: Use 2-argument signature
     revalidateTag("guestbook", { expire: 0 });
 
     return { success: true };
