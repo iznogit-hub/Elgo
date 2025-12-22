@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useMemo } from "react";
 import { useActionState } from "react";
 import Image from "next/image";
 import { User } from "next-auth";
@@ -21,11 +21,14 @@ const initialState: GuestbookState = {
   message: "",
 };
 
-export function GuestbookForm({ user }: { user?: User | null }) {
+export function GuestbookForm({ user: serverUser }: { user?: User | null }) {
   const formRef = useRef<HTMLFormElement>(null);
   const { play } = useSfx();
   const router = useRouter();
-  const { update } = useSession();
+
+  // 1. CLIENT SOURCE OF TRUTH
+  // We use the client session for instant reactivity
+  const { data: session, status, update } = useSession();
   const [charCount, setCharCount] = useState(0);
 
   // Animation States
@@ -38,21 +41,34 @@ export function GuestbookForm({ user }: { user?: User | null }) {
     initialState,
   );
 
+  // 2. HYBRID COMPUTED STATE (The "Gold Standard" Logic)
+  // - If Client Session is loading -> Use Server Prop (Instant First Paint, SEO friendly)
+  // - If Client Session is ready -> Use Client Session (Instant Updates, Reactive)
+  const effectiveUser = useMemo(() => {
+    if (status === "loading") return serverUser;
+    return session?.user ?? null;
+  }, [status, session, serverUser]);
+
+  // --- Effects & Handlers ---
+
   useEffect(() => {
     if (state.success && state.newEntry) {
       play("success");
       formRef.current?.reset();
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setCharCount(0);
+
+      setTimeout(() => setCharCount(0), 0);
+
+      // Notify Google Analytics & Other Components
       sendGAEvent("event", "guestbook_sign", {
         event_category: "Engagement",
         event_label: "Success",
         method: state.newEntry.provider || "anonymous",
       });
-      const event = new CustomEvent("guestbook-new-entry", {
-        detail: state.newEntry,
-      });
-      window.dispatchEvent(event);
+      window.dispatchEvent(
+        new CustomEvent("guestbook-new-entry", {
+          detail: state.newEntry,
+        }),
+      );
     } else if (!state.success && state.message) {
       play("error");
       sendGAEvent("event", "guestbook_error", {
@@ -62,7 +78,7 @@ export function GuestbookForm({ user }: { user?: User | null }) {
     }
   }, [state, play]);
 
-  // --- Popup Watcher ---
+  // Popup Window Polling
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isAuthenticating) {
@@ -93,13 +109,20 @@ export function GuestbookForm({ user }: { user?: User | null }) {
     );
   };
 
+  // 3. OPTIMISTIC LOGIN HANDLER
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       if (event.data?.type === "AUTH_SUCCESS") {
         play("on");
+
+        // A: Instant UI Update (Client)
         await update();
+
+        // B: Background Sync (Server)
+        // We do NOT await this, allowing UI to stay responsive
         router.refresh();
+
         setIsAuthenticating(null);
       }
     };
@@ -107,12 +130,21 @@ export function GuestbookForm({ user }: { user?: User | null }) {
     return () => window.removeEventListener("message", handleMessage);
   }, [play, router, update]);
 
+  // 4. OPTIMISTIC LOGOUT HANDLER
   const handleLogout = async () => {
     play("click");
     setIsLoggingOut(true);
+
+    // Short artificial delay for the "exit animation" to play
     await new Promise((resolve) => setTimeout(resolve, 600));
+
+    // A: Instant Client Logout
+    // 'redirect: false' prevents the page from reloading, keeping it smooth
     await signOut({ redirect: false });
+
+    // B: Background Sync
     router.refresh();
+
     setIsLoggingOut(false);
   };
 
@@ -122,9 +154,9 @@ export function GuestbookForm({ user }: { user?: User | null }) {
 
   return (
     <div className="w-full max-w-lg mx-auto">
-      {/* Elegant Glass Container */}
+      {/* Container with Glass Effect */}
       <div className="group relative overflow-hidden rounded-3xl bg-zinc-50/5 dark:bg-zinc-900/5 backdrop-blur-3xl border border-white/10 dark:border-white/5 transition-all duration-500 hover:border-white/20 hover:bg-zinc-50/10 dark:hover:bg-zinc-900/10 hover:shadow-2xl hover:shadow-primary/5 min-h-55 flex flex-col justify-center">
-        {user ? (
+        {effectiveUser ? (
           /* --- LOGGED IN: CONVERSATIONAL UI --- */
           <div
             className={cn(
@@ -134,7 +166,7 @@ export function GuestbookForm({ user }: { user?: User | null }) {
                 : "opacity-100 scale-100 blur-0",
             )}
           >
-            {/* Absolute Logout (Top Right) */}
+            {/* Logout Button */}
             <div className="absolute top-4 right-4 z-10">
               <Button
                 variant="ghost"
@@ -147,12 +179,12 @@ export function GuestbookForm({ user }: { user?: User | null }) {
               </Button>
             </div>
 
-            {/* Left: Avatar Anchor */}
+            {/* Avatar */}
             <div className="shrink-0 pt-1">
               <div className="relative h-11 w-11 overflow-hidden rounded-full ring-2 ring-white/10 shadow-sm">
                 <Image
-                  src={user.image || "/Avatar.png"}
-                  alt={user.name || "User"}
+                  src={effectiveUser.image || "/Avatar.png"}
+                  alt={effectiveUser.name || "User"}
                   fill
                   sizes="44px"
                   className="object-cover"
@@ -160,35 +192,33 @@ export function GuestbookForm({ user }: { user?: User | null }) {
               </div>
             </div>
 
-            {/* Right: Input Stream */}
+            {/* Input Form */}
             <form
               ref={formRef}
               action={formAction}
               className="flex-1 flex flex-col gap-3"
             >
-              {/* Identity Header */}
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-foreground/90 leading-none">
-                    {user.name}
+                    {effectiveUser.name}
                   </span>
                   <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium leading-none">
                     Verified
                   </span>
                 </div>
                 <span className="text-[11px] text-muted-foreground/50 font-medium">
-                  @{user.email?.split("@")[0] || "user"}
+                  @{effectiveUser.email?.split("@")[0] || "user"}
                 </span>
               </div>
 
-              {/* Text Area */}
               <div className="relative group/input">
                 <Textarea
                   name="message"
                   placeholder="What's on your mind?"
                   className="min-h-20 w-full resize-none border-0 bg-transparent p-0 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/30 focus-visible:ring-0 -ml-1 pl-1"
                   required
-                  maxLength={200}
+                  maxLength={500}
                   onChange={handleInput}
                   onFocus={() => play("hover")}
                 />
@@ -199,17 +229,16 @@ export function GuestbookForm({ user }: { user?: User | null }) {
                 )}
               </div>
 
-              {/* Action Bar */}
               <div className="flex items-center justify-between pt-1">
                 <span
                   className={cn(
                     "text-[10px] font-medium transition-colors duration-300",
-                    charCount > 150
+                    charCount > 450
                       ? "text-amber-500"
                       : "text-muted-foreground/30",
                   )}
                 >
-                  {charCount}/200
+                  {charCount}/500
                 </span>
 
                 <Button
@@ -237,7 +266,6 @@ export function GuestbookForm({ user }: { user?: User | null }) {
         ) : (
           /* --- LOGGED OUT: IDENTITY PORTAL --- */
           <div className="relative w-full h-full flex flex-col items-center justify-center p-8">
-            {/* CONTENT: Visible when NOT authenticating */}
             <div
               className={cn(
                 "flex flex-col items-center justify-center space-y-8 w-full transition-all duration-500",
@@ -280,7 +308,7 @@ export function GuestbookForm({ user }: { user?: User | null }) {
               </div>
             </div>
 
-            {/* LOADING STATE: Visible when authenticating */}
+            {/* Authentication Loader */}
             <div
               className={cn(
                 "absolute inset-0 flex flex-col items-center justify-center transition-all duration-500 z-20",
@@ -294,7 +322,6 @@ export function GuestbookForm({ user }: { user?: User | null }) {
                 <div className="relative h-16 w-16 rounded-full border border-primary/20 flex items-center justify-center bg-background/50 backdrop-blur-md">
                   <Loader2 className="w-6 h-6 text-primary animate-spin" />
                 </div>
-                {/* Orbiting particles */}
                 <div className="absolute inset-0 w-full h-full animate-[spin_3s_linear_infinite]">
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 w-2 h-2 bg-primary rounded-full shadow-[0_0_10px_rgba(var(--primary),0.8)]" />
                 </div>
@@ -323,7 +350,7 @@ export function GuestbookForm({ user }: { user?: User | null }) {
         )}
       </div>
 
-      {/* Global Toast for Success/Error Text */}
+      {/* Error/Success Feedback */}
       {state.message && !state.success && (
         <div className="mt-4 text-center animate-in fade-in slide-in-from-top-2">
           <span className="inline-block px-4 py-2 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-medium">
