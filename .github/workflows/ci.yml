@@ -52,13 +52,6 @@ jobs:
           UPSTASH_REDIS_REST_TOKEN: "mock_token"
           AUTH_SECRET: "mock_secret"
 
-      - name: Upload Lighthouse Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: lighthouse-report
-          path: .lighthouseci/
-
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
 
