@@ -33,17 +33,16 @@ export function Globe() {
 
     let globe: ReturnType<typeof createGlobe> | null = null;
 
-    // FIX: Wrap initialization in try/catch to prevent crashes in CI/No-WebGL envs
     try {
       globe = createGlobe(canvasRef.current, {
-        devicePixelRatio: 2,
-        width: width * 2,
-        height: width * 2,
+        devicePixelRatio: 1,
+        width: width,
+        height: width,
         phi: 0,
         theta: 0.2,
         dark: isLight ? 0 : 1,
         diffuse: 1.2,
-        mapSamples: 16000,
+        mapSamples: 12000,
         mapBrightness: 6,
         baseColor: baseColor as [number, number, number],
         markerColor: markerColor as [number, number, number],
@@ -57,12 +56,11 @@ export function Globe() {
             phiRef.current += 0.003;
           }
           state.phi = phiRef.current;
-          state.width = width * 2;
-          state.height = width * 2;
+          state.width = width;
+          state.height = width;
         },
       });
 
-      // Only fade in if initialization succeeded
       setTimeout(() => {
         if (canvasRef.current) {
           canvasRef.current.style.opacity = "1";
@@ -71,7 +69,7 @@ export function Globe() {
     } catch (e) {
       console.warn(
         "WebGL failed to initialize (likely CI or low-spec env):",
-        e
+        e,
       );
       // Optional: Hide canvas if failed
       if (canvasRef.current) canvasRef.current.style.display = "none";
