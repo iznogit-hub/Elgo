@@ -22,7 +22,7 @@ This portfolio is a showcase of "Cyberpunk" aesthetics combined with modern web 
 - **Framework:** [Next.js 16](https://nextjs.org/) (App Router)
 - **Language:** [TypeScript](https://www.typescriptlang.org/)
 - **Styling:** [Tailwind CSS v4](https://tailwindcss.com/) & [Shadcn UI](https://ui.shadcn.com/)
-- **Animation:** [GSAP](https://greensock.com/gsap/) & [React Spring](https://www.react-spring.dev/)
+- **Animation:** [GSAP](https://greensock.com/gsap/)
 - **Database:** [Upstash Redis](https://upstash.com/)
 - **Testing:** [Playwright](https://playwright.dev/) (E2E)
 - **Deployment:** [DigitalOcean App Platform](https://www.digitalocean.com/products/app-platform)
