@@ -60,6 +60,7 @@ export function AvatarImage({
           fill
           className="object-contain object-bottom-left drop-shadow-2xl"
           priority={true}
+          fetchPriority="high"
           sizes="(max-width: 768px) 100vw, 500px"
           draggable={false}
           onLoad={onImageLoad}
