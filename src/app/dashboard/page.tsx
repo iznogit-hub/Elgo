@@ -1,6 +1,9 @@
 import { Suspense } from "react";
 import { Metadata } from "next";
-import { DashboardClient } from "@/components/pages/dashboard-client";
+import {
+  DashboardShell,
+  DashboardMetrics,
+} from "@/components/pages/dashboard-client";
 import { fetchDashboardData } from "@/app/actions/dashboard";
 import { DashboardSkeleton } from "@/components/skeletons/dashboard-skeleton";
 
@@ -15,16 +18,21 @@ export const metadata: Metadata = {
 };
 
 // 1. ISOLATE: Data fetching component
-async function DashboardContent() {
+async function AsyncDashboardMetrics() {
   const initialData = await fetchDashboardData();
-  return <DashboardClient initialData={initialData} />;
+  // Pass data to the "inner" part of the client component
+  return <DashboardMetrics initialData={initialData} />;
 }
 
-// 2. ROOT PAGE: Non-blocking shell with Skeleton Fallback
+// 2. ROOT PAGE:
+// - Renders Shell IMMEDIATELY (Static)
+// - Suspends ONLY the Grid (Dynamic)
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<DashboardSkeleton />}>
-      <DashboardContent />
-    </Suspense>
+    <DashboardShell>
+      <Suspense fallback={<DashboardSkeleton />}>
+        <AsyncDashboardMetrics />
+      </Suspense>
+    </DashboardShell>
   );
 }
