@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import confetti from "canvas-confetti";
 import { useSfx } from "@/hooks/use-sfx";
 import { useKonami } from "@/hooks/use-konami";
 import { gsap } from "gsap";
@@ -36,32 +35,27 @@ export function GlobalAppWrapper({ children }: { children: React.ReactNode }) {
 
     const handleMotionChange = (e: MediaQueryListEvent | MediaQueryList) => {
       if (e.matches) {
-        // Force all GSAP animations to complete almost instantly
         gsap.globalTimeline.timeScale(100);
-
-        // Force disable CSS animations via the DOM
         document.documentElement.classList.add("reduce-motion");
       } else {
-        // Restore normal speed
         gsap.globalTimeline.timeScale(1);
         document.documentElement.classList.remove("reduce-motion");
       }
     };
 
-    // Initialize
     handleMotionChange(mediaQuery);
-
-    // Listen for system changes
     mediaQuery.addEventListener("change", handleMotionChange);
     return () => mediaQuery.removeEventListener("change", handleMotionChange);
   }, []);
 
-  // --- GAME LOGIC (MOVED FROM HOME) ---
-  const konamiAction = useCallback(() => {
+  // --- GAME LOGIC ---
+  const konamiAction = useCallback(async () => {
     play("success");
     setIsGameOpen(true);
 
-    // Celebration Confetti
+    // ✅ FIXED: Dynamic import. Loads only when function runs.
+    const confetti = (await import("canvas-confetti")).default;
+
     const duration = 3 * 1000;
     const animationEnd = Date.now() + duration;
     const defaults = {
@@ -91,10 +85,8 @@ export function GlobalAppWrapper({ children }: { children: React.ReactNode }) {
     }, 250);
   }, [play]);
 
-  // Activate Konami Code Globally
   useKonami(konamiAction);
 
-  // Listen for Command Menu "Play Snake" Trigger
   useEffect(() => {
     const handleOpenGame = () => {
       setIsGameOpen(true);
@@ -102,9 +94,7 @@ export function GlobalAppWrapper({ children }: { children: React.ReactNode }) {
     window.addEventListener("open-snake-game", handleOpenGame);
     return () => window.removeEventListener("open-snake-game", handleOpenGame);
   }, []);
-  // ------------------------------------
 
-  // Safety fallback for preloader
   useEffect(() => {
     const timer = setTimeout(() => {
       setAssetsLoaded(true);
@@ -124,7 +114,6 @@ export function GlobalAppWrapper({ children }: { children: React.ReactNode }) {
       <Navbar />
       <TabManager />
 
-      {/* Global Game Overlay */}
       {isGameOpen && <SnakeTerminal onClose={() => setIsGameOpen(false)} />}
 
       <AvatarImage
