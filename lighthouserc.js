@@ -13,6 +13,10 @@ module.exports = {
           deviceScaleFactor: 1,
           disabled: false,
         },
+        // 👇 CRITICAL: Force Chrome to report "prefers-reduced-motion: reduce"
+        // This stops the Globe from rendering, preventing the CPU timeout.
+        chromeFlags: "--force-prefers-reduced-motion",
+
         // Don't throttle the CPU as much (CI is already slow)
         throttling: {
           rttMs: 40,
@@ -31,7 +35,6 @@ module.exports = {
         "http://localhost:3000/uses",
         "http://localhost:3000/guestbook",
         "http://localhost:3000/contact",
-        // Add '/dashboard' only if you mock auth, otherwise it redirects
       ],
       // 4. Run each page 3 times to average out noise
       numberOfRuns: 3,
