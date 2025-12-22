@@ -17,10 +17,19 @@ import { Button } from "@/components/ui/button";
 import { useSfx } from "@/hooks/use-sfx";
 import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
 import { HackerText } from "@/components/ui/hacker-text";
-import { Globe } from "@/components/ui/globe";
 import { cn } from "@/lib/utils";
 import { TECH_STACK } from "@/data/about";
 import { TransitionLink } from "@/components/ui/transition-link";
+
+import dynamic from "next/dynamic";
+
+const Globe = dynamic(
+  () => import("@/components/ui/globe").then((m) => m.Globe),
+  {
+    ssr: false,
+    loading: () => <div className="w-full h-full opacity-0" />, // Invisible placeholder while loading
+  },
+);
 
 gsap.registerPlugin(useGSAP);
 
@@ -112,6 +121,7 @@ export function AboutClient() {
         <Globe />
       </div>
 
+      {/* ... Rest of the component remains exactly the same ... */}
       <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
         <div className="floating-header pointer-events-auto">
           <TransitionLink
