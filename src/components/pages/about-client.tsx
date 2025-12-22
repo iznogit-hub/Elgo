@@ -201,7 +201,7 @@ export function AboutClient() {
                   width={160}
                   height={160}
                   className="object-cover h-full w-full scale-110"
-                  priority
+                  priority={true}
                 />
               </div>
               <div className="absolute -bottom-2 -right-2 bg-background border border-border px-3 py-1 rounded-full text-[10px] font-mono font-bold shadow-lg">
