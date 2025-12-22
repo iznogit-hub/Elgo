@@ -282,9 +282,9 @@ export function GuestbookForm({ user: serverUser }: { user?: User | null }) {
               </div>
 
               <div className="space-y-2 max-w-65 text-center">
-                <h3 className="text-lg font-semibold tracking-tight text-foreground">
+                <h2 className="text-lg font-semibold tracking-tight text-foreground">
                   Sign the Guestbook
-                </h3>
+                </h2>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Authenticate to leave your mark on the permanent ledger.
                 </p>
