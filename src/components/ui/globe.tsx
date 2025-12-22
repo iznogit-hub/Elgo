@@ -3,6 +3,7 @@
 import React, { useEffect, useRef } from "react";
 import createGlobe from "cobe";
 import { useTheme } from "next-themes";
+import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 
 export function Globe() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -11,9 +12,14 @@ export function Globe() {
   const phiRef = useRef(3.5);
   const { resolvedTheme } = useTheme();
 
-  useEffect(() => {
-    let width = 0;
+  // 1. Always call hooks at the top level
+  const prefersReducedMotion = usePrefersReducedMotion();
 
+  useEffect(() => {
+    // 2. Internal Guard: If reduced motion is on, do not initialize Cobe
+    if (prefersReducedMotion) return;
+
+    let width = 0;
     const onResize = () => {
       if (canvasRef.current) {
         width = canvasRef.current.offsetWidth;
@@ -22,11 +28,11 @@ export function Globe() {
     window.addEventListener("resize", onResize);
     onResize();
 
+    // Safety check: If we returned null in render, this ref might be null
     if (!canvasRef.current) return;
 
     const isLight = resolvedTheme === "light";
 
-    // Colors
     const baseColor = isLight ? [0.2, 0.2, 0.2] : [0.3, 0.3, 0.3];
     const glowColor = isLight ? [0.8, 0.8, 0.8] : [1, 1, 1];
     const markerColor = [0.6, 0.2, 1];
@@ -35,14 +41,14 @@ export function Globe() {
 
     try {
       globe = createGlobe(canvasRef.current, {
-        devicePixelRatio: 1,
-        width: width,
-        height: width,
+        devicePixelRatio: 2,
+        width: width * 2,
+        height: width * 2,
         phi: 0,
         theta: 0.2,
         dark: isLight ? 0 : 1,
         diffuse: 1.2,
-        mapSamples: 12000,
+        mapSamples: 16000,
         mapBrightness: 6,
         baseColor: baseColor as [number, number, number],
         markerColor: markerColor as [number, number, number],
@@ -56,8 +62,8 @@ export function Globe() {
             phiRef.current += 0.003;
           }
           state.phi = phiRef.current;
-          state.width = width;
-          state.height = width;
+          state.width = width * 2;
+          state.height = width * 2;
         },
       });
 
@@ -79,7 +85,11 @@ export function Globe() {
       if (globe) globe.destroy();
       window.removeEventListener("resize", onResize);
     };
-  }, [resolvedTheme]);
+  }, [resolvedTheme, prefersReducedMotion]);
+
+  // 3. Render Guard: If reduced motion is preferred, render nothing.
+  // This is placed AFTER all hooks to satisfy Rules of Hooks.
+  if (prefersReducedMotion) return null;
 
   return (
     <div className="absolute inset-0 w-full h-full flex items-center justify-center">
