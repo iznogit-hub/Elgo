@@ -6,18 +6,17 @@ import { ArrowLeft, Database, Server } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
-import { GuestbookForm } from "@/components/guestbook/form";
 import { HackerText } from "@/components/ui/hacker-text";
 import { Button } from "@/components/ui/button";
 import { useSfx } from "@/hooks/use-sfx";
-import { User } from "next-auth";
 
-export function GuestbookClient({
+// UPDATE: Props now accept 'form' slot instead of 'user' object
+export function GuestbookShell({
   children,
-  user,
+  form,
 }: {
-  children: React.ReactNode;
-  user?: User | null;
+  children: React.ReactNode; // The List
+  form: React.ReactNode; // The Form
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const prefersReducedMotion = usePrefersReducedMotion();
@@ -84,7 +83,7 @@ export function GuestbookClient({
       ref={containerRef}
       className="flex min-h-dvh md:h-dvh w-full flex-col items-center md:overflow-hidden relative"
     >
-      {/* --- Floating Header --- */}
+      {/* --- Floating Header (Static) --- */}
       <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
         <div className="floating-header pointer-events-auto">
           <TransitionLink
@@ -134,7 +133,7 @@ export function GuestbookClient({
         </div>
       </div>
 
-      {/* --- Ambient Decor --- */}
+      {/* --- Ambient Decor (Static) --- */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-20 hidden md:block z-0">
         <div className="decor-item absolute top-[18%] left-[6%] font-mono text-xs text-primary/60 opacity-0">
           {`> ACCESSING_ARCHIVES...`}
@@ -167,8 +166,9 @@ export function GuestbookClient({
             </p>
           </div>
 
+          {/* DYNAMIC FORM SLOT */}
           <div className="gb-item w-full flex justify-center shrink-0 opacity-0">
-            <GuestbookForm user={user} />
+            {form}
           </div>
 
           <div className="gb-item w-full shrink-0 opacity-0">
@@ -176,7 +176,7 @@ export function GuestbookClient({
           </div>
         </div>
 
-        {/* FULL WIDTH: Horizontal List */}
+        {/* FULL WIDTH: Horizontal List Slot */}
         <div className="gb-list-container w-full max-w-400 mx-auto min-h-0 flex-1 opacity-0 relative overflow-hidden px-0 md:px-8">
           {children}
         </div>
