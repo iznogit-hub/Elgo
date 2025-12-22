@@ -31,6 +31,27 @@ jobs:
       - name: Type Checking (TypeScript)
         run: npm run type-check
 
+      # --- NEW STEP: Build is required for Lighthouse ---
+      - name: Build Application
+        run: npm run build
+        env:
+          # Mock secrets allow the build to pass without real keys
+          NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+          UPSTASH_REDIS_REST_URL: "https://mock.upstash.com"
+          UPSTASH_REDIS_REST_TOKEN: "mock_token"
+          AUTH_SECRET: "mock_secret"
+
+      # --- NEW STEP: Run Lighthouse CI ---
+      - name: Run Lighthouse CI
+        run: npx lhci autorun
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+          # Re-declare env vars needed for "npm run start" to boot
+          NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+          UPSTASH_REDIS_REST_URL: "https://mock.upstash.com"
+          UPSTASH_REDIS_REST_TOKEN: "mock_token"
+          AUTH_SECRET: "mock_secret"
+
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
 
