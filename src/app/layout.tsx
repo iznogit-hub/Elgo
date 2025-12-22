@@ -24,7 +24,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://t7sen.com"),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL ||
+      (process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : "http://localhost:3000"),
+  ),
   title: {
     default: "T7SEN | SEC_OPS // Frontend",
     template: "%s | T7SEN",
@@ -45,27 +50,17 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://t7sen.com",
     title: "t7sen | Cyber Developer",
     description:
       "Crafting digital reality through code. Specialized in high-performance web graphics and scalable architecture.",
     siteName: "T7SEN Portfolio",
-    images: [
-      {
-        url: "/opengraph-image",
-        width: 1200,
-        height: 630,
-        alt: "T7SEN Portfolio",
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "t7sen | Cyber Developer",
     description:
       "Crafting digital reality through code. Specialized in high-performance web graphics and scalable architecture.",
-    images: ["/opengraph-image"],
-    creator: "@T7SEN",
+    creator: "@T7ME_",
   },
   robots: {
     index: true,

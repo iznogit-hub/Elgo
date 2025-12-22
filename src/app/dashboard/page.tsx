@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   description: "Real-time system metrics.",
   openGraph: {
     images: [
-      "/api/og?title=LIVE_FEED&section=DASHBOARD&description=Real-time%20metrics:%20Coding%20activity,%20music,%20and%20status.",
+      "/api/og?title=LIVE_FEED&section=DASHBOARD&description=Real-time%20metrics:%20Coding%20activity,%20gaming,%20and%20status.",
     ],
   },
 };
