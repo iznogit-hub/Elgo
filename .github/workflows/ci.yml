@@ -31,7 +31,7 @@ jobs:
       - name: Type Checking (TypeScript)
         run: npm run type-check
 
-      # --- NEW STEP: Build is required for Lighthouse ---
+      # --- Build is required for Lighthouse ---
       - name: Build Application
         run: npm run build
         env:
@@ -41,7 +41,7 @@ jobs:
           UPSTASH_REDIS_REST_TOKEN: "mock_token"
           AUTH_SECRET: "mock_secret"
 
-      # --- NEW STEP: Run Lighthouse CI ---
+      # --- Run Lighthouse CI ---
       - name: Run Lighthouse CI
         run: npx lhci autorun
         env:
@@ -51,6 +51,13 @@ jobs:
           UPSTASH_REDIS_REST_URL: "https://mock.upstash.com"
           UPSTASH_REDIS_REST_TOKEN: "mock_token"
           AUTH_SECRET: "mock_secret"
+
+      - name: Upload Lighthouse Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: .lighthouseci/
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
