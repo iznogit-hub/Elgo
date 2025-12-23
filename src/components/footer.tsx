@@ -2,11 +2,11 @@ import Link from "next/link";
 import { cacheLife } from "next/cache";
 import { GitPulse } from "@/components/ui/git-pulse";
 import { SocialLinks } from "@/components/home/social-links";
+// Import the new Ping component
+import { Ping } from "@/components/ui/ping";
 
 export async function Footer() {
   "use cache";
-  // Cache for days since the year and layout rarely change.
-  // This also fixes the "new Date()" error by memoizing the result.
   cacheLife("days");
 
   const currentYear = new Date().getFullYear();
@@ -31,7 +31,13 @@ export async function Footer() {
             <span>© {currentYear} T7SEN</span>
           </Link>
 
-          {/* Subtle Divider */}
+          {/* Divider */}
+          <span className="text-border h-3 w-px bg-border block"></span>
+
+          {/* New: Network Latency */}
+          <Ping />
+
+          {/* Divider */}
           <span className="text-border h-3 w-px bg-border block"></span>
 
           {/* GitPulse */}
