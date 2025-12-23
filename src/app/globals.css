@@ -15,6 +15,27 @@
     */
     color-scheme: dark;
   }
+
+  /* WebKit Browsers (Chrome, Edge, Safari) */
+  ::-webkit-scrollbar {
+    width: 6px; /* Slim width for a "terminal" feel */
+    height: 6px; /* Slim height for horizontal scrolling */
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent; /* Seamless integration */
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-primary/20 hover:bg-primary/80 transition-colors;
+    border-radius: 2px; /* Slight rounding, not fully round */
+  }
+
+  /* Firefox Support */
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary) transparent;
+  }
 }
 
 @layer utilities {
