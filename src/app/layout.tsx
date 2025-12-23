@@ -11,6 +11,7 @@ import { Toaster } from "sonner";
 import { CyberChat } from "@/components/cyber-chat";
 import { Footer } from "@/components/footer";
 import { RealtimeProvider } from "@/providers/realtime-provider";
+import { SystemContextMenu } from "@/components/ui/system-context-menu";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -95,6 +96,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <SoundProvider>
+              <SystemContextMenu />
               <CyberChat />
               <AdminProvider>
                 <GlobalAppWrapper>
