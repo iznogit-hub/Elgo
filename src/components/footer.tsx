@@ -23,7 +23,9 @@ export async function Footer() {
         <div className="flex items-center gap-3 md:gap-5 bg-background/80 backdrop-blur-md px-5 py-2 rounded-full border border-border/50 shadow-sm">
           {/* Copyright */}
           <Link
-            href="/"
+            href="https://discord.com/users/170916597156937728"
+            target="_blank"
+            rel="noopener noreferrer"
             className="flex items-center gap-2 font-mono text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             <span>© {currentYear} T7SEN</span>

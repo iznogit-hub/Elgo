@@ -20,6 +20,10 @@ const nextConfig: NextConfig = {
 
   cacheComponents: true,
 
+  env: {
+    NEXT_PUBLIC_DEPLOY_TIME: new Date().toISOString(),
+  },
+
   images: {
     remotePatterns: [
       {
