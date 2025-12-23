@@ -30,11 +30,28 @@ export function Cursor() {
         ease: "power3.out",
       });
 
+      // --- HELPER: Reset Cursor State ---
+      const resetCursor = () => {
+        if (!hoverTarget.current) return;
+
+        hoverTarget.current = null;
+        cursor.classList.remove("locked");
+
+        gsap.to(cursor, {
+          width: 16,
+          height: 16,
+          borderRadius: "50%",
+          duration: 0.3,
+          ease: "power2.out",
+          overwrite: "auto",
+        });
+      };
+
       // 1. MOVEMENT
       const onMouseMove = (e: MouseEvent) => {
-        // Safety: Release if element removed
+        // Safety: Reset if element is removed from DOM while hovering
         if (hoverTarget.current && !hoverTarget.current.isConnected) {
-          hoverTarget.current = null;
+          resetCursor();
         }
 
         const { clientX, clientY } = e;
@@ -60,7 +77,7 @@ export function Cursor() {
       const onMouseOver = (e: MouseEvent) => {
         const target = e.target as HTMLElement;
         const clickable = target.closest(
-          "a, button, input, textarea, .card-hover, .magnetic-target"
+          "a, button, input, textarea, .card-hover, .magnetic-target",
         ) as HTMLElement;
 
         if (clickable && clickable !== hoverTarget.current) {
@@ -87,36 +104,40 @@ export function Cursor() {
       const onMouseOut = (e: MouseEvent) => {
         const target = e.target as HTMLElement;
         const clickable = target.closest(
-          "a, button, input, textarea, .card-hover, .magnetic-target"
+          "a, button, input, textarea, .card-hover, .magnetic-target",
         ) as HTMLElement;
 
         if (clickable && clickable === hoverTarget.current) {
-          hoverTarget.current = null;
+          resetCursor();
+        }
+      };
 
-          gsap.to(cursor, {
-            width: 16,
-            height: 16,
-            borderRadius: "50%",
-            duration: 0.3,
-            ease: "power2.out",
-            overwrite: "auto",
-          });
-
-          cursor.classList.remove("locked");
+      // 4. CLICK CHECK (Fix for cursor getting stuck)
+      const onClickCheck = () => {
+        // If we clicked something and it vanished (or changed state), reset immediately
+        if (hoverTarget.current && !hoverTarget.current.isConnected) {
+          resetCursor();
         }
       };
 
       window.addEventListener("mousemove", onMouseMove);
       window.addEventListener("mouseover", onMouseOver);
       window.addEventListener("mouseout", onMouseOut);
+      // Listen for interactions that might remove elements
+      window.addEventListener("click", onClickCheck);
+      window.addEventListener("mousedown", onClickCheck);
+      window.addEventListener("mouseup", onClickCheck);
 
       return () => {
         window.removeEventListener("mousemove", onMouseMove);
         window.removeEventListener("mouseover", onMouseOver);
         window.removeEventListener("mouseout", onMouseOut);
+        window.removeEventListener("click", onClickCheck);
+        window.removeEventListener("mousedown", onClickCheck);
+        window.removeEventListener("mouseup", onClickCheck);
       };
     },
-    { scope: cursorRef }
+    { scope: cursorRef },
   );
 
   // FORCE RESET ON NAVIGATION
@@ -142,7 +163,7 @@ export function Cursor() {
         ref={cursorRef}
         className={cn(
           "fixed top-0 left-0 border-2 border-primary opacity-60 transition-colors duration-300",
-          "h-4 w-4 rounded-full"
+          "h-4 w-4 rounded-full",
         )}
       />
     </div>
