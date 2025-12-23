@@ -148,6 +148,10 @@
 }
 
 @layer base {
+  ::selection {
+    @apply bg-primary/30 text-primary-foreground;
+  }
+
   * {
     @apply border-border outline-ring/50;
   }
