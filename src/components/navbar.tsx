@@ -15,6 +15,7 @@ import {
   Github,
   Twitter,
   Linkedin,
+  Trophy,
 } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -34,6 +35,7 @@ const NAV_ITEMS = [
   { name: "About", href: "/about", icon: User },
   { name: "Uses", href: "/uses", icon: PcCase },
   { name: "Guestbook", href: "/guestbook", icon: Book },
+  { name: "Achievements", href: "/achievements", icon: Trophy },
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Contact", href: "/contact", icon: Send },
 ];

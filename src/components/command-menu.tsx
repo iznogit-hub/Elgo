@@ -12,6 +12,7 @@ import {
   Linkedin,
   Mail,
   User,
+  Book,
   Home,
   Gamepad2,
   Copy,
@@ -21,6 +22,7 @@ import {
   Share2,
   PcCase,
   LayoutDashboard,
+  Trophy,
 } from "lucide-react";
 import { useAchievements } from "@/hooks/use-achievements";
 
@@ -202,6 +204,21 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
                 <span>Uses</span>
               </CommandItem>
               <CommandItem
+                onSelect={() => runCommand(() => router.push("/guestbook"))}
+                onMouseEnter={() => play("hover")}
+              >
+                <Book className="mr-2 h-4 w-4" />
+                <span>Guestbook</span>
+              </CommandItem>
+              {/* --- ADDED ACHIEVEMENTS HERE --- */}
+              <CommandItem
+                onSelect={() => runCommand(() => router.push("/achievements"))}
+                onMouseEnter={() => play("hover")}
+              >
+                <Trophy className="mr-2 h-4 w-4" />
+                <span>Achievements</span>
+              </CommandItem>
+              <CommandItem
                 onSelect={() => runCommand(() => router.push("/dashboard"))}
                 onMouseEnter={() => play("hover")}
               >
@@ -240,6 +257,7 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
           </>
         )}
 
+        {/* ... (Theme and Socials groups remain unchanged) ... */}
         {activePage === "theme" && (
           <CommandGroup heading="Theme">
             <CommandItem

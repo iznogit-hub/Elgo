@@ -16,7 +16,10 @@ export type AchievementId =
   | "ECHO_LOCATOR"
   | "THEME_HACKER"
   | "COMMAND_LINE"
-  | "SOURCE_HUNTER";
+  | "SOURCE_HUNTER"
+  | "KONAMI_CODE"
+  | "SOCIAL_ENGINEER"
+  | "VOID_WALKER";
 
 interface Achievement {
   id: AchievementId;
@@ -62,6 +65,24 @@ export const ACHIEVEMENTS: Record<AchievementId, Achievement> = {
     description: "Attempted to view the source code.",
     xp: 100,
   },
+  KONAMI_CODE: {
+    id: "KONAMI_CODE",
+    title: "GOD_MODE",
+    description: "Cheats enabled. You know the sequence.",
+    xp: 500,
+  },
+  SOCIAL_ENGINEER: {
+    id: "SOCIAL_ENGINEER",
+    title: "SOCIAL_LINK",
+    description: "Established connection on external frequencies.",
+    xp: 25,
+  },
+  VOID_WALKER: {
+    id: "VOID_WALKER",
+    title: "404_DRIFTER",
+    description: "Stared into the abyss of a missing page.",
+    xp: 15,
+  },
 };
 
 export function useAchievements() {
@@ -71,7 +92,6 @@ export function useAchievements() {
   const visitorIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    // Sync with Server (Redis) on mount
     const initSession = async () => {
       let vid = localStorage.getItem("t7sen-visitor-id");
       if (!vid) {
@@ -90,7 +110,6 @@ export function useAchievements() {
       unlockedRef.current = typedAchievements;
     };
 
-    // Run inside setTimeout to avoid any hydration/render conflicts
     const timer = setTimeout(() => {
       initSession();
     }, 0);
@@ -102,11 +121,9 @@ export function useAchievements() {
       if (unlockedRef.current.includes(id)) return;
       if (!visitorIdRef.current) return;
 
-      // Optimistic Update
       unlockedRef.current = [...unlockedRef.current, id];
       setUnlocked([...unlockedRef.current]);
 
-      // UI Feedback
       play("success");
       const achievement = ACHIEVEMENTS[id];
       toast(achievement.title, {
@@ -116,7 +133,6 @@ export function useAchievements() {
         duration: 4000,
       });
 
-      // Server Sync (Fire and forget, or await if strictly needed)
       await unlockServerAchievement(visitorIdRef.current, id);
     },
     [play],
