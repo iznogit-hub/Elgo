@@ -5,7 +5,11 @@ import { Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
-export function ActiveVisitors({ className }: { className?: string }) {
+/**
+ * Inner component that assumes the RoomProvider is present.
+ * This contains the hook that was causing the crash.
+ */
+function ActiveVisitorsContent({ className }: { className?: string }) {
   const others = useOthers();
   const [mounted, setMounted] = useState(false);
 
@@ -32,4 +36,19 @@ export function ActiveVisitors({ className }: { className?: string }) {
       <span className="tabular-nums">{count}</span>
     </div>
   );
+}
+
+/**
+ * Main export that acts as a Safety Guard.
+ * It strictly prevents the inner component from mounting if Realtime features are disabled.
+ */
+export function ActiveVisitors({ className }: { className?: string }) {
+  // Must match the check in RealtimeProvider
+  const isRealtimeEnabled = !!process.env.NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY;
+
+  if (!isRealtimeEnabled) {
+    return null;
+  }
+
+  return <ActiveVisitorsContent className={className} />;
 }
