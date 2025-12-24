@@ -42,6 +42,12 @@ export function ContactClient() {
         { y: 0, opacity: 1, duration: 1, stagger: 0.15 },
         "-=0.6",
       );
+      tl.fromTo(
+        ".decor-item",
+        { opacity: 0 },
+        { opacity: 1, duration: 1 },
+        "-=0.5",
+      );
 
       if (!prefersReducedMotion) {
         gsap.to(".decor-item", {
