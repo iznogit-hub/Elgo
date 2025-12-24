@@ -7,6 +7,8 @@ import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { useSfx } from "@/hooks/use-sfx";
 import { sendGAEvent } from "@next/third-parties/google";
+// ✅ IMPORT ADDED
+import { useAchievements } from "@/hooks/use-achievements";
 
 import { Button } from "@/components/ui/button";
 
@@ -15,10 +17,16 @@ gsap.registerPlugin(useGSAP);
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const { play } = useSfx(); // Initialize SFX
+  const { play } = useSfx();
+  // ✅ HOOK ADDED
+  const { unlock } = useAchievements();
 
   // Animation Lock to prevent flashing during rapid clicks
   const lockedRef = useRef(false);
+
+  // ✅ REFS ADDED: Track rapid clicks for achievement
+  const clickCountRef = useRef(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // SVG Refs
   const maskCircleRef = useRef<SVGCircleElement>(null);
@@ -57,6 +65,21 @@ export function ThemeToggle() {
 
     // PLAY SOUND: Immediate click feedback
     play("click");
+
+    // ✅ LOGIC ADDED: Check for "Theme Hacker" Achievement
+    clickCountRef.current += 1;
+
+    // Reset the counter if user stops clicking for 2 seconds
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      clickCountRef.current = 0;
+    }, 2000);
+
+    // If 5 clicks happen rapidly
+    if (clickCountRef.current >= 5) {
+      unlock("THEME_HACKER");
+      clickCountRef.current = 0; // Reset after unlock
+    }
 
     const isDark = theme === "dark";
     const nextTheme = isDark ? "light" : "dark";

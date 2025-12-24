@@ -109,6 +109,7 @@ export function GitPulse() {
           <div className="pointer-events-none absolute bottom-full left-1/2 mb-3 -translate-x-1/2 w-max opacity-0 translate-y-2 scale-95 transition-all duration-200 group-hover/time:opacity-100 group-hover/time:translate-y-0 group-hover/time:scale-100 z-50">
             <div className="bg-popover text-popover-foreground border border-border rounded px-2 py-1.5 text-[10px] shadow-lg font-mono tabular-nums">
               <span className="text-emerald-500 font-bold mr-1">&gt;</span>
+              <span className="font-bold mr-1">Last deployed:</span>
               {format(deployTime, "yyyy-MM-dd HH:mm:ss")}
               {/* Tooltip Arrow */}
               <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-popover border-r border-b border-border rotate-45"></div>

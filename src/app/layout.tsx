@@ -12,6 +12,7 @@ import { CyberChat } from "@/components/cyber-chat";
 import { Footer } from "@/components/footer";
 import { RealtimeProvider } from "@/providers/realtime-provider";
 import { SystemContextMenu } from "@/components/ui/system-context-menu";
+import { AchievementManager } from "@/components/achievement-manager";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -98,6 +99,7 @@ export default function RootLayout({
             <SoundProvider>
               <SystemContextMenu />
               <CyberChat />
+              <AchievementManager />
               <AdminProvider>
                 <GlobalAppWrapper>
                   <div className="flex min-h-screen flex-col">

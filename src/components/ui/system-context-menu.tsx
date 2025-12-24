@@ -18,6 +18,7 @@ import {
 import { useSfx } from "@/hooks/use-sfx";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useAchievements } from "@/hooks/use-achievements";
 
 interface MenuPosition {
   x: number;
@@ -30,6 +31,7 @@ export function SystemContextMenu() {
   const [isVisible, setIsVisible] = useState(false);
   const [position, setPosition] = useState<MenuPosition>({ x: 0, y: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
+  const { unlock } = useAchievements();
 
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => {
@@ -145,7 +147,7 @@ export function SystemContextMenu() {
           }
         />
 
-        {/* ✅ NEW: Print/Save PDF */}
+        {/* Print/Save PDF */}
         <ContextItem
           icon={Printer}
           label="Print Manifest"
@@ -168,6 +170,7 @@ export function SystemContextMenu() {
           label="Inspect Source"
           onClick={() =>
             handleAction(() => {
+              unlock("SOURCE_HUNTER");
               window.open("https://github.com/t7sen/portfolio", "_blank");
             })
           }

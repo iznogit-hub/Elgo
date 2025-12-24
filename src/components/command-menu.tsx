@@ -22,6 +22,7 @@ import {
   PcCase,
   LayoutDashboard,
 } from "lucide-react";
+import { useAchievements } from "@/hooks/use-achievements";
 
 import {
   CommandDialog,
@@ -43,6 +44,7 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
   const [open, setOpen] = React.useState(false);
   const [activePage, setActivePage] = React.useState("main");
   const [search, setSearch] = React.useState("");
+  const { unlock } = useAchievements();
 
   const { setTheme } = useTheme();
   const { play } = useSfx();
@@ -62,6 +64,7 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
+        if (!open) unlock("COMMAND_LINE");
         setOpen((open) => !open);
         if (!open) play("click");
       }
@@ -74,6 +77,7 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
     };
 
     const openHandler = () => {
+      if (!open) unlock("COMMAND_LINE");
       setOpen(true);
       play("click");
     };
@@ -85,7 +89,7 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
       document.removeEventListener("keydown", down);
       window.removeEventListener("open-command-menu", openHandler);
     };
-  }, [open, activePage, play, search]);
+  }, [open, activePage, play, search, unlock]);
 
   const runCommand = React.useCallback(
     (command: () => void) => {
@@ -94,7 +98,7 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
       setSearch("");
       command();
     },
-    [play]
+    [play],
   );
 
   const navigateTo = (page: string) => {
@@ -144,7 +148,7 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
         />
       </div>
 
-      <CommandList className="h-[300px] overflow-y-auto overflow-x-hidden scrollbar-none">
+      <CommandList className="h-75 overflow-y-auto overflow-x-hidden scrollbar-none">
         <CommandEmpty>No results found.</CommandEmpty>
 
         {activePage === "main" && (
@@ -267,7 +271,7 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
             <CommandItem
               onSelect={() =>
                 runCommand(() =>
-                  window.open("https://github.com/t7sen", "_blank")
+                  window.open("https://github.com/t7sen", "_blank"),
                 )
               }
               onMouseEnter={() => play("hover")}
@@ -278,7 +282,7 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
             <CommandItem
               onSelect={() =>
                 runCommand(() =>
-                  window.open("https://linkedin.com/in/t7sen", "_blank")
+                  window.open("https://linkedin.com/in/t7sen", "_blank"),
                 )
               }
               onMouseEnter={() => play("hover")}
@@ -289,7 +293,7 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
             <CommandItem
               onSelect={() =>
                 runCommand(() =>
-                  window.open("https://twitter.com/t7sen", "_blank")
+                  window.open("https://twitter.com/t7sen", "_blank"),
                 )
               }
               onMouseEnter={() => play("hover")}
@@ -300,7 +304,7 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
             <CommandItem
               onSelect={() =>
                 runCommand(() =>
-                  window.open("mailto:contact@t7sen.com", "_self")
+                  window.open("mailto:contact@t7sen.com", "_self"),
                 )
               }
               onMouseEnter={() => play("hover")}
