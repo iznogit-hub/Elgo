@@ -1,11 +1,29 @@
-import { describe, it, expect, vi } from "vitest";
-import { renderHook } from "@testing-library/react";
+import { renderHook, act } from "@testing-library/react";
 import { useKonami } from "./use-konami";
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
+
+// --- MOCK DEPENDENCIES ---
+// This mocks the hook so it doesn't try to play sounds or check the provider
+vi.mock("@/hooks/use-achievements", () => ({
+  useAchievements: () => ({
+    unlock: vi.fn(), // A fake function that does nothing
+  }),
+}));
 
 describe("useKonami", () => {
+  beforeEach(() => {
+    // Spy on window events to simulate typing
+    vi.spyOn(window, "addEventListener");
+    vi.spyOn(window, "removeEventListener");
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("triggers action only when complete sequence is typed", () => {
-    const actionMock = vi.fn();
-    renderHook(() => useKonami(actionMock));
+    const action = vi.fn();
+    renderHook(() => useKonami(action));
 
     const konamiCode = [
       "ArrowUp",
@@ -20,31 +38,33 @@ describe("useKonami", () => {
       "a",
     ];
 
-    // Simulate typing the code
-    konamiCode.forEach((key) => {
-      window.dispatchEvent(new KeyboardEvent("keydown", { key }));
+    act(() => {
+      konamiCode.forEach((key) => {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key }));
+      });
     });
 
-    // Should fire exactly once
-    expect(actionMock).toHaveBeenCalledTimes(1);
+    expect(action).toHaveBeenCalledTimes(1);
   });
 
   it("does not trigger on incomplete sequence", () => {
-    const actionMock = vi.fn();
-    renderHook(() => useKonami(actionMock));
+    const action = vi.fn();
+    renderHook(() => useKonami(action));
 
-    const incomplete = ["ArrowUp", "ArrowUp", "ArrowDown"];
+    const incompleteCode = ["ArrowUp", "ArrowUp", "ArrowDown"];
 
-    incomplete.forEach((key) => {
-      window.dispatchEvent(new KeyboardEvent("keydown", { key }));
+    act(() => {
+      incompleteCode.forEach((key) => {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key }));
+      });
     });
 
-    expect(actionMock).not.toHaveBeenCalled();
+    expect(action).not.toHaveBeenCalled();
   });
 
   it("resets buffer correctly (allows re-triggering)", () => {
-    const actionMock = vi.fn();
-    renderHook(() => useKonami(actionMock));
+    const action = vi.fn();
+    renderHook(() => useKonami(action));
 
     const konamiCode = [
       "ArrowUp",
@@ -59,16 +79,20 @@ describe("useKonami", () => {
       "a",
     ];
 
-    // Type it once
-    konamiCode.forEach((key) =>
-      window.dispatchEvent(new KeyboardEvent("keydown", { key }))
-    );
-    expect(actionMock).toHaveBeenCalledTimes(1);
+    // First trigger
+    act(() => {
+      konamiCode.forEach((key) => {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key }));
+      });
+    });
+    expect(action).toHaveBeenCalledTimes(1);
 
-    // Type it again immediately
-    konamiCode.forEach((key) =>
-      window.dispatchEvent(new KeyboardEvent("keydown", { key }))
-    );
-    expect(actionMock).toHaveBeenCalledTimes(2);
+    // Second trigger
+    act(() => {
+      konamiCode.forEach((key) => {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key }));
+      });
+    });
+    expect(action).toHaveBeenCalledTimes(2);
   });
 });
