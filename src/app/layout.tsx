@@ -12,6 +12,7 @@ import { CyberChat } from "@/components/cyber-chat";
 import { Footer } from "@/components/footer";
 import { RealtimeProvider } from "@/providers/realtime-provider";
 import { SystemContextMenu } from "@/components/ui/system-context-menu";
+import { AchievementsProvider } from "@/hooks/use-achievements";
 import { AchievementManager } from "@/components/achievement-manager";
 
 const geistSans = Geist({
@@ -97,24 +98,26 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <SoundProvider>
-              <SystemContextMenu />
-              <CyberChat />
-              <AchievementManager />
-              <AdminProvider>
-                <GlobalAppWrapper>
-                  <div className="flex min-h-screen flex-col">
-                    <main className="flex-1">
-                      {children}
-                      <div
-                        className="h-24 w-full block lg:hidden"
-                        aria-hidden="true"
-                      />
-                    </main>
-                    <Footer />
-                  </div>
-                </GlobalAppWrapper>
-                <Toaster position="top-center" richColors />
-              </AdminProvider>
+              <AchievementsProvider>
+                <SystemContextMenu />
+                <CyberChat />
+                <AchievementManager />
+                <AdminProvider>
+                  <GlobalAppWrapper>
+                    <div className="flex min-h-screen flex-col">
+                      <main className="flex-1">
+                        {children}
+                        <div
+                          className="h-24 w-full block lg:hidden"
+                          aria-hidden="true"
+                        />
+                      </main>
+                      <Footer />
+                    </div>
+                  </GlobalAppWrapper>
+                  <Toaster position="top-center" richColors />
+                </AdminProvider>
+              </AchievementsProvider>
             </SoundProvider>
           </ThemeProvider>
         </RealtimeProvider>

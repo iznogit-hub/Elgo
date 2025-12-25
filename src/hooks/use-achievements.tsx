@@ -1,7 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import { toast } from "sonner";
 import { useSfx } from "@/hooks/use-sfx";
 import { Trophy } from "lucide-react";
@@ -11,6 +18,7 @@ import {
   getVisitorAchievements,
 } from "@/app/actions/achievements";
 
+// --- TYPES ---
 export type AchievementId =
   | "FIRST_BOOT"
   | "ROOT_ACCESS"
@@ -30,9 +38,10 @@ interface Achievement {
   title: string;
   description: string;
   xp: number;
-  secret?: boolean; // Added secret flag
+  secret?: boolean;
 }
 
+// --- DATA ---
 export const ACHIEVEMENTS: Record<AchievementId, Achievement> = {
   FIRST_BOOT: {
     id: "FIRST_BOOT",
@@ -70,7 +79,6 @@ export const ACHIEVEMENTS: Record<AchievementId, Achievement> = {
     description: "Attempted to view the source code.",
     xp: 100,
   },
-  // --- SECRET ACHIEVEMENTS ---
   KONAMI_CODE: {
     id: "KONAMI_CODE",
     title: "GOD_MODE",
@@ -115,7 +123,7 @@ export const ACHIEVEMENTS: Record<AchievementId, Achievement> = {
   },
 };
 
-// --- Cache Helpers ---
+// --- HELPERS ---
 const CACHE_KEY = "t7sen-achievements-cache";
 
 function getLocalCache(): AchievementId[] {
@@ -133,12 +141,27 @@ function updateLocalCache(ids: AchievementId[]) {
   localStorage.setItem(CACHE_KEY, JSON.stringify(ids));
 }
 
-export function useAchievements() {
+// --- CONTEXT ---
+interface AchievementsContextType {
+  unlocked: AchievementId[];
+  unlock: (id: AchievementId) => void;
+}
+
+const AchievementsContext = createContext<AchievementsContextType | undefined>(
+  undefined,
+);
+
+export function AchievementsProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { play } = useSfx();
   const [unlocked, setUnlocked] = useState<AchievementId[]>([]);
   const unlockedRef = useRef<AchievementId[]>([]);
   const visitorIdRef = useRef<string | null>(null);
 
+  // Initialize Data
   useEffect(() => {
     const initSession = async () => {
       // 1. Initialize Visitor ID
@@ -157,20 +180,24 @@ export function useAchievements() {
       }
 
       // 3. Sync with Server (Async)
-      const serverAchievements = await getVisitorAchievements(vid);
-      const typedServerAchievements =
-        serverAchievements as string[] as AchievementId[];
+      try {
+        const serverAchievements = await getVisitorAchievements(vid);
+        const typedServerAchievements =
+          serverAchievements as string[] as AchievementId[];
 
-      // 4. Merge Local Cache + Server Data
-      const merged = Array.from(
-        new Set([...cached, ...typedServerAchievements]),
-      );
+        // 4. Merge Local Cache + Server Data
+        const merged = Array.from(
+          new Set([...cached, ...typedServerAchievements]),
+        );
 
-      // 5. Update State & Cache if there's a difference
-      if (merged.length !== cached.length) {
-        setUnlocked(merged);
-        unlockedRef.current = merged;
-        updateLocalCache(merged);
+        // 5. Update State & Cache if there's a difference
+        if (merged.length !== cached.length) {
+          setUnlocked(merged);
+          unlockedRef.current = merged;
+          updateLocalCache(merged);
+        }
+      } catch (error) {
+        console.error("Failed to sync achievements", error);
       }
     };
 
@@ -182,6 +209,7 @@ export function useAchievements() {
 
   const unlock = useCallback(
     async (id: AchievementId) => {
+      // Check ref immediately to prevent double-firing
       if (unlockedRef.current.includes(id)) return;
 
       const cached = getLocalCache();
@@ -192,6 +220,7 @@ export function useAchievements() {
       }
 
       let currentVisitorId = visitorIdRef.current;
+      // Re-check ID if logic runs before init
       if (!currentVisitorId) {
         if (typeof window !== "undefined") {
           currentVisitorId = localStorage.getItem("t7sen-visitor-id");
@@ -204,11 +233,13 @@ export function useAchievements() {
       }
       if (!currentVisitorId) return;
 
+      // Update State (Triggers UI updates everywhere)
       const newSet = [...unlockedRef.current, id];
       unlockedRef.current = newSet;
       setUnlocked(newSet);
       updateLocalCache(newSet);
 
+      // Play Effects
       play("success");
       const achievement = ACHIEVEMENTS[id];
       toast(achievement.title, {
@@ -218,10 +249,26 @@ export function useAchievements() {
         duration: 4000,
       });
 
+      // Server Sync
       await unlockServerAchievement(currentVisitorId, id);
     },
     [play],
   );
 
-  return { unlock, unlocked };
+  return (
+    <AchievementsContext.Provider value={{ unlocked, unlock }}>
+      {children}
+    </AchievementsContext.Provider>
+  );
+}
+
+// --- HOOK ---
+export function useAchievements() {
+  const context = useContext(AchievementsContext);
+  if (context === undefined) {
+    throw new Error(
+      "useAchievements must be used within an AchievementsProvider",
+    );
+  }
+  return context;
 }
