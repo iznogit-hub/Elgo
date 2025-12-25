@@ -21,6 +21,8 @@ import {
   Disc,
   Activity,
   Gamepad2,
+  Clock,
+  MonitorSmartphone,
   Share2,
   Ghost,
 } from "lucide-react";
@@ -46,6 +48,9 @@ const ACHIEVEMENT_ICONS: Record<AchievementId, React.ElementType> = {
   KONAMI_CODE: Gamepad2,
   SOCIAL_ENGINEER: Share2,
   VOID_WALKER: Ghost,
+  COPY_CAT: Code2,
+  TIME_TRAVELER: Clock,
+  FLUID_DYNAMICS: MonitorSmartphone,
 };
 
 // UPDATED RANKS FOR NEW XP SCALE (Max ~1179)
@@ -364,6 +369,9 @@ export function AchievementsContent() {
           const isUnlocked = unlocked.includes(achievementId);
           const Icon = ACHIEVEMENT_ICONS[achievementId] || Trophy;
 
+          // LOGIC: Determine if this is a locked secret achievement
+          const isSecretLocked = achievement.secret && !isUnlocked;
+
           return (
             <div
               key={id}
@@ -402,7 +410,7 @@ export function AchievementsContent() {
                         : "bg-muted/20 border-border/20 text-muted-foreground",
                     )}
                   >
-                    {achievement.xp} XP
+                    {isSecretLocked ? "???" : `${achievement.xp} XP`}
                   </span>
                 </div>
               </div>
@@ -415,21 +423,25 @@ export function AchievementsContent() {
                     isUnlocked ? "text-foreground" : "text-muted-foreground",
                   )}
                 >
-                  {isUnlocked ? achievement.title : "LOCKED_DATA"}
+                  {isSecretLocked ? "???" : achievement.title}
                 </h3>
                 <p
                   className={cn(
                     "text-[10px] leading-relaxed",
                     isUnlocked
                       ? "text-muted-foreground"
-                      : "text-muted-foreground/40 blur-[2px] select-none",
+                      : isSecretLocked
+                        ? "text-primary/70 font-mono" // Clear text for system messages
+                        : "text-muted-foreground/40 blur-[2px] select-none", // Blurred for standard locked
                   )}
                 >
-                  {achievement.description}
+                  {isSecretLocked
+                    ? "Encrypted signal detected..."
+                    : achievement.description}
                 </p>
               </div>
 
-              {/* Locked Overlay Texture */}
+              {/* Locked Overlay Texture (Apply to both secret and standard locked) */}
               {!isUnlocked && (
                 <div className="absolute inset-0 bg-[url('/noise.png')] opacity-10 pointer-events-none mix-blend-overlay" />
               )}

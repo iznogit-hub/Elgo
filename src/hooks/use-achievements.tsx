@@ -20,13 +20,17 @@ export type AchievementId =
   | "SOURCE_HUNTER"
   | "KONAMI_CODE"
   | "SOCIAL_ENGINEER"
-  | "VOID_WALKER";
+  | "VOID_WALKER"
+  | "COPY_CAT"
+  | "TIME_TRAVELER"
+  | "FLUID_DYNAMICS";
 
 interface Achievement {
   id: AchievementId;
   title: string;
   description: string;
   xp: number;
+  secret?: boolean; // Added secret flag
 }
 
 export const ACHIEVEMENTS: Record<AchievementId, Achievement> = {
@@ -66,23 +70,48 @@ export const ACHIEVEMENTS: Record<AchievementId, Achievement> = {
     description: "Attempted to view the source code.",
     xp: 100,
   },
+  // --- SECRET ACHIEVEMENTS ---
   KONAMI_CODE: {
     id: "KONAMI_CODE",
     title: "GOD_MODE",
     description: "Unlimited power! (Not really).",
     xp: 500,
+    secret: true,
   },
   SOCIAL_ENGINEER: {
     id: "SOCIAL_ENGINEER",
     title: "SOCIAL_LINK",
     description: "Established connection on external frequencies.",
     xp: 25,
+    secret: true,
   },
   VOID_WALKER: {
     id: "VOID_WALKER",
     title: "VOID_WALKER",
     description: "Stared into the void and lived to tell the tale.",
     xp: 404,
+    secret: true,
+  },
+  COPY_CAT: {
+    id: "COPY_CAT",
+    title: "CTRL_C_V",
+    description: "Great artists steal code.",
+    xp: 20,
+    secret: true,
+  },
+  TIME_TRAVELER: {
+    id: "TIME_TRAVELER",
+    title: "MIDNIGHT_RUN",
+    description: "System access detected during off-hours.",
+    xp: 25,
+    secret: true,
+  },
+  FLUID_DYNAMICS: {
+    id: "FLUID_DYNAMICS",
+    title: "FLUID_LAYOUT",
+    description: "Stress-tested the responsive grid.",
+    xp: 50,
+    secret: true,
   },
 };
 
@@ -121,7 +150,6 @@ export function useAchievements() {
       visitorIdRef.current = vid;
 
       // 2. Load from LocalStorage Cache FIRST (Instant)
-      // This ensures we have data immediately before the server request finishes
       const cached = getLocalCache();
       if (cached.length > 0) {
         setUnlocked(cached);
@@ -146,7 +174,6 @@ export function useAchievements() {
       }
     };
 
-    // Run immediately (setTimeout 0 puts it at end of event loop, safe for hydration)
     const timer = setTimeout(() => {
       initSession();
     }, 0);
@@ -155,20 +182,15 @@ export function useAchievements() {
 
   const unlock = useCallback(
     async (id: AchievementId) => {
-      // 1. Memory Check
       if (unlockedRef.current.includes(id)) return;
 
-      // 2. Cache Check (The Fix for 404 Race Condition)
-      // Even if unlockedRef is empty (fetching), we might have it in localStorage.
       const cached = getLocalCache();
       if (cached.includes(id)) {
-        // We actually have it! Sync state and abort.
         unlockedRef.current = cached;
         setUnlocked(cached);
         return;
       }
 
-      // 3. Verify Visitor ID
       let currentVisitorId = visitorIdRef.current;
       if (!currentVisitorId) {
         if (typeof window !== "undefined") {
@@ -182,13 +204,11 @@ export function useAchievements() {
       }
       if (!currentVisitorId) return;
 
-      // 4. Optimistic Update
       const newSet = [...unlockedRef.current, id];
       unlockedRef.current = newSet;
       setUnlocked(newSet);
-      updateLocalCache(newSet); // <--- Persist immediately
+      updateLocalCache(newSet);
 
-      // 5. UI Feedback
       play("success");
       const achievement = ACHIEVEMENTS[id];
       toast(achievement.title, {
@@ -198,7 +218,6 @@ export function useAchievements() {
         duration: 4000,
       });
 
-      // 6. Server Sync
       await unlockServerAchievement(currentVisitorId, id);
     },
     [play],
