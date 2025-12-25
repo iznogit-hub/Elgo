@@ -1,7 +1,7 @@
+/* eslint-disable react/jsx-no-comment-textnodes */
 "use client";
 
-import React, { useRef } from "react";
-// 1. Remove Link, Import TransitionLink
+import React, { useRef, useEffect } from "react";
 import { TransitionLink } from "@/components/ui/transition-link";
 import { AlertTriangle, ArrowLeft, Bug, ServerCrash } from "lucide-react";
 import { gsap } from "gsap";
@@ -11,12 +11,19 @@ import { Button } from "@/components/ui/button";
 import { useSfx } from "@/hooks/use-sfx";
 import { HackerText } from "@/components/ui/hacker-text";
 import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
+import { useAchievements } from "@/hooks/use-achievements";
 
 gsap.registerPlugin(useGSAP);
 
 export default function NotFound() {
   const { play } = useSfx();
+  const { unlock } = useAchievements();
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Unlock achievement on mount
+  useEffect(() => {
+    unlock("VOID_WALKER");
+  }, [unlock]);
 
   useGSAP(
     () => {
@@ -85,7 +92,6 @@ export default function NotFound() {
       {/* --- FLOATING HEADER --- */}
       <div className="absolute top-0 left-0 right-0 pt-20 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
         <div className="floating-header pointer-events-auto opacity-0">
-          {/* ⚡ FIX: Use TransitionLink wrapping Button with asChild */}
           <TransitionLink
             href="/"
             className="cursor-none"
@@ -95,9 +101,8 @@ export default function NotFound() {
               variant="ghost"
               className="group gap-3 pl-0 hover:bg-transparent hover:text-red-500 transition-colors cursor-none"
               onMouseEnter={() => play("hover")}
-              asChild // <--- Merges Button styles into the TransitionLink button
+              asChild
             >
-              {/* Wrap content in span to be a valid single child */}
               <span>
                 <div className="flex items-center justify-center w-8 h-8 rounded-full border border-muted-foreground/30 group-hover:border-red-500/50 transition-colors">
                   <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
@@ -167,7 +172,6 @@ export default function NotFound() {
             <h2 className="text-2xl md:text-4xl font-bold tracking-tight">
               <HackerText text="PAGE_NOT_FOUND" />
             </h2>
-            {/* eslint-disable-next-line react/jsx-no-comment-textnodes */}
             <p className="text-muted-foreground/80 font-mono text-xs md:text-sm tracking-widest uppercase">
               // ERROR_CODE: 0x404_VOID
             </p>

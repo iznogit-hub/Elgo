@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -68,7 +69,7 @@ export const ACHIEVEMENTS: Record<AchievementId, Achievement> = {
   KONAMI_CODE: {
     id: "KONAMI_CODE",
     title: "GOD_MODE",
-    description: "Cheats enabled. You know the sequence.",
+    description: "Unlimited power! (Not really).",
     xp: 500,
   },
   SOCIAL_ENGINEER: {
@@ -79,11 +80,29 @@ export const ACHIEVEMENTS: Record<AchievementId, Achievement> = {
   },
   VOID_WALKER: {
     id: "VOID_WALKER",
-    title: "404_DRIFTER",
-    description: "Stared into the abyss of a missing page.",
-    xp: 15,
+    title: "VOID_WALKER",
+    description: "Stared into the void and lived to tell the tale.",
+    xp: 404,
   },
 };
+
+// --- Cache Helpers ---
+const CACHE_KEY = "t7sen-achievements-cache";
+
+function getLocalCache(): AchievementId[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    return cached ? JSON.parse(cached) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function updateLocalCache(ids: AchievementId[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(CACHE_KEY, JSON.stringify(ids));
+}
 
 export function useAchievements() {
   const { play } = useSfx();
@@ -93,6 +112,7 @@ export function useAchievements() {
 
   useEffect(() => {
     const initSession = async () => {
+      // 1. Initialize Visitor ID
       let vid = localStorage.getItem("t7sen-visitor-id");
       if (!vid) {
         vid = uuidv4();
@@ -100,16 +120,33 @@ export function useAchievements() {
       }
       visitorIdRef.current = vid;
 
-      const serverAchievements = await getVisitorAchievements(vid);
+      // 2. Load from LocalStorage Cache FIRST (Instant)
+      // This ensures we have data immediately before the server request finishes
+      const cached = getLocalCache();
+      if (cached.length > 0) {
+        setUnlocked(cached);
+        unlockedRef.current = cached;
+      }
 
-      // Ensure we treat the return value as strings
-      const typedAchievements =
+      // 3. Sync with Server (Async)
+      const serverAchievements = await getVisitorAchievements(vid);
+      const typedServerAchievements =
         serverAchievements as string[] as AchievementId[];
 
-      setUnlocked(typedAchievements);
-      unlockedRef.current = typedAchievements;
+      // 4. Merge Local Cache + Server Data
+      const merged = Array.from(
+        new Set([...cached, ...typedServerAchievements]),
+      );
+
+      // 5. Update State & Cache if there's a difference
+      if (merged.length !== cached.length) {
+        setUnlocked(merged);
+        unlockedRef.current = merged;
+        updateLocalCache(merged);
+      }
     };
 
+    // Run immediately (setTimeout 0 puts it at end of event loop, safe for hydration)
     const timer = setTimeout(() => {
       initSession();
     }, 0);
@@ -118,12 +155,40 @@ export function useAchievements() {
 
   const unlock = useCallback(
     async (id: AchievementId) => {
+      // 1. Memory Check
       if (unlockedRef.current.includes(id)) return;
-      if (!visitorIdRef.current) return;
 
-      unlockedRef.current = [...unlockedRef.current, id];
-      setUnlocked([...unlockedRef.current]);
+      // 2. Cache Check (The Fix for 404 Race Condition)
+      // Even if unlockedRef is empty (fetching), we might have it in localStorage.
+      const cached = getLocalCache();
+      if (cached.includes(id)) {
+        // We actually have it! Sync state and abort.
+        unlockedRef.current = cached;
+        setUnlocked(cached);
+        return;
+      }
 
+      // 3. Verify Visitor ID
+      let currentVisitorId = visitorIdRef.current;
+      if (!currentVisitorId) {
+        if (typeof window !== "undefined") {
+          currentVisitorId = localStorage.getItem("t7sen-visitor-id");
+          if (!currentVisitorId) {
+            currentVisitorId = uuidv4();
+            localStorage.setItem("t7sen-visitor-id", currentVisitorId);
+          }
+          visitorIdRef.current = currentVisitorId;
+        }
+      }
+      if (!currentVisitorId) return;
+
+      // 4. Optimistic Update
+      const newSet = [...unlockedRef.current, id];
+      unlockedRef.current = newSet;
+      setUnlocked(newSet);
+      updateLocalCache(newSet); // <--- Persist immediately
+
+      // 5. UI Feedback
       play("success");
       const achievement = ACHIEVEMENTS[id];
       toast(achievement.title, {
@@ -133,7 +198,8 @@ export function useAchievements() {
         duration: 4000,
       });
 
-      await unlockServerAchievement(visitorIdRef.current, id);
+      // 6. Server Sync
+      await unlockServerAchievement(currentVisitorId, id);
     },
     [play],
   );

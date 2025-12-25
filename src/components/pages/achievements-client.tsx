@@ -48,6 +48,7 @@ const ACHIEVEMENT_ICONS: Record<AchievementId, React.ElementType> = {
   VOID_WALKER: Ghost,
 };
 
+// UPDATED RANKS FOR NEW XP SCALE (Max ~1179)
 const RANKS = [
   {
     threshold: 0,
@@ -56,25 +57,25 @@ const RANKS = [
     color: "text-muted-foreground",
   },
   {
-    threshold: 50,
+    threshold: 100, // Increased from 50
     title: "SCRIPT_KIDDIE",
     icon: Terminal,
     color: "text-blue-500",
   },
   {
-    threshold: 100,
+    threshold: 350, // Increased from 100
     title: "NETRUNNER",
     icon: Activity,
     color: "text-purple-500",
   },
   {
-    threshold: 200,
+    threshold: 700, // Increased from 200
     title: "SYS_ADMIN",
     icon: Shield,
     color: "text-orange-500",
   },
   {
-    threshold: 500,
+    threshold: 1179, // Increased from 500
     title: "ARCHITECT",
     icon: Trophy,
     color: "text-yellow-500",
@@ -109,12 +110,15 @@ export function AchievementsShell({ children }: { children: React.ReactNode }) {
       // 3. Ambient Float Animation
       if (!prefersReducedMotion) {
         gsap.to(".decor-item", {
-          y: "10px",
+          y: "15px",
           duration: 4,
           repeat: -1,
           yoyo: true,
           ease: "sine.inOut",
-          stagger: { amount: 2, from: "random" },
+          stagger: {
+            amount: 3,
+            from: "random",
+          },
         });
       }
     },
@@ -157,32 +161,45 @@ export function AchievementsShell({ children }: { children: React.ReactNode }) {
           </TransitionLink>
         </div>
 
+        {/* --- STATUS INDICATOR (Right Side) --- */}
         <div className="floating-header flex flex-col items-end gap-2 opacity-0">
+          {/* Achievement Sync Pill: Gold color indicates 'Trophy/Reward' system status */}
           <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 backdrop-blur-sm">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+              {/* Unique Amber/Gold Dot to distinguish from standard system green */}
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
             </span>
             <span className="text-xs font-mono font-bold tracking-wider text-primary">
-              SYNC_ACTIVE
+              ARCHIVE_LIVE
             </span>
             <Award className="h-3 w-3 text-primary" />
           </div>
+
+          {/* System Version: Static identifier for the achievement module */}
           <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
-            <span>V.1.0.4</span>
+            <span>REF: 0x4E1</span>
             <span>::</span>
-            <span>STABLE</span>
+            <span>INDEXED</span>
           </div>
         </div>
       </div>
 
-      {/* --- Background Decor --- */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-10 hidden md:block z-0">
-        <div className="decor-item absolute top-[20%] left-[5%] font-mono text-8xl font-black text-foreground opacity-[0.03]">
-          XP
+      {/* --- Ambient Decor (Static) --- */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-20 hidden md:block z-0">
+        <div className="decor-item absolute top-[18%] left-[6%] font-mono text-xs text-primary/60 opacity-0">
+          {`> VERIFYING_PROTOCOLS...`}
         </div>
-        <div className="decor-item absolute bottom-[10%] right-[5%] font-mono text-xs text-muted-foreground/60">
-          ID: SYS_ADMIN_V.0.1
+        <div className="decor-item absolute top-[35%] right-[8%] font-mono text-xs text-muted-foreground/60 opacity-0">
+          {`{ "trophies": "cached" }`}
+        </div>
+        <div className="decor-item absolute bottom-[15%] left-[12%] flex items-center gap-2 text-muted-foreground/60 opacity-0">
+          <Trophy className="h-4 w-4" />
+          <span className="font-mono text-xs">TROPHY_INDEX: VERIFIED</span>
+        </div>
+        <div className="decor-item absolute bottom-[25%] right-[15%] flex items-center gap-2 text-primary/40 opacity-0">
+          <Award className="h-4 w-4" />
+          <span className="font-mono text-xs">HONOR_SYSTEM: ONLINE</span>
         </div>
       </div>
 
@@ -223,7 +240,6 @@ export function AchievementsContent() {
   }, [unlocked]);
 
   // --- Animation 1: ENTRANCE (Runs ONLY ONCE on mount) ---
-  // We removed 'stats' from dependencies so this doesn't replay when data syncs
   useGSAP(
     () => {
       if (prefersReducedMotion) return;

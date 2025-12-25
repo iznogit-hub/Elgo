@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { sendGAEvent } from "@next/third-parties/google";
+import { useAchievements } from "@/hooks/use-achievements";
 
 const KONAMI_CODE = [
   "ArrowUp",
@@ -18,6 +19,7 @@ const KONAMI_CODE = [
 
 export function useKonami(action: () => void) {
   const inputRef = useRef<string[]>([]);
+  const { unlock } = useAchievements();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -39,6 +41,7 @@ export function useKonami(action: () => void) {
         });
         // --- TRACKING END ---
 
+        unlock("KONAMI_CODE");
         action();
         inputRef.current = [];
       }
@@ -46,5 +49,5 @@ export function useKonami(action: () => void) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [action]);
+  }, [action, unlock]);
 }

@@ -7,6 +7,7 @@ import { useSfx } from "@/hooks/use-sfx";
 import { Button } from "@/components/ui/button";
 import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
 import { socialLinks } from "@/data/socials";
+import { useAchievements } from "@/hooks/use-achievements";
 
 gsap.registerPlugin(useGSAP);
 
@@ -17,6 +18,7 @@ interface SocialLinksProps {
 export function SocialLinks({ isFooter = false }: SocialLinksProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const { play } = useSfx();
+  const { unlock } = useAchievements();
 
   useGSAP(
     () => {
@@ -34,6 +36,11 @@ export function SocialLinks({ isFooter = false }: SocialLinksProps) {
     { scope: containerRef },
   );
 
+  const handleSocialClick = () => {
+    play("click");
+    unlock("SOCIAL_ENGINEER");
+  };
+
   return (
     <div ref={containerRef} className="flex items-center gap-2">
       {socialLinks.map((item) => (
@@ -43,7 +50,7 @@ export function SocialLinks({ isFooter = false }: SocialLinksProps) {
               variant="ghost"
               size="icon"
               asChild
-              onClick={() => play("click")}
+              onClick={handleSocialClick}
               // THEME UPDATE: Uses standard semantic colors (muted -> foreground)
               className="text-muted-foreground transition-all duration-200 hover:scale-110 hover:text-foreground hover:bg-accent"
             >
