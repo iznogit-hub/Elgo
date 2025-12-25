@@ -2,16 +2,18 @@ import { Ratelimit, type Duration } from "@upstash/ratelimit";
 import { redis } from "@/lib/redis";
 import { RateLimiterMemory } from "rate-limiter-flexible";
 
-export type RateLimitType = "core" | "guestbook" | "contact";
+export type RateLimitType = "core" | "guestbook" | "contact" | "achievements";
 
 // --- Configuration ---
 const LIMITERS: Record<
   RateLimitType,
   { points: number; duration: Duration; blockDuration: number }
 > = {
-  core: { points: 20, duration: "60 s", blockDuration: 60 }, // 20 req / 1 min
-  guestbook: { points: 5, duration: "60 s", blockDuration: 60 }, // 5 req / 1 min
-  contact: { points: 3, duration: "1 h", blockDuration: 60 * 60 }, // 3 req / 1 hour
+  core: { points: 20, duration: "60 s", blockDuration: 60 },
+  guestbook: { points: 5, duration: "60 s", blockDuration: 60 },
+  contact: { points: 3, duration: "1 h", blockDuration: 60 * 60 },
+
+  achievements: { points: 10, duration: "60 s", blockDuration: 60 },
 };
 
 // --- Cache Containers ---
@@ -53,7 +55,6 @@ export async function checkRateLimit(
   type: RateLimitType = "core",
 ) {
   // 1. BYPASS: Check for CI/Test environment
-  // BUT: intentionally allow "6.6.6.6" (used in security tests) to hit the limiter
   if (process.env.SKIP_RATE_LIMIT === "true" && identifier !== "6.6.6.6") {
     return;
   }
@@ -79,16 +80,12 @@ export async function checkRateLimit(
       await limiter.consume(identifier);
     }
   } catch (error) {
-    // Redis mode throws specific errors we want to keep.
     if (
       error instanceof Error &&
       error.message.startsWith("Rate limit exceeded")
     ) {
       throw error;
     }
-
-    // Memory mode (or other errors) usually throw generic errors.
-    // We normalize this message so the UI (and Tests) see "Rate limit exceeded"
     throw new Error("Rate limit exceeded. Please try again later.");
   }
 }
