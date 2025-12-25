@@ -21,10 +21,10 @@ import {
   Disc,
   Activity,
   Gamepad2,
-  Clock,
-  MonitorSmartphone,
   Share2,
   Ghost,
+  Clock,
+  MonitorSmartphone,
 } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -53,7 +53,7 @@ const ACHIEVEMENT_ICONS: Record<AchievementId, React.ElementType> = {
   FLUID_DYNAMICS: MonitorSmartphone,
 };
 
-// UPDATED RANKS FOR NEW XP SCALE (Max ~1179)
+// UPDATED RANKS (Total XP: 1274)
 const RANKS = [
   {
     threshold: 0,
@@ -62,25 +62,25 @@ const RANKS = [
     color: "text-muted-foreground",
   },
   {
-    threshold: 100, // Increased from 50
+    threshold: 100, // Easy: 2-3 basic achievements
     title: "SCRIPT_KIDDIE",
     icon: Terminal,
     color: "text-blue-500",
   },
   {
-    threshold: 350, // Increased from 100
+    threshold: 450, // Medium: Requires at least one 'Secret' or completion of all basics
     title: "NETRUNNER",
     icon: Activity,
     color: "text-purple-500",
   },
   {
-    threshold: 700, // Increased from 200
+    threshold: 900, // Hard: Requires Konami Code or Void Walker
     title: "SYS_ADMIN",
     icon: Shield,
     color: "text-orange-500",
   },
   {
-    threshold: 1179, // Increased from 500
+    threshold: 1274, // Master: Requires ~99% Completion
     title: "ARCHITECT",
     icon: Trophy,
     color: "text-yellow-500",
@@ -97,14 +97,12 @@ export function AchievementsShell({ children }: { children: React.ReactNode }) {
     () => {
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
-      // 1. Floating Header Slide Down (Instant)
       tl.fromTo(
         ".floating-header",
         { y: -30, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, delay: 0.2 },
       );
 
-      // 2. Ambient Decor Fade In
       tl.fromTo(
         ".decor-item",
         { opacity: 0 },
@@ -112,7 +110,6 @@ export function AchievementsShell({ children }: { children: React.ReactNode }) {
         "-=0.5",
       );
 
-      // 3. Ambient Float Animation
       if (!prefersReducedMotion) {
         gsap.to(".decor-item", {
           y: "15px",
@@ -166,12 +163,10 @@ export function AchievementsShell({ children }: { children: React.ReactNode }) {
           </TransitionLink>
         </div>
 
-        {/* --- STATUS INDICATOR (Right Side) --- */}
+        {/* --- STATUS INDICATOR --- */}
         <div className="floating-header flex flex-col items-end gap-2 opacity-0">
-          {/* Achievement Sync Pill: Gold color indicates 'Trophy/Reward' system status */}
           <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 backdrop-blur-sm">
             <span className="relative flex h-2 w-2">
-              {/* Unique Amber/Gold Dot to distinguish from standard system green */}
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
             </span>
@@ -181,7 +176,6 @@ export function AchievementsShell({ children }: { children: React.ReactNode }) {
             <Award className="h-3 w-3 text-primary" />
           </div>
 
-          {/* System Version: Static identifier for the achievement module */}
           <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
             <span>REF: 0x4E1</span>
             <span>::</span>
@@ -190,7 +184,7 @@ export function AchievementsShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* --- Ambient Decor (Static) --- */}
+      {/* --- Ambient Decor --- */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-20 hidden md:block z-0">
         <div className="decor-item absolute top-[18%] left-[6%] font-mono text-xs text-primary/60 opacity-0">
           {`> VERIFYING_PROTOCOLS...`}
@@ -208,20 +202,18 @@ export function AchievementsShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* --- Dynamic Content Slot --- */}
       {children}
     </main>
   );
 }
 
-// --- PART 2: THE DYNAMIC CONTENT (Stats & Grid) ---
+// --- PART 2: THE DYNAMIC CONTENT ---
 export function AchievementsContent() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { unlocked } = useAchievements();
   const { play } = useSfx();
   const prefersReducedMotion = usePrefersReducedMotion();
 
-  // --- Calculations ---
   const stats = useMemo(() => {
     const totalXP = Object.values(ACHIEVEMENTS).reduce(
       (acc, curr) => acc + curr.xp,
@@ -244,21 +236,18 @@ export function AchievementsContent() {
     return { totalXP, currentXP, currentRank, nextRank, progressToNext };
   }, [unlocked]);
 
-  // --- Animation 1: ENTRANCE (Runs ONLY ONCE on mount) ---
   useGSAP(
     () => {
       if (prefersReducedMotion) return;
 
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
-      // 1. Stats HUD Slide Down
       tl.fromTo(
         ".stats-hud",
         { y: -30, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.8, delay: 0.1 },
       );
 
-      // 2. Grid Items Stagger
       tl.fromTo(
         ".achievement-chip",
         { opacity: 0, scale: 0.95 },
@@ -275,7 +264,6 @@ export function AchievementsContent() {
     { scope: containerRef, dependencies: [prefersReducedMotion] },
   );
 
-  // --- Animation 2: DATA UPDATES (Runs when XP changes) ---
   useGSAP(
     () => {
       if (prefersReducedMotion) {
@@ -305,7 +293,6 @@ export function AchievementsContent() {
         <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-transparent opacity-50" />
 
         <div className="relative flex flex-col md:flex-row gap-6 md:items-center justify-between">
-          {/* Rank Info */}
           <div className="flex items-center gap-5">
             <div
               className={cn(
@@ -337,7 +324,6 @@ export function AchievementsContent() {
             </div>
           </div>
 
-          {/* XP Progress */}
           <div className="w-full md:w-72 space-y-2">
             <div className="flex justify-between text-[10px] font-mono uppercase text-muted-foreground">
               <span>Progress</span>
@@ -363,13 +349,13 @@ export function AchievementsContent() {
       </div>
 
       {/* --- Achievement Grid --- */}
+      {/* UPDATED: 4 Columns on Large Screens */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         {Object.entries(ACHIEVEMENTS).map(([id, achievement]) => {
           const achievementId = id as AchievementId;
           const isUnlocked = unlocked.includes(achievementId);
           const Icon = ACHIEVEMENT_ICONS[achievementId] || Trophy;
 
-          // LOGIC: Determine if this is a locked secret achievement
           const isSecretLocked = achievement.secret && !isUnlocked;
 
           return (
@@ -384,12 +370,10 @@ export function AchievementsContent() {
               )}
               onMouseEnter={() => play("hover")}
             >
-              {/* Background Tech Pattern */}
               <div className="absolute top-0 right-0 p-2 opacity-[0.03] group-hover:opacity-10 transition-opacity pointer-events-none">
                 <Icon className="h-20 w-20 -rotate-12 translate-x-4 -translate-y-4" />
               </div>
 
-              {/* Header: Icon + XP */}
               <div className="flex items-start justify-between mb-3 z-10">
                 <div
                   className={cn(
@@ -415,7 +399,6 @@ export function AchievementsContent() {
                 </div>
               </div>
 
-              {/* Content */}
               <div className="space-y-1 mt-auto z-10">
                 <h3
                   className={cn(
@@ -431,8 +414,8 @@ export function AchievementsContent() {
                     isUnlocked
                       ? "text-muted-foreground"
                       : isSecretLocked
-                        ? "text-primary/70 font-mono" // Clear text for system messages
-                        : "text-muted-foreground/40 blur-[2px] select-none", // Blurred for standard locked
+                        ? "text-primary/70 font-mono"
+                        : "text-muted-foreground/40 blur-[2px] select-none",
                   )}
                 >
                   {isSecretLocked
@@ -441,12 +424,10 @@ export function AchievementsContent() {
                 </p>
               </div>
 
-              {/* Locked Overlay Texture (Apply to both secret and standard locked) */}
               {!isUnlocked && (
                 <div className="absolute inset-0 bg-[url('/noise.png')] opacity-10 pointer-events-none mix-blend-overlay" />
               )}
 
-              {/* Status Indicator */}
               <div
                 className={cn(
                   "absolute bottom-0 left-0 h-0.5 transition-all duration-500",
