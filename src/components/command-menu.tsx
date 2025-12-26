@@ -23,6 +23,11 @@ import {
   PcCase,
   LayoutDashboard,
   Trophy,
+  Calculator,
+  Palette,
+  Ruler,
+  Type, // New Icon
+  Clock, // New Icon
 } from "lucide-react";
 import { useAchievements } from "@/hooks/use-achievements";
 
@@ -37,6 +42,7 @@ import {
 } from "@/components/ui/command";
 import { useSfx } from "@/hooks/use-sfx";
 import { useSound } from "@/components/sound-provider";
+import { parseCommand } from "@/lib/command-parser";
 
 interface CommandMenuProps {
   onOpenGame?: () => void;
@@ -46,8 +52,16 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
   const [open, setOpen] = React.useState(false);
   const [activePage, setActivePage] = React.useState("main");
   const [search, setSearch] = React.useState("");
-  const { unlock } = useAchievements();
 
+  // ⚡ useMemo for sync updates
+  const smartResult = React.useMemo(() => {
+    if (activePage === "main" && search.trim().length > 0) {
+      return parseCommand(search);
+    }
+    return null;
+  }, [search, activePage]);
+
+  const { unlock } = useAchievements();
   const { setTheme } = useTheme();
   const { play } = useSfx();
   const { isMuted, toggleMute } = useSound();
@@ -124,6 +138,15 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
     setSearch("");
   };
 
+  const handleSmartResult = () => {
+    if (smartResult) {
+      smartResult.action();
+      play("success");
+      setOpen(false);
+      setSearch("");
+    }
+  };
+
   return (
     <CommandDialog open={open} onOpenChange={setOpen} className="cursor-none">
       <div className="flex items-center border-b border-border/40 px-3">
@@ -141,7 +164,7 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
         <CommandInput
           placeholder={
             activePage === "main"
-              ? "Type a command or search..."
+              ? "Type a command or try '1.5rem', '#000', 'time'..."
               : `Searching ${activePage}...`
           }
           value={search}
@@ -151,7 +174,48 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
       </div>
 
       <CommandList className="h-75 overflow-y-auto overflow-x-hidden scrollbar-none">
-        <CommandEmpty>No results found.</CommandEmpty>
+        {/* Only show Empty if NO smart result is found */}
+        {!smartResult && <CommandEmpty>No results found.</CommandEmpty>}
+
+        {/* ⚡ SMART OUTPUT GROUP */}
+        {activePage === "main" && smartResult && (
+          <>
+            <CommandGroup heading="Terminal Output">
+              <CommandItem
+                onSelect={handleSmartResult}
+                onMouseEnter={() => play("hover")}
+                className="text-primary font-mono group"
+                value={search}
+              >
+                {/* Dynamic Icon based on type */}
+                {smartResult.type === "calculation" && (
+                  <Calculator className="mr-2 h-4 w-4" />
+                )}
+                {smartResult.type === "color" && (
+                  <Palette className="mr-2 h-4 w-4" />
+                )}
+                {smartResult.type === "unit" && (
+                  <Ruler className="mr-2 h-4 w-4" />
+                )}
+                {smartResult.type === "string" && (
+                  <Type className="mr-2 h-4 w-4" />
+                )}
+                {smartResult.type === "time" && (
+                  <Clock className="mr-2 h-4 w-4" />
+                )}
+
+                <span className="flex-1 font-bold">{smartResult.value}</span>
+                <span className="text-xs text-muted-foreground uppercase tracking-widest group-aria-selected:text-primary/70 transition-colors">
+                  {smartResult.label}
+                </span>
+                <span className="ml-2 text-[10px] text-muted-foreground opacity-0 group-aria-selected:opacity-100 transition-opacity">
+                  ↵ COPY
+                </span>
+              </CommandItem>
+            </CommandGroup>
+            <CommandSeparator />
+          </>
+        )}
 
         {activePage === "main" && (
           <>
@@ -210,7 +274,6 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
                 <Book className="mr-2 h-4 w-4" />
                 <span>Guestbook</span>
               </CommandItem>
-              {/* --- ADDED ACHIEVEMENTS HERE --- */}
               <CommandItem
                 onSelect={() => runCommand(() => router.push("/achievements"))}
                 onMouseEnter={() => play("hover")}
@@ -257,7 +320,7 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
           </>
         )}
 
-        {/* ... (Theme and Socials groups remain unchanged) ... */}
+        {/* ... (Theme and Socials groups remain the same) ... */}
         {activePage === "theme" && (
           <CommandGroup heading="Theme">
             <CommandItem
