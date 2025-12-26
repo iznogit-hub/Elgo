@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import React, {
@@ -31,7 +30,8 @@ export type AchievementId =
   | "VOID_WALKER"
   | "COPY_CAT"
   | "TIME_TRAVELER"
-  | "FLUID_DYNAMICS";
+  | "FLUID_DYNAMICS"
+  | "SPEED_RUNNER";
 
 interface Achievement {
   id: AchievementId;
@@ -39,6 +39,7 @@ interface Achievement {
   description: string;
   xp: number;
   secret?: boolean;
+  invisible?: boolean;
 }
 
 // --- DATA ---
@@ -121,6 +122,13 @@ export const ACHIEVEMENTS: Record<AchievementId, Achievement> = {
     xp: 50,
     secret: true,
   },
+  SPEED_RUNNER: {
+    id: "SPEED_RUNNER",
+    title: "OVERCLOCKED",
+    description: "System speed limit exceeded (3 unlocks < 60s).",
+    xp: 0,
+    invisible: true,
+  },
 };
 
 // --- HELPERS ---
@@ -131,6 +139,7 @@ function getLocalCache(): AchievementId[] {
   try {
     const cached = localStorage.getItem(CACHE_KEY);
     return cached ? JSON.parse(cached) : [];
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (e) {
     return [];
   }
@@ -161,10 +170,11 @@ export function AchievementsProvider({
   const unlockedRef = useRef<AchievementId[]>([]);
   const visitorIdRef = useRef<string | null>(null);
 
+  const unlockHistoryRef = useRef<number[]>([]);
+
   // Initialize Data
   useEffect(() => {
     const initSession = async () => {
-      // 1. Initialize Visitor ID
       let vid = localStorage.getItem("t7sen-visitor-id");
       if (!vid) {
         vid = uuidv4();
@@ -172,25 +182,21 @@ export function AchievementsProvider({
       }
       visitorIdRef.current = vid;
 
-      // 2. Load from LocalStorage Cache FIRST (Instant)
       const cached = getLocalCache();
       if (cached.length > 0) {
         setUnlocked(cached);
         unlockedRef.current = cached;
       }
 
-      // 3. Sync with Server (Async)
       try {
         const serverAchievements = await getVisitorAchievements(vid);
         const typedServerAchievements =
           serverAchievements as string[] as AchievementId[];
 
-        // 4. Merge Local Cache + Server Data
         const merged = Array.from(
           new Set([...cached, ...typedServerAchievements]),
         );
 
-        // 5. Update State & Cache if there's a difference
         if (merged.length !== cached.length) {
           setUnlocked(merged);
           unlockedRef.current = merged;
@@ -219,8 +225,12 @@ export function AchievementsProvider({
         return;
       }
 
+      // --- RECORD HISTORY (For Speed Runner) ---
+      // We only record; we do NOT check here anymore to avoid recursion errors
+      const now = Date.now();
+      unlockHistoryRef.current.push(now);
+
       let currentVisitorId = visitorIdRef.current;
-      // Re-check ID if logic runs before init
       if (!currentVisitorId) {
         if (typeof window !== "undefined") {
           currentVisitorId = localStorage.getItem("t7sen-visitor-id");
@@ -233,7 +243,7 @@ export function AchievementsProvider({
       }
       if (!currentVisitorId) return;
 
-      // Update State (Triggers UI updates everywhere)
+      // Update State
       const newSet = [...unlockedRef.current, id];
       unlockedRef.current = newSet;
       setUnlocked(newSet);
@@ -254,6 +264,25 @@ export function AchievementsProvider({
     },
     [play],
   );
+
+  // --- NEW: SPEED RUNNER CHECK EFFECT ---
+  // Watches 'unlocked' state changes to safely trigger the bonus achievement
+  useEffect(() => {
+    const history = unlockHistoryRef.current;
+    if (history.length < 3) return;
+
+    // Check if the last 3 unlocks happened within 60 seconds
+    const thirdLastTime = history[history.length - 3];
+    const lastTime = history[history.length - 1];
+
+    if (lastTime && thirdLastTime && lastTime - thirdLastTime <= 60000) {
+      // Use a small timeout to ensure the UI feels sequential
+      const timer = setTimeout(() => {
+        unlock("SPEED_RUNNER");
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [unlocked, unlock]);
 
   return (
     <AchievementsContext.Provider value={{ unlocked, unlock }}>

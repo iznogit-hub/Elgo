@@ -25,6 +25,7 @@ import {
   Ghost,
   Clock,
   MonitorSmartphone,
+  Zap,
 } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -51,6 +52,7 @@ const ACHIEVEMENT_ICONS: Record<AchievementId, React.ElementType> = {
   COPY_CAT: Code2,
   TIME_TRAVELER: Clock,
   FLUID_DYNAMICS: MonitorSmartphone,
+  SPEED_RUNNER: Zap, // Added mapping
 };
 
 // UPDATED RANKS (Total XP: 1274)
@@ -62,32 +64,32 @@ const RANKS = [
     color: "text-muted-foreground",
   },
   {
-    threshold: 100, // Easy: 2-3 basic achievements
+    threshold: 100,
     title: "SCRIPT_KIDDIE",
     icon: Terminal,
     color: "text-blue-500",
   },
   {
-    threshold: 450, // Medium: Requires at least one 'Secret' or completion of all basics
+    threshold: 450,
     title: "NETRUNNER",
     icon: Activity,
     color: "text-purple-500",
   },
   {
-    threshold: 900, // Hard: Requires Konami Code or Void Walker
+    threshold: 900,
     title: "SYS_ADMIN",
     icon: Shield,
     color: "text-orange-500",
   },
   {
-    threshold: 1274, // Master: Requires ~99% Completion
+    threshold: 1274,
     title: "ARCHITECT",
     icon: Trophy,
     color: "text-yellow-500",
   },
 ];
 
-// --- PART 1: THE STATIC SHELL (Header, Footer, Decor) ---
+// --- PART 1: THE STATIC SHELL ---
 export function AchievementsShell({ children }: { children: React.ReactNode }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { play } = useSfx();
@@ -117,10 +119,7 @@ export function AchievementsShell({ children }: { children: React.ReactNode }) {
           repeat: -1,
           yoyo: true,
           ease: "sine.inOut",
-          stagger: {
-            amount: 3,
-            from: "random",
-          },
+          stagger: { amount: 3, from: "random" },
         });
       }
     },
@@ -132,7 +131,7 @@ export function AchievementsShell({ children }: { children: React.ReactNode }) {
       ref={containerRef}
       className="relative flex min-h-dvh w-full flex-col items-center overflow-hidden text-foreground pt-24 md:pt-32 pb-20 px-4 md:px-6"
     >
-      {/* --- Floating Header --- */}
+      {/* Floating Header */}
       <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
         <div className="floating-header pointer-events-auto opacity-0">
           <TransitionLink
@@ -163,7 +162,6 @@ export function AchievementsShell({ children }: { children: React.ReactNode }) {
           </TransitionLink>
         </div>
 
-        {/* --- STATUS INDICATOR --- */}
         <div className="floating-header flex flex-col items-end gap-2 opacity-0">
           <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 backdrop-blur-sm">
             <span className="relative flex h-2 w-2">
@@ -184,7 +182,7 @@ export function AchievementsShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* --- Ambient Decor --- */}
+      {/* Ambient Decor */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-20 hidden md:block z-0">
         <div className="decor-item absolute top-[18%] left-[6%] font-mono text-xs text-primary/60 opacity-0">
           {`> VERIFYING_PROTOCOLS...`}
@@ -288,7 +286,7 @@ export function AchievementsContent() {
       ref={containerRef}
       className="z-10 w-full max-w-4xl flex flex-col gap-8 md:gap-12 mt-4"
     >
-      {/* --- Player Stats HUD --- */}
+      {/* Stats HUD */}
       <div className="stats-hud w-full relative overflow-hidden rounded-xl border bg-background/50 backdrop-blur-xl p-5 md:p-6 opacity-0">
         <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-transparent opacity-50" />
 
@@ -348,28 +346,47 @@ export function AchievementsContent() {
         </div>
       </div>
 
-      {/* --- Achievement Grid --- */}
-      {/* UPDATED: 4 Columns on Large Screens */}
+      {/* Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         {Object.entries(ACHIEVEMENTS).map(([id, achievement]) => {
           const achievementId = id as AchievementId;
           const isUnlocked = unlocked.includes(achievementId);
           const Icon = ACHIEVEMENT_ICONS[achievementId] || Trophy;
 
+          // --- FIX 1: HIDE INVISIBLE CARDS ---
+          if (achievement.invisible && !isUnlocked) return null;
+
           const isSecretLocked = achievement.secret && !isUnlocked;
+          // --- FIX 2: SPECIAL STYLING FOR LEGENDARY (Overclocked) ---
+          const isLegendary = achievementId === "SPEED_RUNNER";
+
+          const isDynamicEntry = achievement.invisible;
 
           return (
             <div
               key={id}
               className={cn(
-                "achievement-chip group relative flex flex-col p-4 rounded-lg border transition-all duration-300 overflow-hidden opacity-0",
+                "achievement-chip group relative flex flex-col p-4 rounded-lg border transition-all duration-300 overflow-hidden",
                 "hover:scale-[1.02] hover:-translate-y-1",
-                isUnlocked
-                  ? "bg-primary/5 border-primary/20 hover:border-primary/50 shadow-[0_4px_20px_-10px_rgba(var(--primary),0.1)]"
-                  : "bg-secondary/10 border-border/40 hover:opacity-100",
+
+                // LOGIC CHANGE HERE:
+                isDynamicEntry
+                  ? "animate-in fade-in zoom-in-95 duration-500" // Dynamic cards (Speed Runner) fade in naturally
+                  : "opacity-0", // Standard cards wait for GSAP stagger
+
+                isLegendary
+                  ? "bg-amber-500/10 border-amber-500/50 shadow-[0_0_30px_-5px_rgba(245,158,11,0.3)] animate-pulse-slow"
+                  : isUnlocked
+                    ? "bg-primary/5 border-primary/20 hover:border-primary/50 shadow-[0_4px_20px_-10px_rgba(var(--primary),0.1)]"
+                    : "bg-secondary/10 border-border/40 hover:opacity-100",
               )}
               onMouseEnter={() => play("hover")}
             >
+              {/* Legendary Holographic Overlay */}
+              {isLegendary && (
+                <div className="absolute inset-0 bg-linear-to-tr from-transparent via-amber-500/10 to-transparent opacity-50 animate-shimmer pointer-events-none" />
+              )}
+
               <div className="absolute top-0 right-0 p-2 opacity-[0.03] group-hover:opacity-10 transition-opacity pointer-events-none">
                 <Icon className="h-20 w-20 -rotate-12 translate-x-4 -translate-y-4" />
               </div>
@@ -378,9 +395,11 @@ export function AchievementsContent() {
                 <div
                   className={cn(
                     "p-2 rounded-md border backdrop-blur-md",
-                    isUnlocked
-                      ? "bg-primary/10 border-primary/20 text-primary"
-                      : "bg-muted/20 border-border/20 text-muted-foreground",
+                    isLegendary
+                      ? "bg-amber-500/20 border-amber-500/50 text-amber-500"
+                      : isUnlocked
+                        ? "bg-primary/10 border-primary/20 text-primary"
+                        : "bg-muted/20 border-border/20 text-muted-foreground",
                   )}
                 >
                   <Icon className="h-4 w-4" />
@@ -389,12 +408,18 @@ export function AchievementsContent() {
                   <span
                     className={cn(
                       "text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border",
-                      isUnlocked
-                        ? "bg-primary/10 border-primary/20 text-primary"
-                        : "bg-muted/20 border-border/20 text-muted-foreground",
+                      isLegendary
+                        ? "bg-amber-500/20 border-amber-500/50 text-amber-500"
+                        : isUnlocked
+                          ? "bg-primary/10 border-primary/20 text-primary"
+                          : "bg-muted/20 border-border/20 text-muted-foreground",
                     )}
                   >
-                    {isSecretLocked ? "???" : `${achievement.xp} XP`}
+                    {isSecretLocked
+                      ? "???"
+                      : achievement.xp === 0
+                        ? "BONUS"
+                        : `${achievement.xp} XP`}
                   </span>
                 </div>
               </div>
@@ -403,7 +428,11 @@ export function AchievementsContent() {
                 <h3
                   className={cn(
                     "font-bold tracking-tight text-sm",
-                    isUnlocked ? "text-foreground" : "text-muted-foreground",
+                    isLegendary
+                      ? "text-amber-500"
+                      : isUnlocked
+                        ? "text-foreground"
+                        : "text-muted-foreground",
                   )}
                 >
                   {isSecretLocked ? "???" : achievement.title}
@@ -431,7 +460,11 @@ export function AchievementsContent() {
               <div
                 className={cn(
                   "absolute bottom-0 left-0 h-0.5 transition-all duration-500",
-                  isUnlocked ? "w-full bg-primary" : "w-0 bg-muted-foreground",
+                  isLegendary
+                    ? "w-full bg-amber-500"
+                    : isUnlocked
+                      ? "w-full bg-primary"
+                      : "w-0 bg-muted-foreground",
                 )}
               />
             </div>
