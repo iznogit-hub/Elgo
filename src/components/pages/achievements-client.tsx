@@ -28,6 +28,11 @@ import {
   Zap,
   Crown,
   Binary,
+  Cpu,
+  Skull,
+  Lock,
+  Network,
+  Bot,
 } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -65,7 +70,7 @@ const ACHIEVEMENT_ICONS: Record<AchievementId, React.ElementType> = {
   CONSOLE_COWBOY: Binary,
 };
 
-// UPDATED RANKS (Total XP: ~3611 with Console Cowboy)
+// UPDATED RANKS: Calibrated for Total XP of 3611
 const RANKS = [
   {
     threshold: 0,
@@ -80,22 +85,52 @@ const RANKS = [
     color: "text-blue-500",
   },
   {
-    threshold: 450,
-    title: "NETRUNNER",
-    icon: Activity,
-    color: "text-purple-500",
+    threshold: 250,
+    title: "HACKTIVIST",
+    icon: Cpu,
+    color: "text-cyan-500",
   },
   {
-    threshold: 900,
+    threshold: 500,
+    title: "NETRUNNER",
+    icon: Activity,
+    color: "text-indigo-500",
+  },
+  {
+    threshold: 750,
+    title: "CYBER_PUNK",
+    icon: Skull,
+    color: "text-pink-500",
+  },
+  {
+    threshold: 1000,
     title: "SYS_ADMIN",
     icon: Shield,
     color: "text-orange-500",
   },
   {
-    threshold: 1500, // Bumped slightly for new XPs
+    threshold: 1300,
+    title: "WHITE_HAT",
+    icon: Lock,
+    color: "text-emerald-500",
+  },
+  {
+    threshold: 1900,
     title: "ARCHITECT",
-    icon: Trophy,
+    icon: Network,
     color: "text-yellow-500",
+  },
+  {
+    threshold: 2600,
+    title: "TECH_PRIEST",
+    icon: Bot,
+    color: "text-red-500",
+  },
+  {
+    threshold: 3611,
+    title: "LEGEND",
+    icon: Trophy,
+    color: "text-amber-400",
   },
 ];
 
@@ -235,14 +270,14 @@ export function AchievementsContent() {
       ? ((currentXP - currentRank.threshold) /
           (nextRank.threshold - currentRank.threshold)) *
         100
-      : 100;
+      : 100; // If no next rank (max level), progress is 100%
 
     return { totalXP, currentXP, currentRank, nextRank, progressToNext };
   }, [unlocked]);
 
   const isSpeedRunner = unlocked.includes("SPEED_RUNNER");
   const isCompletionist = unlocked.includes("COMPLETIONIST");
-  const isConsoleCowboy = unlocked.includes("CONSOLE_COWBOY"); // ⚡
+  const isConsoleCowboy = unlocked.includes("CONSOLE_COWBOY");
 
   useGSAP(
     () => {
@@ -353,7 +388,7 @@ export function AchievementsContent() {
                   </HoverCard>
                 )}
 
-                {/* ⚡ NEW: CONSOLE COWBOY BADGE */}
+                {/* CONSOLE COWBOY BADGE */}
                 {isConsoleCowboy && (
                   <HoverCard openDelay={200} closeDelay={100}>
                     <HoverCardTrigger asChild>
