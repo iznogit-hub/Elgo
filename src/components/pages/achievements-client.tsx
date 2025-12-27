@@ -26,6 +26,7 @@ import {
   Clock,
   MonitorSmartphone,
   Zap,
+  Crown, // ⚡ ADDED
 } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -59,9 +60,10 @@ const ACHIEVEMENT_ICONS: Record<AchievementId, React.ElementType> = {
   TIME_TRAVELER: Clock,
   FLUID_DYNAMICS: MonitorSmartphone,
   SPEED_RUNNER: Zap,
+  COMPLETIONIST: Crown, // ⚡ ADDED
 };
 
-// UPDATED RANKS (Total XP: 1274)
+// UPDATED RANKS (Total XP: 1274 + 1000 = 2274)
 const RANKS = [
   {
     threshold: 0,
@@ -93,6 +95,7 @@ const RANKS = [
     icon: Trophy,
     color: "text-yellow-500",
   },
+  // ⚡ OPTIONAL: You could add a new rank for this level of XP
 ];
 
 // --- PART 1: THE STATIC SHELL ---
@@ -238,8 +241,9 @@ export function AchievementsContent() {
     return { totalXP, currentXP, currentRank, nextRank, progressToNext };
   }, [unlocked]);
 
-  // Check unlock status for Speed Runner
+  // Check unlock status
   const isSpeedRunner = unlocked.includes("SPEED_RUNNER");
+  const isCompletionist = unlocked.includes("COMPLETIONIST"); // ⚡
 
   useGSAP(
     () => {
@@ -317,7 +321,7 @@ export function AchievementsContent() {
                 </span>
                 <div className="h-px w-6 bg-border" />
 
-                {/* ⚡ SPEED RUNNER BADGE (Next to Rank) */}
+                {/* ⚡ SPEED RUNNER BADGE */}
                 {isSpeedRunner && (
                   <HoverCard openDelay={200} closeDelay={100}>
                     <HoverCardTrigger asChild>
@@ -345,6 +349,40 @@ export function AchievementsContent() {
                         </div>
                         <div className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border bg-amber-500/10 border-amber-500/20 text-amber-500">
                           SPECIAL
+                        </div>
+                      </div>
+                    </HoverCardContent>
+                  </HoverCard>
+                )}
+
+                {/* ⚡ COMPLETIONIST BADGE */}
+                {isCompletionist && (
+                  <HoverCard openDelay={200} closeDelay={100}>
+                    <HoverCardTrigger asChild>
+                      <Badge
+                        variant="outline"
+                        className="h-9 w-9 p-0 flex items-center justify-center border-purple-500/50 bg-purple-500/10 hover:bg-purple-500/20 transition-all duration-500 animate-in fade-in zoom-in-0 cursor-help"
+                        onMouseEnter={() => play("hover")}
+                      >
+                        <Crown className="h-5 w-5 text-purple-500 animate-pulse" />
+                      </Badge>
+                    </HoverCardTrigger>
+                    <HoverCardContent
+                      className="w-80 border-purple-500/20 backdrop-blur-xl shadow-[0_0_40px_-10px_rgba(168,85,247,0.2)]"
+                      sideOffset={10}
+                    >
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-bold text-purple-500 flex items-center gap-2">
+                            <Crown className="h-4 w-4" />
+                            <HackerText text="PROTOCOL_OMEGA" />
+                          </h4>
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            {ACHIEVEMENTS.COMPLETIONIST.description}
+                          </p>
+                        </div>
+                        <div className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border bg-purple-500/10 border-purple-500/20 text-purple-500">
+                          MAX
                         </div>
                       </div>
                     </HoverCardContent>
@@ -390,15 +428,12 @@ export function AchievementsContent() {
       {/* Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         {Object.entries(ACHIEVEMENTS)
-          // ⚡ FILTER: Explicitly hide SPEED_RUNNER from grid
-          .filter(([id]) => id !== "SPEED_RUNNER")
+          // ⚡ FILTER: Hide invisible items (Speed Runner, Completionist) from grid
+          .filter(([, achievement]) => !achievement.invisible)
           .map(([id, achievement]) => {
             const achievementId = id as AchievementId;
             const isUnlocked = unlocked.includes(achievementId);
             const Icon = ACHIEVEMENT_ICONS[achievementId] || Trophy;
-
-            // Handle other invisible items
-            if (achievement.invisible && !isUnlocked) return null;
 
             const isSecretLocked = achievement.secret && !isUnlocked;
 
@@ -473,7 +508,7 @@ export function AchievementsContent() {
                 </div>
 
                 {!isUnlocked && (
-                  <div className="absolute inset-0 bg-[url('/noise.png')] opacity-10 pointer-events-none mix-blend-overlay" />
+                  <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.65\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\' opacity=\'0.5\'/%3E%3C/svg%3E')] opacity-10 pointer-events-none mix-blend-overlay" />
                 )}
 
                 <div
