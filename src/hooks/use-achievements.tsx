@@ -266,7 +266,7 @@ export function AchievementsProvider({
   );
 
   // --- NEW: SPEED RUNNER CHECK EFFECT ---
-  // Watches 'unlocked' state changes to safely trigger the bonus achievement
+  // Watches 'unlocked' state changes to safely trigger the special achievement
   useEffect(() => {
     const history = unlockHistoryRef.current;
     if (history.length < 3) return;

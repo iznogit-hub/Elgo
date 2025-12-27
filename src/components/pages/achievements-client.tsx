@@ -34,6 +34,12 @@ import { TransitionLink } from "@/components/ui/transition-link";
 import { Button } from "@/components/ui/button";
 import { HackerText } from "@/components/ui/hacker-text";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
+import { Badge } from "@/components/ui/badge";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 
 gsap.registerPlugin(useGSAP);
 
@@ -52,7 +58,7 @@ const ACHIEVEMENT_ICONS: Record<AchievementId, React.ElementType> = {
   COPY_CAT: Code2,
   TIME_TRAVELER: Clock,
   FLUID_DYNAMICS: MonitorSmartphone,
-  SPEED_RUNNER: Zap, // Added mapping
+  SPEED_RUNNER: Zap,
 };
 
 // UPDATED RANKS (Total XP: 1274)
@@ -131,7 +137,6 @@ export function AchievementsShell({ children }: { children: React.ReactNode }) {
       ref={containerRef}
       className="relative flex min-h-dvh w-full flex-col items-center overflow-hidden text-foreground pt-24 md:pt-32 pb-20 px-4 md:px-6"
     >
-      {/* Floating Header */}
       <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
         <div className="floating-header pointer-events-auto opacity-0">
           <TransitionLink
@@ -182,7 +187,6 @@ export function AchievementsShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* Ambient Decor */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-20 hidden md:block z-0">
         <div className="decor-item absolute top-[18%] left-[6%] font-mono text-xs text-primary/60 opacity-0">
           {`> VERIFYING_PROTOCOLS...`}
@@ -233,6 +237,9 @@ export function AchievementsContent() {
 
     return { totalXP, currentXP, currentRank, nextRank, progressToNext };
   }, [unlocked]);
+
+  // Check unlock status for Speed Runner
+  const isSpeedRunner = unlocked.includes("SPEED_RUNNER");
 
   useGSAP(
     () => {
@@ -304,11 +311,45 @@ export function AchievementsContent() {
             </div>
 
             <div className="space-y-1">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
                   Current Rank
                 </span>
                 <div className="h-px w-6 bg-border" />
+
+                {/* ⚡ SPEED RUNNER BADGE (Next to Rank) */}
+                {isSpeedRunner && (
+                  <HoverCard openDelay={200} closeDelay={100}>
+                    <HoverCardTrigger asChild>
+                      <Badge
+                        variant="outline"
+                        className="h-9 w-9 p-0 flex items-center justify-center border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 transition-all duration-500 animate-in fade-in zoom-in-0 cursor-help"
+                        onMouseEnter={() => play("hover")}
+                      >
+                        <Zap className="h-5 w-5 text-amber-500 animate-pulse" />
+                      </Badge>
+                    </HoverCardTrigger>
+                    <HoverCardContent
+                      className="w-80 border-amber-500/20 backdrop-blur-xl shadow-[0_0_40px_-10px_rgba(245,158,11,0.2)]"
+                      sideOffset={10}
+                    >
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-bold text-amber-500 flex items-center gap-2">
+                            <Zap className="h-4 w-4" />
+                            <HackerText text="OVERCLOCKED" />
+                          </h4>
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            {ACHIEVEMENTS.SPEED_RUNNER.description}
+                          </p>
+                        </div>
+                        <div className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border bg-amber-500/10 border-amber-500/20 text-amber-500">
+                          SPECIAL
+                        </div>
+                      </div>
+                    </HoverCardContent>
+                  </HoverCard>
+                )}
               </div>
               <h1 className="text-2xl md:text-3xl font-black tracking-tighter uppercase">
                 <HackerText text={stats.currentRank.title} />
@@ -348,128 +389,104 @@ export function AchievementsContent() {
 
       {/* Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        {Object.entries(ACHIEVEMENTS).map(([id, achievement]) => {
-          const achievementId = id as AchievementId;
-          const isUnlocked = unlocked.includes(achievementId);
-          const Icon = ACHIEVEMENT_ICONS[achievementId] || Trophy;
+        {Object.entries(ACHIEVEMENTS)
+          // ⚡ FILTER: Explicitly hide SPEED_RUNNER from grid
+          .filter(([id]) => id !== "SPEED_RUNNER")
+          .map(([id, achievement]) => {
+            const achievementId = id as AchievementId;
+            const isUnlocked = unlocked.includes(achievementId);
+            const Icon = ACHIEVEMENT_ICONS[achievementId] || Trophy;
 
-          // --- FIX 1: HIDE INVISIBLE CARDS ---
-          if (achievement.invisible && !isUnlocked) return null;
+            // Handle other invisible items
+            if (achievement.invisible && !isUnlocked) return null;
 
-          const isSecretLocked = achievement.secret && !isUnlocked;
-          // --- FIX 2: SPECIAL STYLING FOR LEGENDARY (Overclocked) ---
-          const isLegendary = achievementId === "SPEED_RUNNER";
+            const isSecretLocked = achievement.secret && !isUnlocked;
 
-          const isDynamicEntry = achievement.invisible;
-
-          return (
-            <div
-              key={id}
-              className={cn(
-                "achievement-chip group relative flex flex-col p-4 rounded-lg border transition-all duration-300 overflow-hidden",
-                "hover:scale-[1.02] hover:-translate-y-1",
-
-                // LOGIC CHANGE HERE:
-                isDynamicEntry
-                  ? "animate-in fade-in zoom-in-95 duration-500" // Dynamic cards (Speed Runner) fade in naturally
-                  : "opacity-0", // Standard cards wait for GSAP stagger
-
-                isLegendary
-                  ? "bg-amber-500/10 border-amber-500/50 shadow-[0_0_30px_-5px_rgba(245,158,11,0.3)] animate-pulse-slow"
-                  : isUnlocked
+            return (
+              <div
+                key={id}
+                className={cn(
+                  "achievement-chip group relative flex flex-col p-4 rounded-lg border transition-all duration-300 overflow-hidden opacity-0",
+                  "hover:scale-[1.02] hover:-translate-y-1",
+                  isUnlocked
                     ? "bg-primary/5 border-primary/20 hover:border-primary/50 shadow-[0_4px_20px_-10px_rgba(var(--primary),0.1)]"
                     : "bg-secondary/10 border-border/40 hover:opacity-100",
-              )}
-              onMouseEnter={() => play("hover")}
-            >
-              {/* Legendary Holographic Overlay */}
-              {isLegendary && (
-                <div className="absolute inset-0 bg-linear-to-tr from-transparent via-amber-500/10 to-transparent opacity-50 animate-shimmer pointer-events-none" />
-              )}
+                )}
+                onMouseEnter={() => play("hover")}
+              >
+                <div className="absolute top-0 right-0 p-2 opacity-[0.03] group-hover:opacity-10 transition-opacity pointer-events-none">
+                  <Icon className="h-20 w-20 -rotate-12 translate-x-4 -translate-y-4" />
+                </div>
 
-              <div className="absolute top-0 right-0 p-2 opacity-[0.03] group-hover:opacity-10 transition-opacity pointer-events-none">
-                <Icon className="h-20 w-20 -rotate-12 translate-x-4 -translate-y-4" />
-              </div>
-
-              <div className="flex items-start justify-between mb-3 z-10">
-                <div
-                  className={cn(
-                    "p-2 rounded-md border backdrop-blur-md",
-                    isLegendary
-                      ? "bg-amber-500/20 border-amber-500/50 text-amber-500"
-                      : isUnlocked
+                <div className="flex items-start justify-between mb-3 z-10">
+                  <div
+                    className={cn(
+                      "p-2 rounded-md border backdrop-blur-md",
+                      isUnlocked
                         ? "bg-primary/10 border-primary/20 text-primary"
                         : "bg-muted/20 border-border/20 text-muted-foreground",
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                </div>
-                <div className="flex flex-col items-end">
-                  <span
-                    className={cn(
-                      "text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border",
-                      isLegendary
-                        ? "bg-amber-500/20 border-amber-500/50 text-amber-500"
-                        : isUnlocked
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span
+                      className={cn(
+                        "text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border",
+                        isUnlocked
                           ? "bg-primary/10 border-primary/20 text-primary"
                           : "bg-muted/20 border-border/20 text-muted-foreground",
+                      )}
+                    >
+                      {isSecretLocked
+                        ? "???"
+                        : achievement.xp === 0
+                          ? "SPECIAL"
+                          : `${achievement.xp} XP`}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-1 mt-auto z-10">
+                  <h3
+                    className={cn(
+                      "font-bold tracking-tight text-sm",
+                      isUnlocked ? "text-foreground" : "text-muted-foreground",
+                    )}
+                  >
+                    {isSecretLocked ? "???" : achievement.title}
+                  </h3>
+                  <p
+                    className={cn(
+                      "text-[10px] leading-relaxed",
+                      isUnlocked
+                        ? "text-muted-foreground"
+                        : isSecretLocked
+                          ? "text-primary/70 font-mono"
+                          : "text-muted-foreground/40 blur-[2px] select-none",
                     )}
                   >
                     {isSecretLocked
-                      ? "???"
-                      : achievement.xp === 0
-                        ? "BONUS"
-                        : `${achievement.xp} XP`}
-                  </span>
+                      ? "Encrypted signal detected..."
+                      : achievement.description}
+                  </p>
                 </div>
-              </div>
 
-              <div className="space-y-1 mt-auto z-10">
-                <h3
+                {!isUnlocked && (
+                  <div className="absolute inset-0 bg-[url('/noise.png')] opacity-10 pointer-events-none mix-blend-overlay" />
+                )}
+
+                <div
                   className={cn(
-                    "font-bold tracking-tight text-sm",
-                    isLegendary
-                      ? "text-amber-500"
-                      : isUnlocked
-                        ? "text-foreground"
-                        : "text-muted-foreground",
-                  )}
-                >
-                  {isSecretLocked ? "???" : achievement.title}
-                </h3>
-                <p
-                  className={cn(
-                    "text-[10px] leading-relaxed",
+                    "absolute bottom-0 left-0 h-0.5 transition-all duration-500",
                     isUnlocked
-                      ? "text-muted-foreground"
-                      : isSecretLocked
-                        ? "text-primary/70 font-mono"
-                        : "text-muted-foreground/40 blur-[2px] select-none",
-                  )}
-                >
-                  {isSecretLocked
-                    ? "Encrypted signal detected..."
-                    : achievement.description}
-                </p>
-              </div>
-
-              {!isUnlocked && (
-                <div className="absolute inset-0 bg-[url('/noise.png')] opacity-10 pointer-events-none mix-blend-overlay" />
-              )}
-
-              <div
-                className={cn(
-                  "absolute bottom-0 left-0 h-0.5 transition-all duration-500",
-                  isLegendary
-                    ? "w-full bg-amber-500"
-                    : isUnlocked
                       ? "w-full bg-primary"
                       : "w-0 bg-muted-foreground",
-                )}
-              />
-            </div>
-          );
-        })}
+                  )}
+                />
+              </div>
+            );
+          })}
       </div>
     </div>
   );
