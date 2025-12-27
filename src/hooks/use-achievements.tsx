@@ -10,7 +10,7 @@ import React, {
 } from "react";
 import { toast } from "sonner";
 import { useSfx } from "@/hooks/use-sfx";
-import { Trophy, Crown } from "lucide-react";
+import { Trophy, Crown, Binary } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import {
   unlockServerAchievement,
@@ -32,7 +32,8 @@ export type AchievementId =
   | "TIME_TRAVELER"
   | "FLUID_DYNAMICS"
   | "SPEED_RUNNER"
-  | "COMPLETIONIST";
+  | "COMPLETIONIST"
+  | "CONSOLE_COWBOY";
 
 interface Achievement {
   id: AchievementId;
@@ -134,7 +135,15 @@ export const ACHIEVEMENTS: Record<AchievementId, Achievement> = {
     id: "COMPLETIONIST",
     title: "PROTOCOL_OMEGA",
     description: "100% System Synchronization. You are the Architect.",
-    xp: 0,
+    xp: 1000,
+    invisible: true,
+  },
+  CONSOLE_COWBOY: {
+    id: "CONSOLE_COWBOY",
+    title: "CONSOLE_COWBOY",
+    description: "Broke the fourth wall via DevTools.",
+    xp: 1337,
+    secret: true,
     invisible: true,
   },
 };
@@ -257,6 +266,7 @@ export function AchievementsProvider({
 
       let Icon = Trophy;
       if (id === "COMPLETIONIST") Icon = Crown;
+      if (id === "CONSOLE_COWBOY") Icon = Binary;
 
       toast(achievement.title, {
         description: achievement.description,
@@ -270,7 +280,7 @@ export function AchievementsProvider({
     [play],
   );
 
-  // --- SPEED RUNNER CHECK ---
+  // SPEED RUNNER CHECK
   useEffect(() => {
     const history = unlockHistoryRef.current;
     if (history.length < 3) return;
@@ -286,25 +296,20 @@ export function AchievementsProvider({
     }
   }, [unlocked, unlock]);
 
-  // --- COMPLETIONIST CHECK ---
+  // COMPLETIONIST CHECK
   useEffect(() => {
-    // If we already have it, skip logic
     if (unlocked.includes("COMPLETIONIST")) return;
 
     const allAchievementIds = Object.keys(ACHIEVEMENTS) as AchievementId[];
-
-    // Filter out COMPLETIONIST itself to prevent circular requirement
     const requiredIds = allAchievementIds.filter(
       (id) => id !== "COMPLETIONIST",
     );
-
-    // Check if every required ID is in the unlocked array
     const hasAll = requiredIds.every((id) => unlocked.includes(id));
 
     if (hasAll) {
       const timer = setTimeout(() => {
         unlock("COMPLETIONIST");
-      }, 1000); // 1s delay for dramatic effect after the last unlock
+      }, 1000);
       return () => clearTimeout(timer);
     }
   }, [unlocked, unlock]);

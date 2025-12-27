@@ -26,7 +26,8 @@ import {
   Clock,
   MonitorSmartphone,
   Zap,
-  Crown, // ⚡ ADDED
+  Crown,
+  Binary,
 } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -60,10 +61,11 @@ const ACHIEVEMENT_ICONS: Record<AchievementId, React.ElementType> = {
   TIME_TRAVELER: Clock,
   FLUID_DYNAMICS: MonitorSmartphone,
   SPEED_RUNNER: Zap,
-  COMPLETIONIST: Crown, // ⚡ ADDED
+  COMPLETIONIST: Crown,
+  CONSOLE_COWBOY: Binary,
 };
 
-// UPDATED RANKS (Total XP: 1274 + 1000 = 2274)
+// UPDATED RANKS (Total XP: ~3611 with Console Cowboy)
 const RANKS = [
   {
     threshold: 0,
@@ -90,15 +92,13 @@ const RANKS = [
     color: "text-orange-500",
   },
   {
-    threshold: 1274,
+    threshold: 1500, // Bumped slightly for new XPs
     title: "ARCHITECT",
     icon: Trophy,
     color: "text-yellow-500",
   },
-  // ⚡ OPTIONAL: You could add a new rank for this level of XP
 ];
 
-// --- PART 1: THE STATIC SHELL ---
 export function AchievementsShell({ children }: { children: React.ReactNode }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { play } = useSfx();
@@ -212,7 +212,6 @@ export function AchievementsShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-// --- PART 2: THE DYNAMIC CONTENT ---
 export function AchievementsContent() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { unlocked } = useAchievements();
@@ -241,9 +240,9 @@ export function AchievementsContent() {
     return { totalXP, currentXP, currentRank, nextRank, progressToNext };
   }, [unlocked]);
 
-  // Check unlock status
   const isSpeedRunner = unlocked.includes("SPEED_RUNNER");
-  const isCompletionist = unlocked.includes("COMPLETIONIST"); // ⚡
+  const isCompletionist = unlocked.includes("COMPLETIONIST");
+  const isConsoleCowboy = unlocked.includes("CONSOLE_COWBOY"); // ⚡
 
   useGSAP(
     () => {
@@ -297,7 +296,6 @@ export function AchievementsContent() {
       ref={containerRef}
       className="z-10 w-full max-w-4xl flex flex-col gap-8 md:gap-12 mt-4"
     >
-      {/* Stats HUD */}
       <div className="stats-hud w-full relative overflow-hidden rounded-xl border bg-background/50 backdrop-blur-xl p-5 md:p-6 opacity-0">
         <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-transparent opacity-50" />
 
@@ -321,20 +319,20 @@ export function AchievementsContent() {
                 </span>
                 <div className="h-px w-6 bg-border" />
 
-                {/* ⚡ SPEED RUNNER BADGE */}
+                {/* SPEED RUNNER BADGE */}
                 {isSpeedRunner && (
                   <HoverCard openDelay={200} closeDelay={100}>
                     <HoverCardTrigger asChild>
                       <Badge
                         variant="outline"
-                        className="h-9 w-9 p-0 flex items-center justify-center border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 transition-all duration-500 animate-in fade-in zoom-in-0 cursor-help"
+                        className="h-9 w-9 p-0 flex items-center justify-center rounded-md border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 transition-all duration-500 animate-in fade-in zoom-in-0 cursor-help"
                         onMouseEnter={() => play("hover")}
                       >
                         <Zap className="h-5 w-5 text-amber-500 animate-pulse" />
                       </Badge>
                     </HoverCardTrigger>
                     <HoverCardContent
-                      className="w-80 border-amber-500/20 backdrop-blur-xl shadow-[0_0_40px_-10px_rgba(245,158,11,0.2)]"
+                      className="w-80 border-amber-500/20 bg-black/90 backdrop-blur-xl shadow-[0_0_40px_-10px_rgba(245,158,11,0.2)]"
                       sideOffset={10}
                     >
                       <div className="flex justify-between items-start gap-4">
@@ -355,20 +353,54 @@ export function AchievementsContent() {
                   </HoverCard>
                 )}
 
-                {/* ⚡ COMPLETIONIST BADGE */}
+                {/* ⚡ NEW: CONSOLE COWBOY BADGE */}
+                {isConsoleCowboy && (
+                  <HoverCard openDelay={200} closeDelay={100}>
+                    <HoverCardTrigger asChild>
+                      <Badge
+                        variant="outline"
+                        className="h-9 w-9 p-0 flex items-center justify-center rounded-md border-green-500/50 bg-green-500/10 hover:bg-green-500/20 transition-all duration-500 animate-in fade-in zoom-in-0 cursor-help"
+                        onMouseEnter={() => play("hover")}
+                      >
+                        <Binary className="h-5 w-5 text-green-500 animate-pulse" />
+                      </Badge>
+                    </HoverCardTrigger>
+                    <HoverCardContent
+                      className="w-80 border-green-500/20 bg-black/90 backdrop-blur-xl shadow-[0_0_40px_-10px_rgba(34,197,94,0.2)]"
+                      sideOffset={10}
+                    >
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-bold text-green-500 flex items-center gap-2">
+                            <Binary className="h-4 w-4" />
+                            <HackerText text="CONSOLE_COWBOY" />
+                          </h4>
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            {ACHIEVEMENTS.CONSOLE_COWBOY.description}
+                          </p>
+                        </div>
+                        <div className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border bg-green-500/10 border-green-500/20 text-green-500">
+                          1337
+                        </div>
+                      </div>
+                    </HoverCardContent>
+                  </HoverCard>
+                )}
+
+                {/* COMPLETIONIST BADGE */}
                 {isCompletionist && (
                   <HoverCard openDelay={200} closeDelay={100}>
                     <HoverCardTrigger asChild>
                       <Badge
                         variant="outline"
-                        className="h-9 w-9 p-0 flex items-center justify-center border-purple-500/50 bg-purple-500/10 hover:bg-purple-500/20 transition-all duration-500 animate-in fade-in zoom-in-0 cursor-help"
+                        className="h-9 w-9 p-0 flex items-center justify-center rounded-md border-purple-500/50 bg-purple-500/10 hover:bg-purple-500/20 transition-all duration-500 animate-in fade-in zoom-in-0 cursor-help"
                         onMouseEnter={() => play("hover")}
                       >
                         <Crown className="h-5 w-5 text-purple-500 animate-pulse" />
                       </Badge>
                     </HoverCardTrigger>
                     <HoverCardContent
-                      className="w-80 border-purple-500/20 backdrop-blur-xl shadow-[0_0_40px_-10px_rgba(168,85,247,0.2)]"
+                      className="w-80 border-purple-500/20 bg-black/90 backdrop-blur-xl shadow-[0_0_40px_-10px_rgba(168,85,247,0.2)]"
                       sideOffset={10}
                     >
                       <div className="flex justify-between items-start gap-4">
@@ -425,10 +457,9 @@ export function AchievementsContent() {
         </div>
       </div>
 
-      {/* Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         {Object.entries(ACHIEVEMENTS)
-          // ⚡ FILTER: Hide invisible items (Speed Runner, Completionist) from grid
+          // ⚡ FILTER: Hide invisible items
           .filter(([, achievement]) => !achievement.invisible)
           .map(([id, achievement]) => {
             const achievementId = id as AchievementId;
