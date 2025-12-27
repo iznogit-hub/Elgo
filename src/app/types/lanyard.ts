@@ -23,6 +23,7 @@ export interface LanyardData {
 }
 
 export interface Activity {
+  details: string;
   type: number;
   state: string;
   name: string;
