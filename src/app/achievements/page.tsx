@@ -7,13 +7,12 @@ import { AchievementsSkeleton } from "@/components/skeletons/achievements-skelet
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Achievements | T7SEN",
-  description:
-    "Track your unlocked achievements and milestones within the T7SEN portfolio ecosystem.",
+  title: "Achievements",
+  description: "System milestones and rank.",
   openGraph: {
-    title: "Achievements | T7SEN",
-    description:
-      "Track your unlocked achievements and milestones within the T7SEN portfolio ecosystem.",
+    images: [
+      "/api/og?title=TROPHY_ROOM&section=ACHIEVEMENTS&description=Track%20unlocked%20milestones%20and%20system%20rank.",
+    ],
   },
 };
 
