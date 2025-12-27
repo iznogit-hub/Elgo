@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
@@ -26,11 +27,16 @@ import {
   Calculator,
   Palette,
   Ruler,
-  Type, // New Icon
-  Clock, // New Icon
+  Type,
+  Clock,
+  Music,
+  Code2,
+  Terminal,
+  Activity,
+  ExternalLink,
+  History,
 } from "lucide-react";
 import { useAchievements } from "@/hooks/use-achievements";
-
 import {
   CommandDialog,
   CommandEmpty,
@@ -43,6 +49,124 @@ import {
 import { useSfx } from "@/hooks/use-sfx";
 import { useSound } from "@/components/sound-provider";
 import { parseCommand } from "@/lib/command-parser";
+import { useLanyard } from "@/hooks/use-lanyard";
+import { cn } from "@/lib/utils";
+
+// --- CONSTANTS ---
+const DISCORD_ID = "170916597156937728";
+
+// --- TYPES ---
+type CommandId = string;
+interface CommandDef {
+  id: CommandId;
+  label: string;
+  icon: React.ElementType;
+  group: "Suggestions" | "Navigation" | "Utilities" | "Theme" | "Connect";
+  action?: () => void;
+  route?: string;
+  url?: string;
+  keywords?: string[];
+  autoClose?: boolean;
+}
+
+// --- SUB-COMPONENT: PERSISTENT PROFILE FOOTER ---
+function CommandMenuProfile() {
+  const { data, isConnected } = useLanyard(DISCORD_ID);
+
+  if (!data || !isConnected) {
+    return (
+      <div className="flex items-center gap-3 px-1">
+        <div className="relative">
+          <div className="h-8 w-8 animate-pulse rounded-full bg-muted/50" />
+          <div className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background bg-muted-foreground" />
+        </div>
+        <div className="flex flex-col gap-1">
+          <div className="h-2.5 w-16 animate-pulse rounded-full bg-muted/50" />
+          <div className="h-2 w-12 animate-pulse rounded-full bg-muted/30" />
+        </div>
+      </div>
+    );
+  }
+
+  const {
+    discord_user,
+    discord_status,
+    activities,
+    listening_to_spotify,
+    spotify,
+  } = data;
+
+  let statusText = "System Online";
+  let StatusIcon = Activity;
+  let isActivity = false;
+
+  if (listening_to_spotify && spotify) {
+    statusText = `${spotify.song}`;
+    StatusIcon = Music;
+    isActivity = true;
+  } else if (activities.length > 0) {
+    const game = activities.find((a) => a.type !== 4) || activities[0];
+    if (game.type !== 4) {
+      if (game.name === "Visual Studio Code") {
+        statusText = game.details || "Writing Code";
+        StatusIcon = Code2;
+      } else {
+        statusText = game.name;
+        StatusIcon = Gamepad2;
+      }
+      isActivity = true;
+    } else {
+      statusText = game.state || "Vibing";
+    }
+  }
+
+  const statusColor = {
+    online: "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]",
+    idle: "bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.4)]",
+    dnd: "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]",
+    offline: "bg-zinc-500",
+  }[discord_status];
+
+  return (
+    <div className="flex items-center gap-3 px-1 overflow-hidden">
+      <div className="relative shrink-0">
+        {discord_user.avatar ? (
+          <Image
+            src={`https://cdn.discordapp.com/avatars/${discord_user.id}/${discord_user.avatar}.png`}
+            alt={discord_user.username}
+            width={32}
+            height={32}
+            className="h-8 w-8 rounded-full border border-border/50 bg-muted"
+          />
+        ) : (
+          <div className="h-8 w-8 rounded-full bg-muted border border-border/50" />
+        )}
+        <span
+          className={cn(
+            "absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-background transition-all duration-300",
+            statusColor,
+          )}
+        />
+      </div>
+      <div className="flex flex-col overflow-hidden">
+        <span className="text-xs font-bold leading-none text-foreground tracking-tight">
+          {discord_user.username}
+        </span>
+        <div className="flex items-center gap-1.5 pt-0.5">
+          <StatusIcon
+            className={cn(
+              "h-2.5 w-2.5 shrink-0 transition-colors duration-300",
+              isActivity ? "text-primary" : "text-muted-foreground",
+            )}
+          />
+          <span className="truncate text-[10px] font-medium text-muted-foreground">
+            {statusText}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface CommandMenuProps {
   onOpenGame?: () => void;
@@ -52,20 +176,238 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
   const [open, setOpen] = React.useState(false);
   const [activePage, setActivePage] = React.useState("main");
   const [search, setSearch] = React.useState("");
-
-  // ⚡ useMemo for sync updates
-  const smartResult = React.useMemo(() => {
-    if (activePage === "main" && search.trim().length > 0) {
-      return parseCommand(search);
-    }
-    return null;
-  }, [search, activePage]);
+  const [recents, setRecents] = React.useState<CommandId[]>([]);
 
   const { unlock } = useAchievements();
   const { setTheme } = useTheme();
   const { play } = useSfx();
   const { isMuted, toggleMute } = useSound();
   const router = useRouter();
+
+  React.useEffect(() => {
+    const saved = localStorage.getItem("t7sen-command-recents");
+    if (saved) {
+      try {
+        setRecents(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to parse recents", e);
+      }
+    }
+  }, []);
+
+  const addToRecents = React.useCallback((id: CommandId) => {
+    setRecents((prev) => {
+      const filtered = prev.filter((i) => i !== id);
+      const next = [id, ...filtered].slice(0, 3);
+      localStorage.setItem("t7sen-command-recents", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const COMMANDS: CommandDef[] = React.useMemo(
+    () => [
+      // SUGGESTIONS
+      {
+        id: "nav-contact",
+        label: "Contact Me",
+        icon: Mail,
+        group: "Suggestions",
+        route: "/contact",
+      },
+      {
+        id: "util-theme",
+        label: "Change Theme...",
+        icon: Laptop,
+        group: "Suggestions",
+        autoClose: false,
+        action: () => {
+          setSearch("");
+          setActivePage("theme");
+        },
+      },
+      {
+        id: "game-snake",
+        label: "Play Snake",
+        icon: Gamepad2,
+        group: "Suggestions",
+        action: () => {
+          if (onOpenGame) onOpenGame();
+          window.dispatchEvent(new Event("open-snake-game"));
+        },
+      },
+
+      // NAVIGATION
+      {
+        id: "nav-home",
+        label: "Home",
+        icon: Home,
+        group: "Navigation",
+        route: "/",
+      },
+      {
+        id: "nav-about",
+        label: "About",
+        icon: User,
+        group: "Navigation",
+        route: "/about",
+      },
+      {
+        id: "nav-uses",
+        label: "Uses",
+        icon: PcCase,
+        group: "Navigation",
+        route: "/uses",
+      },
+      {
+        id: "nav-guestbook",
+        label: "Guestbook",
+        icon: Book,
+        group: "Navigation",
+        route: "/guestbook",
+      },
+      {
+        id: "nav-achievements",
+        label: "Achievements",
+        icon: Trophy,
+        group: "Navigation",
+        route: "/achievements",
+      },
+      {
+        id: "nav-dashboard",
+        label: "Dashboard",
+        icon: LayoutDashboard,
+        group: "Navigation",
+        route: "/dashboard",
+      },
+
+      // UTILITIES
+      {
+        id: "util-copy",
+        label: "Copy Current URL",
+        icon: Copy,
+        group: "Utilities",
+        action: () => navigator.clipboard.writeText(window.location.href),
+      },
+      {
+        id: "util-mute",
+        label: isMuted ? "Unmute Sfx" : "Mute Sfx",
+        icon: Monitor,
+        group: "Utilities",
+        action: toggleMute,
+      },
+      {
+        id: "util-socials",
+        label: "Socials...",
+        icon: Share2,
+        group: "Utilities",
+        autoClose: false,
+        action: () => {
+          setSearch("");
+          setActivePage("socials");
+        },
+      },
+
+      // THEME
+      {
+        id: "theme-light",
+        label: "Light Mode",
+        icon: Sun,
+        group: "Theme",
+        action: () => setTheme("light"),
+      },
+      {
+        id: "theme-dark",
+        label: "Dark Mode",
+        icon: Moon,
+        group: "Theme",
+        action: () => setTheme("dark"),
+      },
+      {
+        id: "theme-system",
+        label: "System",
+        icon: Laptop,
+        group: "Theme",
+        action: () => setTheme("system"),
+      },
+
+      // CONNECT
+      {
+        id: "social-github",
+        label: "GitHub",
+        icon: Github,
+        group: "Connect",
+        url: "https://github.com/t7sen",
+      },
+      {
+        id: "social-linkedin",
+        label: "LinkedIn",
+        icon: Linkedin,
+        group: "Connect",
+        url: "https://linkedin.com/in/t7sen",
+      },
+      {
+        id: "social-twitter",
+        label: "Twitter",
+        icon: Twitter,
+        group: "Connect",
+        url: "https://twitter.com/t7sen",
+      },
+      {
+        id: "social-email",
+        label: "Email",
+        icon: Mail,
+        group: "Connect",
+        url: "mailto:contact@t7sen.com",
+      },
+    ],
+    [isMuted, onOpenGame, setTheme, toggleMute],
+  );
+
+  const executeCommand = (cmd: CommandDef) => {
+    play("success");
+    addToRecents(cmd.id);
+
+    if (cmd.autoClose !== false) {
+      setOpen(false);
+    }
+    setSearch("");
+
+    if (cmd.action) cmd.action();
+    if (cmd.route) router.push(cmd.route);
+    if (cmd.url)
+      window.open(cmd.url, cmd.url.startsWith("mailto") ? "_self" : "_blank");
+  };
+
+  const smartResult = React.useMemo(() => {
+    const query = search.trim();
+    if (activePage !== "main" || query.length === 0) return null;
+
+    if (query.startsWith("sudo ")) {
+      const cmd = query.replace("sudo ", "").toLowerCase();
+      if (cmd === "unlock") {
+        return {
+          type: "sudo",
+          label: "ADMINISTRATOR OVERRIDE",
+          value: "Grant Root Access",
+          action: () => {
+            unlock("ROOT_ACCESS");
+            play("success");
+          },
+        };
+      }
+      if (cmd === "status") {
+        return {
+          type: "sudo",
+          label: "SYSTEM DIAGNOSTICS",
+          value: "All Systems Operational",
+          action: () => {
+            play("success");
+          },
+        };
+      }
+    }
+    return parseCommand(search);
+  }, [search, activePage, unlock, play]);
 
   React.useEffect(() => {
     if (!open) {
@@ -91,60 +433,49 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
         play("hover");
       }
     };
-
     const openHandler = () => {
       if (!open) unlock("COMMAND_LINE");
       setOpen(true);
       play("click");
     };
-
     document.addEventListener("keydown", down);
     window.addEventListener("open-command-menu", openHandler);
-
     return () => {
       document.removeEventListener("keydown", down);
       window.removeEventListener("open-command-menu", openHandler);
     };
   }, [open, activePage, play, search, unlock]);
 
-  const runCommand = React.useCallback(
-    (command: () => void) => {
-      play("success");
-      setOpen(false);
-      setSearch("");
-      command();
-    },
-    [play],
-  );
-
-  const navigateTo = (page: string) => {
-    play("click");
-    setSearch("");
-    setActivePage(page);
-  };
-
-  const copyUrl = () => {
-    navigator.clipboard.writeText(window.location.href);
-    play("success");
-    setOpen(false);
-    setSearch("");
-  };
-
-  const handleLaunchGame = () => {
-    if (onOpenGame) onOpenGame();
-    window.dispatchEvent(new Event("open-snake-game"));
-    play("success");
-    setOpen(false);
-    setSearch("");
-  };
-
   const handleSmartResult = () => {
     if (smartResult) {
       smartResult.action();
-      play("success");
       setOpen(false);
       setSearch("");
     }
+  };
+
+  const renderCommands = (cmds: CommandDef[], keySuffix = "") => {
+    return cmds.map((cmd) => {
+      // ⚡ FIX: Generate a truly unique value to prevent duplicate highlights & scroll glitches
+      // We append the keySuffix to the value, so "Home" becomes "Home-recent" in the Recent list.
+      const uniqueValue = keySuffix ? `${cmd.label}${keySuffix}` : cmd.label;
+
+      return (
+        <CommandItem
+          key={`${cmd.id}${keySuffix}`}
+          value={uniqueValue} // Unique Value Logic
+          onSelect={() => executeCommand(cmd)}
+          onMouseEnter={() => play("hover")}
+          className="group"
+        >
+          <cmd.icon className="mr-2 h-4 w-4" />
+          <span className="flex-1">{cmd.label}</span>
+          {cmd.url && !cmd.url.startsWith("mailto") && (
+            <ExternalLink className="ml-2 h-3 w-3 text-muted-foreground opacity-0 group-aria-selected:opacity-100 transition-opacity" />
+          )}
+        </CommandItem>
+      );
+    });
   };
 
   return (
@@ -164,30 +495,34 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
         <CommandInput
           placeholder={
             activePage === "main"
-              ? "Type a command or try '1.5rem', '#000', 'time'..."
+              ? "Type a command or choose an option..."
               : `Searching ${activePage}...`
           }
           value={search}
           onValueChange={setSearch}
           className="border-none focus:ring-0"
+          onKeyDown={() => play("hover")}
         />
       </div>
 
       <CommandList className="h-75 overflow-y-auto overflow-x-hidden scrollbar-none">
-        {/* Only show Empty if NO smart result is found */}
         {!smartResult && <CommandEmpty>No results found.</CommandEmpty>}
 
-        {/* ⚡ SMART OUTPUT GROUP */}
         {activePage === "main" && smartResult && (
           <>
-            <CommandGroup heading="Terminal Output">
+            <CommandGroup
+              heading={
+                smartResult.type === "sudo"
+                  ? "Administrator"
+                  : "Terminal Output"
+              }
+            >
               <CommandItem
                 onSelect={handleSmartResult}
                 onMouseEnter={() => play("hover")}
                 className="text-primary font-mono group"
                 value={search}
               >
-                {/* Dynamic Icon based on type */}
                 {smartResult.type === "calculation" && (
                   <Calculator className="mr-2 h-4 w-4" />
                 )}
@@ -203,15 +538,40 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
                 {smartResult.type === "time" && (
                   <Clock className="mr-2 h-4 w-4" />
                 )}
+                {smartResult.type === "sudo" && (
+                  <Terminal className="mr-2 h-4 w-4 text-red-500" />
+                )}
 
                 <span className="flex-1 font-bold">{smartResult.value}</span>
                 <span className="text-xs text-muted-foreground uppercase tracking-widest group-aria-selected:text-primary/70 transition-colors">
                   {smartResult.label}
                 </span>
                 <span className="ml-2 text-[10px] text-muted-foreground opacity-0 group-aria-selected:opacity-100 transition-opacity">
-                  ↵ COPY
+                  {smartResult.type === "sudo" ? "↵ EXECUTE" : "↵ COPY"}
                 </span>
               </CommandItem>
+            </CommandGroup>
+            <CommandSeparator />
+          </>
+        )}
+
+        {/* RECENT COMMANDS */}
+        {activePage === "main" && recents.length > 0 && !search && (
+          <>
+            <CommandGroup
+              heading={
+                <div className="flex items-center gap-1.5">
+                  <History className="h-3.5 w-3.5" />
+                  <span>Recent</span>
+                </div>
+              }
+            >
+              {renderCommands(
+                recents
+                  .map((id) => COMMANDS.find((c) => c.id === id))
+                  .filter((c): c is CommandDef => !!c),
+                "-recent", // ⚡ FIX: Suffix added to value for uniqueness
+              )}
             </CommandGroup>
             <CommandSeparator />
           </>
@@ -220,191 +580,44 @@ export function CommandMenu({ onOpenGame }: CommandMenuProps) {
         {activePage === "main" && (
           <>
             <CommandGroup heading="Suggestions">
-              <CommandItem
-                onSelect={() => runCommand(() => router.push("/contact"))}
-                onMouseEnter={() => play("hover")}
-              >
-                <Mail className="mr-2 h-4 w-4" />
-                <span>Contact Me</span>
-              </CommandItem>
-              <CommandItem
-                onSelect={() => navigateTo("theme")}
-                onMouseEnter={() => play("hover")}
-              >
-                <Laptop className="mr-2 h-4 w-4" />
-                <span>Change Theme...</span>
-              </CommandItem>
-              <CommandItem
-                onSelect={handleLaunchGame}
-                onMouseEnter={() => play("hover")}
-              >
-                <Gamepad2 className="mr-2 h-4 w-4" />
-                <span>Play Snake</span>
-              </CommandItem>
+              {renderCommands(
+                COMMANDS.filter((c) => c.group === "Suggestions"),
+              )}
             </CommandGroup>
-
             <CommandSeparator />
-
             <CommandGroup heading="Navigation">
-              <CommandItem
-                onSelect={() => runCommand(() => router.push("/"))}
-                onMouseEnter={() => play("hover")}
-              >
-                <Home className="mr-2 h-4 w-4" />
-                <span>Home</span>
-              </CommandItem>
-              <CommandItem
-                onSelect={() => runCommand(() => router.push("/about"))}
-                onMouseEnter={() => play("hover")}
-              >
-                <User className="mr-2 h-4 w-4" />
-                <span>About</span>
-              </CommandItem>
-              <CommandItem
-                onSelect={() => runCommand(() => router.push("/uses"))}
-                onMouseEnter={() => play("hover")}
-              >
-                <PcCase className="mr-2 h-4 w-4" />
-                <span>Uses</span>
-              </CommandItem>
-              <CommandItem
-                onSelect={() => runCommand(() => router.push("/guestbook"))}
-                onMouseEnter={() => play("hover")}
-              >
-                <Book className="mr-2 h-4 w-4" />
-                <span>Guestbook</span>
-              </CommandItem>
-              <CommandItem
-                onSelect={() => runCommand(() => router.push("/achievements"))}
-                onMouseEnter={() => play("hover")}
-              >
-                <Trophy className="mr-2 h-4 w-4" />
-                <span>Achievements</span>
-              </CommandItem>
-              <CommandItem
-                onSelect={() => runCommand(() => router.push("/dashboard"))}
-                onMouseEnter={() => play("hover")}
-              >
-                <LayoutDashboard className="mr-2 h-4 w-4" />
-                <span>Dashboard</span>
-              </CommandItem>
+              {renderCommands(COMMANDS.filter((c) => c.group === "Navigation"))}
             </CommandGroup>
-
             <CommandGroup heading="Utilities">
-              <CommandItem
-                onSelect={copyUrl}
-                onMouseEnter={() => play("hover")}
-              >
-                <Copy className="mr-2 h-4 w-4" />
-                <span>Copy Current URL</span>
-              </CommandItem>
-              <CommandItem
-                onSelect={toggleMute}
-                onMouseEnter={() => play("hover")}
-              >
-                {isMuted ? (
-                  <Monitor className="mr-2 h-4 w-4" />
-                ) : (
-                  <Monitor className="mr-2 h-4 w-4 text-muted-foreground" />
-                )}
-                <span>{isMuted ? "Unmute Sfx" : "Mute Sfx"}</span>
-              </CommandItem>
-              <CommandItem
-                onSelect={() => navigateTo("socials")}
-                onMouseEnter={() => play("hover")}
-              >
-                <Share2 className="mr-2 h-4 w-4" />
-                <span>Socials...</span>
-              </CommandItem>
+              {renderCommands(COMMANDS.filter((c) => c.group === "Utilities"))}
             </CommandGroup>
           </>
         )}
 
-        {/* ... (Theme and Socials groups remain the same) ... */}
         {activePage === "theme" && (
           <CommandGroup heading="Theme">
-            <CommandItem
-              onSelect={() => runCommand(() => setTheme("light"))}
-              onMouseEnter={() => play("hover")}
-            >
-              <Sun className="mr-2 h-4 w-4" />
-              <span>Light Mode</span>
-            </CommandItem>
-            <CommandItem
-              onSelect={() => runCommand(() => setTheme("dark"))}
-              onMouseEnter={() => play("hover")}
-            >
-              <Moon className="mr-2 h-4 w-4" />
-              <span>Dark Mode</span>
-            </CommandItem>
-            <CommandItem
-              onSelect={() => runCommand(() => setTheme("system"))}
-              onMouseEnter={() => play("hover")}
-            >
-              <Laptop className="mr-2 h-4 w-4" />
-              <span>System</span>
-            </CommandItem>
+            {renderCommands(COMMANDS.filter((c) => c.group === "Theme"))}
           </CommandGroup>
         )}
 
         {activePage === "socials" && (
           <CommandGroup heading="Connect">
-            <CommandItem
-              onSelect={() =>
-                runCommand(() =>
-                  window.open("https://github.com/t7sen", "_blank"),
-                )
-              }
-              onMouseEnter={() => play("hover")}
-            >
-              <Github className="mr-2 h-4 w-4" />
-              <span>GitHub</span>
-            </CommandItem>
-            <CommandItem
-              onSelect={() =>
-                runCommand(() =>
-                  window.open("https://linkedin.com/in/t7sen", "_blank"),
-                )
-              }
-              onMouseEnter={() => play("hover")}
-            >
-              <Linkedin className="mr-2 h-4 w-4" />
-              <span>LinkedIn</span>
-            </CommandItem>
-            <CommandItem
-              onSelect={() =>
-                runCommand(() =>
-                  window.open("https://twitter.com/t7sen", "_blank"),
-                )
-              }
-              onMouseEnter={() => play("hover")}
-            >
-              <Twitter className="mr-2 h-4 w-4" />
-              <span>Twitter</span>
-            </CommandItem>
-            <CommandItem
-              onSelect={() =>
-                runCommand(() =>
-                  window.open("mailto:contact@t7sen.com", "_self"),
-                )
-              }
-              onMouseEnter={() => play("hover")}
-            >
-              <Mail className="mr-2 h-4 w-4" />
-              <span>Email</span>
-            </CommandItem>
+            {renderCommands(COMMANDS.filter((c) => c.group === "Connect"))}
           </CommandGroup>
         )}
       </CommandList>
 
-      <div className="border-t border-border/40 p-2 px-4 flex items-center justify-between">
-        <span className="text-[10px] text-muted-foreground font-mono">
-          Tip: Press <kbd className="font-bold">Backspace</kbd> to go back
-        </span>
-        <div className="flex items-center gap-1">
-          <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-[10px] text-muted-foreground font-mono">
-            SYSTEM_ONLINE
+      <div className="border-t border-border/40 p-2 px-3 flex items-center justify-between bg-muted/5 shrink-0">
+        <CommandMenuProfile />
+        <div className="flex flex-col items-end gap-0.5">
+          <div className="flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-[10px] text-muted-foreground font-mono">
+              ONLINE
+            </span>
+          </div>
+          <span className="text-[10px] text-muted-foreground font-mono opacity-50">
+            <kbd>BACKSPACE</kbd> to go back // <kbd>ESC</kbd> to close
           </span>
         </div>
       </div>
