@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image"; // Import Image
-import { Music, Gamepad2, Moon, Code2 } from "lucide-react";
+import Image from "next/image";
+import { Music, Gamepad2, Moon, Code2, AlertCircle } from "lucide-react";
 import { useLanyard } from "@/hooks/use-lanyard";
 import { useSfx } from "@/hooks/use-sfx";
 import { cn } from "@/lib/utils";
@@ -12,8 +12,18 @@ const DISCORD_ID = "170916597156937728";
 export function DiscordStatus() {
   const { data, isConnected } = useLanyard(DISCORD_ID);
   const { play } = useSfx();
+  const [isTimeout, setIsTimeout] = React.useState(false);
 
-  if (!data || !isConnected) {
+  // ⚡ TIMEOUT LOGIC: If Lanyard doesn't load in 3s, show offline/fallback
+  React.useEffect(() => {
+    if (data) return;
+    const timer = setTimeout(() => setIsTimeout(true), 3000);
+    return () => clearTimeout(timer);
+  }, [data]);
+
+  const isLoading = (!data || !isConnected) && !isTimeout;
+
+  if (isLoading) {
     return (
       <div className="flex min-w-55 items-center gap-3 rounded-2xl border border-border/50 bg-background/40 px-4 py-3 backdrop-blur-md">
         <div className="relative">
@@ -28,13 +38,26 @@ export function DiscordStatus() {
     );
   }
 
+  // Fallback data if timeout occurs or API fails
+  const displayData = data || {
+    discord_user: {
+      id: DISCORD_ID,
+      username: "t7sen",
+      avatar: null,
+    },
+    discord_status: "offline",
+    activities: [],
+    listening_to_spotify: false,
+    spotify: null,
+  };
+
   const {
     discord_user,
     discord_status,
     activities,
     listening_to_spotify,
     spotify,
-  } = data;
+  } = displayData;
 
   let statusText = "Chilling";
   let StatusIcon = Moon;
@@ -60,12 +83,18 @@ export function DiscordStatus() {
     }
   }
 
-  const statusColor = {
-    online: "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]",
-    idle: "bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.4)]",
-    dnd: "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]",
-    offline: "bg-zinc-500",
-  }[discord_status];
+  // Handle Offline/Timeout specific text
+  if (discord_status === "offline" || isTimeout) {
+    statusText = "Offline";
+  }
+
+  const statusColor =
+    {
+      online: "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]",
+      idle: "bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.4)]",
+      dnd: "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]",
+      offline: "bg-zinc-500",
+    }[discord_status] || "bg-zinc-500";
 
   return (
     <a
@@ -78,7 +107,6 @@ export function DiscordStatus() {
     >
       <div className="relative shrink-0">
         {discord_user.avatar ? (
-          // UPDATED: Used Next.js Image component
           <Image
             src={`https://cdn.discordapp.com/avatars/${discord_user.id}/${discord_user.avatar}.png`}
             alt={discord_user.username}
@@ -87,7 +115,9 @@ export function DiscordStatus() {
             className="h-10 w-10 rounded-full border border-border/50 bg-muted transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
-          <div className="h-10 w-10 rounded-full bg-muted border border-border/50" />
+          <div className="h-10 w-10 flex items-center justify-center rounded-full bg-muted border border-border/50 text-muted-foreground">
+            <AlertCircle className="w-5 h-5 opacity-50" />
+          </div>
         )}
 
         <span
