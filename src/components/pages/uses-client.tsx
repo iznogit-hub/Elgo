@@ -275,7 +275,7 @@ export function UsesClient() {
           </div>
 
           {/* Telemetry Row */}
-          <div className="flex items-center gap-3 text-[10px] font-mono text-muted-foreground">
+          <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
             <span>KERNEL: {systemInfo.os}</span>
             <span>::</span>
             <span>STABLE</span>
