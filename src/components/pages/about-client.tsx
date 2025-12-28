@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import Image from "next/image";
 import {
   ArrowLeft,
@@ -27,11 +27,94 @@ const Globe = dynamic(
   () => import("@/components/ui/globe").then((m) => m.Globe),
   {
     ssr: false,
-    loading: () => <div className="w-full h-full opacity-0" />, // Invisible placeholder while loading
+    loading: () => <div className="w-full h-full opacity-0" />,
   },
 );
 
 gsap.registerPlugin(useGSAP);
+
+// --- CONSTANTS ---
+const SECURITY_LOGS = [
+  "> initializing_security_protocols... OK",
+  "> scanning_threat_vectors... NONE",
+  "> optimizing_performance... MAX",
+  "> player_status: TOP_0.1%",
+];
+
+// --- Live Location Clock ---
+function LocationClock() {
+  const [time, setTime] = useState("");
+
+  useEffect(() => {
+    const update = () => {
+      setTime(
+        new Date().toLocaleTimeString("en-US", {
+          timeZone: "Asia/Riyadh",
+          hour12: false,
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        }),
+      );
+    };
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  if (!time) return <span className="opacity-0">00:00:00</span>;
+
+  return <span className="tabular-nums font-mono tracking-widest">{time}</span>;
+}
+
+// --- ⚡ UPDATED: Stable Animated Logs (Always Runs) ---
+function SecurityLogs() {
+  const [lines, setLines] = useState<string[]>([]);
+
+  useEffect(() => {
+    // Clear lines on mount to prevent duplication in Strict Mode/HMR
+    setLines([]);
+
+    let currentLine = 0;
+
+    const interval = setInterval(() => {
+      // 1. Check bounds to prevent accessing undefined index
+      if (currentLine < SECURITY_LOGS.length) {
+        const nextLog = SECURITY_LOGS[currentLine];
+
+        // 2. Only update if valid log exists
+        if (nextLog) {
+          setLines((prev) => [...prev, nextLog]);
+        }
+        currentLine++;
+      } else {
+        clearInterval(interval);
+      }
+    }, 800);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="font-mono text-[10px] text-muted-foreground/80 leading-loose select-none">
+      {lines.map((line, i) => (
+        <p
+          key={i}
+          className="animate-in fade-in slide-in-from-left-2 duration-300"
+        >
+          {line && line.includes("TOP_0.1%") ? (
+            <span className="text-primary animate-pulse font-bold">{line}</span>
+          ) : (
+            line || ""
+          )}
+        </p>
+      ))}
+      {lines.length < SECURITY_LOGS.length && (
+        <span className="animate-pulse text-primary">_</span>
+      )}
+    </div>
+  );
+}
 
 export function AboutClient() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -44,29 +127,33 @@ export function AboutClient() {
         "(prefers-reduced-motion: reduce)",
       ).matches;
 
+      // Header Entrance
       tl.fromTo(
         ".floating-header",
         { y: -30, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, delay: 0.2 },
       );
 
+      // Profile & Content Entrance
       tl.fromTo(
         ".float-profile",
-        { scale: 0.9, opacity: 0, y: 20 },
+        { scale: 0.95, opacity: 0, y: 20 },
         { scale: 1, opacity: 1, y: 0, duration: 1 },
         "-=0.6",
       );
 
+      // Tech Grid Entrance
       tl.fromTo(
         ".tech-item",
-        { opacity: 0, x: -20 },
-        { opacity: 1, x: 0, duration: 0.6, stagger: 0.05 },
+        { opacity: 0, x: -10 },
+        { opacity: 1, x: 0, duration: 0.5, stagger: 0.05 },
         "-=0.5",
       );
 
+      // Globe Fade In
       gsap.fromTo(
         ".bg-globe",
-        { scale: 0.5, opacity: 0 },
+        { scale: 0.8, opacity: 0 },
         {
           scale: 1,
           opacity: 0.25,
@@ -76,24 +163,15 @@ export function AboutClient() {
         },
       );
 
+      // Decor Items
       tl.fromTo(
         ".decor-item",
         { opacity: 0 },
         { opacity: 1, duration: 1 },
         "-=0.5",
       );
+
       if (!isReduced) {
-        gsap.to(".tech-item", {
-          y: "10px",
-          duration: 2,
-          repeat: -1,
-          yoyo: true,
-          ease: "sine.inOut",
-          stagger: {
-            amount: 1.5,
-            from: "random",
-          },
-        });
         gsap.to(".decor-item", {
           y: "15px",
           duration: 5,
@@ -121,7 +199,6 @@ export function AboutClient() {
         <Globe />
       </div>
 
-      {/* ... Rest of the component remains exactly the same ... */}
       <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
         <div className="floating-header pointer-events-auto">
           <TransitionLink
@@ -165,14 +242,17 @@ export function AboutClient() {
           </div>
           <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
             <span>LOC: JEDDAH</span>
-            <span>::</span>
-            <span>KSA</span>
+            <span className="text-primary/50">::</span>
+            <LocationClock />
           </div>
         </div>
       </div>
 
-      {/* --- Ambient Decor (About) --- */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-20 hidden md:block z-0">
+      {/* --- Ambient Decor --- */}
+      <div
+        className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-20 hidden md:block z-0"
+        aria-hidden="true"
+      >
         <div className="decor-item absolute top-[20%] left-[5%] font-mono text-xs text-primary/60 opacity-0">
           {`> LOCATING_TARGET...`}
         </div>
@@ -192,9 +272,9 @@ export function AboutClient() {
       <div className="relative z-10 w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-16 md:gap-8 items-center mt-8 md:mt-20">
         <div className="float-profile flex flex-col items-center md:items-start text-center md:text-left space-y-8">
           <MagneticWrapper strength={0.2}>
-            <div className="relative group">
+            <div className="relative group cursor-none">
               <div className="absolute -inset-4 bg-primary/20 rounded-full blur-xl opacity-0 group-hover:opacity-50 transition-opacity duration-500" />
-              <div className="relative h-40 w-40 rounded-full overflow-hidden border-2 border-primary/20 shadow-2xl">
+              <div className="relative h-40 w-40 rounded-full overflow-hidden border-2 border-primary/20 shadow-2xl transition-transform duration-500 group-hover:scale-[1.02]">
                 <Image
                   src="/Avatar.png"
                   alt="Avatar"
@@ -204,7 +284,11 @@ export function AboutClient() {
                   priority={true}
                 />
               </div>
-              <div className="absolute -bottom-2 -right-2 bg-background border border-border px-3 py-1 rounded-full text-[10px] font-mono font-bold shadow-lg">
+              <div className="absolute -bottom-2 -right-2 bg-background border border-border px-3 py-1 rounded-full text-[10px] font-mono font-bold shadow-lg flex items-center gap-1.5">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
+                </span>
                 v3.0
               </div>
             </div>
@@ -234,26 +318,33 @@ export function AboutClient() {
             <div className="h-px bg-primary/20 grow ml-4 opacity-50" />
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 gap-3">
             {TECH_STACK.map((tech) => (
-              <div key={tech.n} className="tech-item group">
-                <div className="flex items-center gap-3 p-3 rounded-lg border border-white/5 bg-background/40 backdrop-blur-md hover:border-primary/30 hover:bg-primary/5 transition-all duration-300">
+              <div key={tech.n} className="tech-item group relative">
+                <div
+                  className={cn(
+                    "flex items-center gap-3 p-3 rounded-lg border border-white/5 bg-background/40 backdrop-blur-md transition-all duration-300",
+                    "hover:border-primary/40 hover:bg-primary/5 hover:shadow-[0_0_20px_-5px_rgba(var(--primary),0.2)]",
+                    "group-hover:-translate-y-1",
+                  )}
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={`https://cdn.simpleicons.org/${tech.i}`}
                     alt={tech.n}
                     className={cn(
-                      "h-6 w-6 opacity-60 group-hover:opacity-100 transition-opacity",
+                      "h-6 w-6 opacity-60 transition-all duration-300 filter grayscale",
+                      "group-hover:opacity-100 group-hover:filter-none group-hover:scale-110",
                       (tech.n === "Next.js" || tech.n === "Three.js") &&
                         "dark:invert",
                     )}
                   />
                   <div className="flex flex-col">
-                    <span className="text-sm font-bold opacity-80 group-hover:opacity-100 group-hover:text-primary transition-all">
+                    <span className="text-sm font-bold opacity-80 group-hover:opacity-100 group-hover:text-primary transition-colors">
                       {tech.n}
                     </span>
-                    <span className="text-[10px] font-mono text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 duration-300">
-                      READY
+                    <span className="text-[9px] font-mono text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-all duration-300 -translate-x-2 group-hover:translate-x-0">
+                      STATUS: ONLINE
                     </span>
                   </div>
                 </div>
@@ -261,11 +352,8 @@ export function AboutClient() {
             ))}
           </div>
 
-          <div className="tech-item mt-8 p-4 rounded-lg border-l-2 border-primary/30 bg-background/30 backdrop-blur-sm font-mono text-[10px] text-muted-foreground/80 leading-loose opacity-0 hover:opacity-100 transition-opacity select-none">
-            <p>{`> initializing_security_protocols... OK`}</p>
-            <p>{`> scanning_threat_vectors... NONE`}</p>
-            <p>{`> optimizing_performance... MAX`}</p>
-            <span className="animate-pulse text-primary">{`> player_status: TOP_0.1%`}</span>
+          <div className="tech-item mt-8 p-4 rounded-lg border-l-2 border-primary/30 bg-background/30 backdrop-blur-sm min-h-30">
+            <SecurityLogs />
           </div>
         </div>
       </div>
