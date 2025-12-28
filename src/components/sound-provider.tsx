@@ -9,8 +9,14 @@ import React, {
   useCallback,
 } from "react";
 
-// UPDATED: Added 'error', 'on', and 'off' to the type definition
-type SoundType = "hover" | "click" | "success" | "error" | "on" | "off";
+type SoundType =
+  | "hover"
+  | "click"
+  | "success"
+  | "error"
+  | "on"
+  | "off"
+  | "type";
 
 interface SoundContextType {
   play: (type: SoundType) => void;
@@ -18,7 +24,6 @@ interface SoundContextType {
   toggleMute: () => void;
 }
 
-// Helper to support Safari's webkitAudioContext
 interface WindowWithWebkit extends Window {
   webkitAudioContext: typeof AudioContext;
 }
@@ -30,7 +35,6 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
   const isMutedRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  // 1. Load Mute Preference
   useEffect(() => {
     const stored = localStorage.getItem("sound-muted");
     if (stored) {
@@ -41,10 +45,8 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // 2. Initialize Audio Context ONLY on user interaction
   useEffect(() => {
     const initAudio = () => {
-      // If already initialized, stop listening
       if (audioContextRef.current) return;
 
       const AudioContextClass =
@@ -55,18 +57,15 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
         const ctx = new AudioContextClass();
         audioContextRef.current = ctx;
 
-        // Immediately resume if suspended (browsers often start them suspended)
         if (ctx.state === "suspended") {
           ctx.resume().catch(() => {});
         }
       }
 
-      // Cleanup listeners once initialized
       window.removeEventListener("click", initAudio);
       window.removeEventListener("keydown", initAudio);
     };
 
-    // Listen for the first interaction
     window.addEventListener("click", initAudio);
     window.addEventListener("keydown", initAudio);
 
@@ -89,26 +88,43 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const play = useCallback((type: SoundType) => {
-    // Return early if muted OR if AudioContext hasn't been initialized yet.
     if (isMutedRef.current || !audioContextRef.current) return;
 
     const ctx = audioContextRef.current;
-
-    // Double check state to ensure it plays
     if (ctx.state === "suspended") {
       ctx.resume().catch(() => {});
     }
 
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
-
     const now = ctx.currentTime;
 
     // --- Sound Profiles ---
-    if (type === "hover") {
+    if (type === "type") {
+      // ⚡ DISTINCT "TICK" (Crisper & Faster than Click) ⚡
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      // Triangle wave cuts through better than Sine
+      osc.type = "triangle";
+
+      // Higher pitch, shorter drop (1200Hz -> 600Hz)
+      // This makes it sound "lighter"
+      osc.frequency.setValueAtTime(1200, now);
+      osc.frequency.exponentialRampToValueAtTime(600, now + 0.02);
+
+      // Ultra short envelope (20ms) vs the Click's 30-50ms
+      gain.gain.setValueAtTime(0.05, now); // Quieter to be less annoying
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
+
+      osc.start(now);
+      osc.stop(now + 0.02);
+    } else if (type === "hover") {
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
       oscillator.type = "sine";
       oscillator.frequency.setValueAtTime(800, now);
       oscillator.frequency.exponentialRampToValueAtTime(300, now + 0.05);
@@ -117,6 +133,11 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
       oscillator.start(now);
       oscillator.stop(now + 0.05);
     } else if (type === "click") {
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
       oscillator.type = "sine";
       oscillator.frequency.setValueAtTime(800, now);
       oscillator.frequency.exponentialRampToValueAtTime(100, now + 0.03);
@@ -139,11 +160,12 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
         osc.start(st);
         osc.stop(st + 0.1);
       });
-      // Cleanup main oscillator/gain since we created new ones above
-      return;
-    }
-    // NEW: Error Sound (Low Sawtooth Buzzer)
-    else if (type === "error") {
+    } else if (type === "error") {
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
       oscillator.type = "sawtooth";
       oscillator.frequency.setValueAtTime(150, now);
       oscillator.frequency.exponentialRampToValueAtTime(50, now + 0.2);
@@ -151,9 +173,12 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
       gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
       oscillator.start(now);
       oscillator.stop(now + 0.2);
-    }
-    // NEW: On Sound (High Ascending Chirp)
-    else if (type === "on") {
+    } else if (type === "on") {
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
       oscillator.type = "sine";
       oscillator.frequency.setValueAtTime(600, now);
       oscillator.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
@@ -161,9 +186,12 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
       gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
       oscillator.start(now);
       oscillator.stop(now + 0.1);
-    }
-    // NEW: Off Sound (Descending Chirp)
-    else if (type === "off") {
+    } else if (type === "off") {
+      const oscillator = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
       oscillator.type = "sine";
       oscillator.frequency.setValueAtTime(1200, now);
       oscillator.frequency.exponentialRampToValueAtTime(600, now + 0.1);
