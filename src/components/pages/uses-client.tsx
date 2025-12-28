@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useEffect } from "react";
 import { TransitionLink } from "@/components/ui/transition-link";
-import { ArrowLeft, Cpu, Activity, Zap, Box } from "lucide-react";
+import { ArrowLeft, Cpu, Activity, Zap, Box, Check, Copy } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
@@ -82,22 +82,26 @@ const HivePattern = ({
   </svg>
 );
 
-// --- Depth Card (Parallax) ---
+// --- Glare Card (With Copy Functionality) ---
 function GlareCard({
   children,
   className,
   rarity,
+  itemName,
   onMouseEnter,
 }: {
   children: React.ReactNode;
   className?: string;
   rarity: Rarity;
+  itemName: string;
   onMouseEnter?: () => void;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [parallax, setParallax] = useState({ x: 0, y: 0 });
+  const [isCopied, setIsCopied] = useState(false);
   const uniqueId = React.useId();
+  const { play } = useSfx();
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!cardRef.current) return;
@@ -106,10 +110,8 @@ function GlareCard({
     const y = e.clientY - rect.top;
 
     setMousePosition({ x, y });
-
     const xPct = x / rect.width - 0.5;
     const yPct = y / rect.height - 0.5;
-
     setParallax({ x: xPct * 20, y: yPct * 20 });
   };
 
@@ -118,19 +120,28 @@ function GlareCard({
     setParallax({ x: 0, y: 0 });
   };
 
+  const handleClick = () => {
+    navigator.clipboard.writeText(itemName);
+    play("click");
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
   return (
     <div
       ref={cardRef}
       onMouseMove={handleMouseMove}
       onMouseEnter={onMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onClick={handleClick}
       className={cn(
-        "group relative overflow-hidden transition-all duration-300",
+        "group relative overflow-hidden transition-all duration-300 active:scale-[0.98]",
         rarityGlowMap[rarity],
+        isCopied &&
+          "border-green-500/50 shadow-[0_0_30px_-5px_rgba(34,197,94,0.4)]",
         className,
       )}
     >
-      {/* ⚡ UPDATED: Scaled down pattern sizes */}
       <div
         className="absolute inset-0 transition-transform duration-200 ease-out will-change-transform"
         style={{
@@ -154,7 +165,29 @@ function GlareCard({
         }}
       />
 
-      <div className="relative z-10 h-full flex flex-col p-3">{children}</div>
+      {/* Copy Success Overlay */}
+      <div
+        className={cn(
+          "absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm transition-opacity duration-300 pointer-events-none",
+          isCopied ? "opacity-100" : "opacity-0",
+        )}
+      >
+        <div className="flex items-center gap-2 text-green-500 animate-in zoom-in-50 duration-300">
+          <Check className="w-5 h-5" strokeWidth={3} />
+          <span className="font-mono font-bold tracking-widest text-sm">
+            COPIED
+          </span>
+        </div>
+      </div>
+
+      <div className="relative z-10 h-full flex flex-col p-3">
+        {children}
+
+        {/* ⚡ UPDATED: Hover Copy Hint moved left (right-8 instead of right-3) */}
+        <div className="absolute top-3 right-8 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <Copy className="w-3 h-3 text-muted-foreground/50" />
+        </div>
+      </div>
     </div>
   );
 }
@@ -357,7 +390,8 @@ export function UsesClient() {
                       <MagneticWrapper key={item.name} strength={0.02}>
                         <GlareCard
                           rarity={item.rarity}
-                          className="h-21 rounded-lg border border-border/40 bg-card/30 dark:bg-accent/10 backdrop-blur-sm hover:bg-accent/50 dark:hover:bg-accent/30 cursor-none"
+                          itemName={item.name}
+                          className="h-21 rounded-lg border border-border/40 bg-card/30 dark:bg-accent/10 backdrop-blur-sm hover:bg-accent/50 dark:hover:bg-accent/30 cursor-pointer"
                           onMouseEnter={() => play("hover")}
                         >
                           <div className="flex justify-between items-start mb-1 z-10">
