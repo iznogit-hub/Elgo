@@ -3,10 +3,11 @@
 import { useSound } from "@/components/sound-provider";
 
 export function useSfx() {
-  // We simply expose the play function from our global context.
-  // This ensures all components (buttons, nav, forms) automatically
-  // respect the global 'isMuted' state without needing extra logic.
-  const { play } = useSound();
+  const { play, isMuted, toggleMute } = useSound();
 
-  return { play };
+  return {
+    play,
+    isMuted,
+    toggleMute,
+  };
 }
