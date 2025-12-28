@@ -14,26 +14,23 @@ export function SoundPrompter() {
 
   // ⚡ Logic: Smart Timer
   useEffect(() => {
-    // Controller to clean up the early-interaction listener
     const abortController = new AbortController();
 
-    // If user clicks anywhere BEFORE the timer, we cancel the prompt
     const handleEarlyInteraction = () => {
-      // User already interacted, no need to prompt
       clearTimeout(timer);
       abortController.abort();
     };
 
-    // Listen for early clicks immediately
-    window.addEventListener("click", handleEarlyInteraction, {
-      signal: abortController.signal,
-      once: true,
+    const events = ["click", "touchstart", "keydown"];
+    events.forEach((event) => {
+      window.addEventListener(event, handleEarlyInteraction, {
+        signal: abortController.signal,
+        once: true,
+      });
     });
 
     const timer = setTimeout(() => {
       setIsVisible(true);
-      // Once visible, we don't need the 'early' listener anymore
-      // The 'handleGlobalClick' inside the next useEffect will take over
       abortController.abort();
     }, 1500);
 
@@ -43,15 +40,22 @@ export function SoundPrompter() {
     };
   }, []);
 
-  // ⚡ Logic: Dismissal (Only runs if isVisible becomes true)
+  // ⚡ Logic: Dismissal & Feedback
   useEffect(() => {
     if (!isVisible) return;
 
-    const handleGlobalClick = () => {
+    const handleInteraction = () => {
       play("success");
+
+      const events = ["click", "touchstart", "keydown"];
+      events.forEach((event) => {
+        window.removeEventListener(event, handleInteraction);
+      });
+
+      // Animate Exit (Slide Up)
       if (containerRef.current) {
         gsap.to(containerRef.current, {
-          x: 20,
+          y: -20, // Slide up
           opacity: 0,
           duration: 0.4,
           ease: "power2.in",
@@ -60,22 +64,30 @@ export function SoundPrompter() {
       }
     };
 
-    window.addEventListener("click", handleGlobalClick, { once: true });
-    return () => window.removeEventListener("click", handleGlobalClick);
+    const events = ["click", "touchstart", "keydown"];
+    events.forEach((event) => {
+      window.addEventListener(event, handleInteraction, { once: true });
+    });
+
+    return () => {
+      events.forEach((event) => {
+        window.removeEventListener(event, handleInteraction);
+      });
+    };
   }, [isVisible, play]);
 
-  // Entrance Animation
+  // Entrance Animation (Slide Down)
   useGSAP(
     () => {
       if (isVisible && containerRef.current) {
         gsap.fromTo(
           containerRef.current,
-          { x: 50, opacity: 0 },
-          { x: 0, opacity: 1, duration: 0.6, ease: "power3.out" }
+          { y: -30, opacity: 0 }, // Start slightly above
+          { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" },
         );
       }
     },
-    { dependencies: [isVisible], scope: containerRef }
+    { dependencies: [isVisible], scope: containerRef },
   );
 
   if (!isVisible) return null;
@@ -85,33 +97,35 @@ export function SoundPrompter() {
       aria-label="Sound Controls"
       ref={containerRef}
       className={cn(
-        "fixed z-90 pointer-events-none select-none",
-        "top-20 right-4",
-        "max-w-[calc(100vw-2rem)]",
-        "md:top-24 md:right-6"
+        "fixed z-50 pointer-events-none select-none",
+        // Position: Top Center
+        "top-8 left-1/2 -translate-x-1/2",
+        "w-max max-w-[90vw]",
       )}
     >
       <div
         className={cn(
-          "flex items-center rounded-lg",
-          "bg-background/80 backdrop-blur-md border border-border/50",
-          "shadow-lg shadow-black/5",
-          "gap-3 px-3 py-2.5 pr-5",
-          "md:gap-4 md:px-4 md:py-3 md:pr-6"
+          "flex items-center rounded-xl", // More rounded
+          "bg-background/90 backdrop-blur-xl border border-border/60",
+          "shadow-2xl shadow-black/10",
+          // Redesigned Sizing (Bigger)
+          "gap-5 px-6 py-4",
+          "md:gap-6 md:px-8 md:py-5",
         )}
       >
-        <div className="relative flex items-center justify-center w-8 h-8 shrink-0 rounded-full bg-primary/10 text-primary">
-          <Volume2 className="w-4 h-4" />
-          <span className="absolute inset-0 rounded-full border border-primary/40 animate-ping opacity-20" />
+        {/* Bigger Icon Container */}
+        <div className="relative flex items-center justify-center w-12 h-12 shrink-0 rounded-full bg-primary/10 text-primary">
+          <Volume2 className="w-6 h-6" /> {/* Bigger Icon */}
+          <span className="absolute inset-0 rounded-full border-2 border-primary/40 animate-ping opacity-20" />
         </div>
 
         <div className="flex flex-col min-w-0">
-          <span className="text-xs font-bold text-foreground tracking-tight whitespace-nowrap">
+          <span className="text-sm md:text-base font-bold text-foreground tracking-tight whitespace-nowrap">
             Sound Standby
           </span>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <MousePointer2 className="w-3 h-3 text-muted-foreground animate-bounce" />
-            <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap">
+          <div className="flex items-center gap-2 mt-1">
+            <MousePointer2 className="w-3.5 h-3.5 text-muted-foreground animate-bounce" />
+            <span className="text-xs md:text-sm font-medium font-mono text-muted-foreground whitespace-nowrap">
               Tap anywhere to enable
             </span>
           </div>
