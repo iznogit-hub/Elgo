@@ -17,7 +17,6 @@ import { USES_DATA, type Rarity } from "@/data/uses";
 gsap.registerPlugin(useGSAP);
 
 // --- THEMED RARITY MAPS ---
-
 const rarityGlowMap: Record<Rarity, string> = {
   legendary:
     "group-hover:shadow-[0_0_30px_-5px_rgba(251,146,60,0.4)] dark:group-hover:shadow-[0_0_30px_-5px_rgba(251,146,60,0.3)] group-hover:border-orange-500/50",
@@ -48,15 +47,128 @@ const rarityTintMap: Record<Rarity, string> = {
   common: "from-zinc-500/5 to-transparent",
 };
 
+// --- Hive Pattern (Stateless) ---
+const HivePattern = ({
+  id,
+  scale = 1,
+  opacity = 0.1,
+}: {
+  id: string;
+  scale?: number;
+  opacity?: number;
+}) => (
+  <svg
+    className="absolute inset-0 w-[120%] h-[120%] -top-[10%] -left-[10%] pointer-events-none transition-transform duration-200 ease-out"
+    style={{ opacity }}
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <pattern
+      id={`hive-grid-${id}`}
+      x="0"
+      y="0"
+      width="56"
+      height="100"
+      patternUnits="userSpaceOnUse"
+      patternTransform={`scale(${scale})`}
+    >
+      <path
+        d="M28 66L0 50L0 16L28 0L56 16L56 50L28 66L28 100"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+    </pattern>
+    <rect width="100%" height="100%" fill={`url(#hive-grid-${id})`} />
+  </svg>
+);
+
+// --- Depth Card (Parallax) ---
+function GlareCard({
+  children,
+  className,
+  rarity,
+  onMouseEnter,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  rarity: Rarity;
+  onMouseEnter?: () => void;
+}) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [parallax, setParallax] = useState({ x: 0, y: 0 });
+  const uniqueId = React.useId();
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    setMousePosition({ x, y });
+
+    const xPct = x / rect.width - 0.5;
+    const yPct = y / rect.height - 0.5;
+
+    setParallax({ x: xPct * 20, y: yPct * 20 });
+  };
+
+  const handleMouseLeave = () => {
+    setMousePosition({ x: 0, y: 0 });
+    setParallax({ x: 0, y: 0 });
+  };
+
+  return (
+    <div
+      ref={cardRef}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className={cn(
+        "group relative overflow-hidden transition-all duration-300",
+        rarityGlowMap[rarity],
+        className,
+      )}
+    >
+      {/* ⚡ UPDATED: Scaled down pattern sizes */}
+      <div
+        className="absolute inset-0 transition-transform duration-200 ease-out will-change-transform"
+        style={{
+          transform: `translate(${parallax.x * 0.5}px, ${parallax.y * 0.5}px)`,
+        }}
+      >
+        <HivePattern id={`${uniqueId}-deep`} scale={0.4} opacity={0.03} />
+      </div>
+
+      <div
+        className="absolute inset-0 transition-transform duration-200 ease-out will-change-transform"
+        style={{ transform: `translate(${parallax.x}px, ${parallax.y}px)` }}
+      >
+        <HivePattern id={`${uniqueId}-mid`} scale={0.5} opacity={0.08} />
+      </div>
+
+      <div
+        className="pointer-events-none absolute -inset-px opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-0 mix-blend-soft-light"
+        style={{
+          background: `radial-gradient(600px circle at ${mousePosition.x}px ${mousePosition.y}px, rgba(255,255,255,0.1), transparent 40%)`,
+        }}
+      />
+
+      <div className="relative z-10 h-full flex flex-col p-3">{children}</div>
+    </div>
+  );
+}
+
 export function UsesClient() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { play } = useSfx();
   const prefersReducedMotion = usePrefersReducedMotion();
-  const [systemInfo, setSystemInfo] = useState({ os: "...", engine: "..." });
+
+  const [systemInfo, setSystemInfo] = useState({
+    os: "...",
+  });
 
   useEffect(() => {
-    // ⚡ FIX: Use setTimeout to move the state update to the next tick.
-    // This satisfies the linter rule about synchronous state updates in effects.
     const timer = setTimeout(() => {
       const ua = navigator.userAgent;
       let os = "UNKNOWN";
@@ -66,15 +178,7 @@ export function UsesClient() {
       if (ua.includes("Android")) os = "ANDROID";
       if (ua.includes("iPhone")) os = "IOS";
 
-      const engine = ua.includes("Chrome")
-        ? "BLINK"
-        : ua.includes("Firefox")
-          ? "GECKO"
-          : ua.includes("Safari")
-            ? "WEBKIT"
-            : "UNKNOWN";
-
-      setSystemInfo({ os, engine });
+      setSystemInfo({ os });
     }, 0);
 
     return () => clearTimeout(timer);
@@ -94,7 +198,6 @@ export function UsesClient() {
         { y: -30, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, delay: 0.2 },
       );
-
       tl.fromTo(
         ".fade-in",
         { y: 30, opacity: 0 },
@@ -107,6 +210,7 @@ export function UsesClient() {
         { opacity: 1, duration: 1 },
         "-=0.5",
       );
+
       if (!prefersReducedMotion) {
         gsap.to(".decor-item", {
           y: "15px",
@@ -126,7 +230,7 @@ export function UsesClient() {
       ref={containerRef}
       className="relative h-dvh w-full overflow-hidden text-foreground flex flex-col"
     >
-      {/* --- FLOATING HEADER --- */}
+      {/* --- FLOATING HEADER (HUD) --- */}
       <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-50">
         <div className="floating-header pointer-events-auto">
           <TransitionLink
@@ -158,6 +262,7 @@ export function UsesClient() {
         </div>
 
         <div className="floating-header flex flex-col items-end gap-2">
+          {/* Main Status Chip */}
           <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 backdrop-blur-sm">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
@@ -168,7 +273,9 @@ export function UsesClient() {
             </span>
             <Zap className="h-3 w-3 text-primary" />
           </div>
-          <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
+
+          {/* Telemetry Row */}
+          <div className="flex items-center gap-3 text-[10px] font-mono text-muted-foreground">
             <span>KERNEL: {systemInfo.os}</span>
             <span>::</span>
             <span>STABLE</span>
@@ -178,12 +285,8 @@ export function UsesClient() {
 
       {/* --- AMBIENT DECOR --- */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-20 hidden md:block z-0">
-        <div className="decor-item absolute top-[20%] left-[5%] font-mono text-xs text-primary/60 opacity-0">
-          {`> SCANNING_HARDWARE...`}
-        </div>
-        <div className="decor-item absolute top-[30%] right-[8%] font-mono text-xs text-muted-foreground/60 opacity-0">
-          {`{ "fps": "uncapped" }`}
-        </div>
+        <div className="decor-item absolute top-[20%] left-[5%] font-mono text-xs text-primary/60 opacity-0">{`> SCANNING_HARDWARE...`}</div>
+        <div className="decor-item absolute top-[30%] right-[8%] font-mono text-xs text-muted-foreground/60 opacity-0">{`{ "fps": "uncapped" }`}</div>
         <div className="decor-item absolute bottom-[15%] left-[10%] flex items-center gap-2 text-muted-foreground/60 opacity-0">
           <Cpu className="h-4 w-4" />
           <span className="font-mono text-xs">CPU_LOAD: OPTIMAL</span>
@@ -207,7 +310,6 @@ export function UsesClient() {
               <h1 className="text-5xl md:text-6xl font-black tracking-tighter text-foreground leading-none">
                 <HackerText text="Gear" />
               </h1>
-              {/* ⚡ UPDATED: Tech/Gamer Phrase */}
               <p className="text-xs md:text-sm text-muted-foreground leading-relaxed max-w-xs">
                 Overclocked hardware and zero-latency configurations. Engineered
                 for clicking heads.
@@ -243,7 +345,6 @@ export function UsesClient() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 w-full">
               {USES_DATA.map((section) => (
                 <div key={section.category} className="flex flex-col gap-2">
-                  {/* Category Header */}
                   <div className="flex items-center gap-2 text-muted-foreground/70 pb-1 border-b border-border/40">
                     <section.icon className="h-3 w-3" />
                     <span className="text-[10px] font-mono uppercase tracking-widest">
@@ -251,17 +352,12 @@ export function UsesClient() {
                     </span>
                   </div>
 
-                  {/* Items */}
                   <div className="flex flex-col gap-2">
                     {section.items.map((item) => (
                       <MagneticWrapper key={item.name} strength={0.02}>
-                        <div
-                          className={cn(
-                            "group relative h-21 p-3 rounded-lg transition-all duration-300 cursor-none overflow-hidden flex flex-col",
-                            "border border-border/40 bg-card/30 dark:bg-accent/10 backdrop-blur-sm",
-                            "hover:bg-accent/50 dark:hover:bg-accent/30",
-                            rarityGlowMap[item.rarity],
-                          )}
+                        <GlareCard
+                          rarity={item.rarity}
+                          className="h-21 rounded-lg border border-border/40 bg-card/30 dark:bg-accent/10 backdrop-blur-sm hover:bg-accent/50 dark:hover:bg-accent/30 cursor-none"
                           onMouseEnter={() => play("hover")}
                         >
                           <div className="flex justify-between items-start mb-1 z-10">
@@ -275,7 +371,6 @@ export function UsesClient() {
                             >
                               {item.name}
                             </span>
-
                             <div
                               className={cn(
                                 "w-1.5 h-1.5 rounded-full opacity-50 group-hover:opacity-100 transition-opacity shrink-0 mt-1",
@@ -288,13 +383,11 @@ export function UsesClient() {
                             {item.desc}
                           </p>
 
-                          {/* DRAWER */}
                           {item.specs && (
                             <div
                               className={cn(
                                 "absolute inset-x-0 bottom-0 p-2 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out z-20 grid grid-cols-2 gap-x-2 gap-y-1",
-                                "bg-background/80 dark:bg-background/90 backdrop-blur-xl",
-                                "border-t border-border/50",
+                                "bg-background/80 dark:bg-background/90 backdrop-blur-xl border-t border-border/50",
                                 "bg-linear-to-t",
                                 rarityTintMap[item.rarity],
                               )}
@@ -319,7 +412,7 @@ export function UsesClient() {
                               ))}
                             </div>
                           )}
-                        </div>
+                        </GlareCard>
                       </MagneticWrapper>
                     ))}
                   </div>
