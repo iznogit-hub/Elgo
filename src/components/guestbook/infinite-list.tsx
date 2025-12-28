@@ -365,7 +365,7 @@ export function InfiniteGuestbookList({
 
       <div
         ref={scrollRef}
-        className="w-full h-full overflow-x-auto whitespace-nowrap scrollbar-none [&::-webkit-scrollbar]:hidden"
+        className="scrollbar-hide w-full h-full overflow-x-auto whitespace-nowrap"
         style={{
           maskImage:
             "linear-gradient(to right, rgb(0 0 0 / 0) 0%, rgb(0 0 0 / 1) 200px, rgb(0 0 0 / 1) calc(100% - 200px), rgb(0 0 0 / 0) 100%)",
