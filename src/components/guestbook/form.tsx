@@ -23,17 +23,18 @@ const initialState: GuestbookState = {
 
 export function GuestbookForm({ user: serverUser }: { user?: User | null }) {
   const formRef = useRef<HTMLFormElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const { play } = useSfx();
   const router = useRouter();
 
   // 1. CLIENT SOURCE OF TRUTH
-  // We use the client session for instant reactivity
   const { data: session, status, update } = useSession();
   const [charCount, setCharCount] = useState(0);
 
   // Animation States
   const [isAuthenticating, setIsAuthenticating] = useState<string | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [rotation, setRotation] = useState({ x: 0, y: 0 });
   const popupRef = useRef<Window | null>(null);
 
   const [state, formAction, isPending] = useActionState(
@@ -41,13 +42,34 @@ export function GuestbookForm({ user: serverUser }: { user?: User | null }) {
     initialState,
   );
 
-  // 2. HYBRID COMPUTED STATE (The "Gold Standard" Logic)
-  // - If Client Session is loading -> Use Server Prop (Instant First Paint, SEO friendly)
-  // - If Client Session is ready -> Use Client Session (Instant Updates, Reactive)
   const effectiveUser = useMemo(() => {
     if (status === "loading") return serverUser;
     return session?.user ?? null;
   }, [status, session, serverUser]);
+
+  // --- TILT LOGIC ---
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!containerRef.current) return;
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Calculate center
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+
+    // Calculate tilt (Max 3 degrees for subtle effect)
+    // RotateX is inverted (mouse up = tilt back)
+    const rotateX = ((y - centerY) / centerY) * -3;
+    const rotateY = ((x - centerX) / centerX) * 3;
+
+    setRotation({ x: rotateX, y: rotateY });
+  };
+
+  const handleMouseLeave = () => {
+    setRotation({ x: 0, y: 0 });
+  };
 
   // --- Effects & Handlers ---
 
@@ -58,7 +80,6 @@ export function GuestbookForm({ user: serverUser }: { user?: User | null }) {
 
       setTimeout(() => setCharCount(0), 0);
 
-      // Notify Google Analytics & Other Components
       sendGAEvent("event", "guestbook_sign", {
         event_category: "Engagement",
         event_label: "Success",
@@ -78,7 +99,6 @@ export function GuestbookForm({ user: serverUser }: { user?: User | null }) {
     }
   }, [state, play]);
 
-  // Popup Window Polling
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isAuthenticating) {
@@ -109,20 +129,13 @@ export function GuestbookForm({ user: serverUser }: { user?: User | null }) {
     );
   };
 
-  // 3. OPTIMISTIC LOGIN HANDLER
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       if (event.data?.type === "AUTH_SUCCESS") {
         play("on");
-
-        // A: Instant UI Update (Client)
         await update();
-
-        // B: Background Sync (Server)
-        // We do NOT await this, allowing UI to stay responsive
         router.refresh();
-
         setIsAuthenticating(null);
       }
     };
@@ -130,21 +143,12 @@ export function GuestbookForm({ user: serverUser }: { user?: User | null }) {
     return () => window.removeEventListener("message", handleMessage);
   }, [play, router, update]);
 
-  // 4. OPTIMISTIC LOGOUT HANDLER
   const handleLogout = async () => {
     play("click");
     setIsLoggingOut(true);
-
-    // Short artificial delay for the "exit animation" to play
     await new Promise((resolve) => setTimeout(resolve, 600));
-
-    // A: Instant Client Logout
-    // 'redirect: false' prevents the page from reloading, keeping it smooth
     await signOut({ redirect: false });
-
-    // B: Background Sync
     router.refresh();
-
     setIsLoggingOut(false);
   };
 
@@ -153,9 +157,20 @@ export function GuestbookForm({ user: serverUser }: { user?: User | null }) {
   };
 
   return (
-    <div className="w-full max-w-lg mx-auto">
-      {/* Container with Glass Effect */}
-      <div className="group relative overflow-hidden rounded-3xl bg-zinc-50/5 dark:bg-zinc-900/5 backdrop-blur-3xl border border-white/10 dark:border-white/5 transition-all duration-500 hover:border-white/20 hover:bg-zinc-50/10 dark:hover:bg-zinc-900/10 hover:shadow-2xl hover:shadow-primary/5 min-h-55 flex flex-col justify-center">
+    <div className="w-full max-w-lg mx-auto" style={{ perspective: "1000px" }}>
+      {/* Container with Glass Effect & Tilt */}
+      <div
+        ref={containerRef}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        style={{
+          transform: `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`,
+        }}
+        className={cn(
+          // Changed duration-500 to duration-200 for responsive tilt
+          "group relative overflow-hidden rounded-3xl bg-zinc-50/5 dark:bg-zinc-900/5 backdrop-blur-3xl border border-white/10 dark:border-white/5 transition-all duration-200 ease-out hover:border-white/20 hover:bg-zinc-50/10 dark:hover:bg-zinc-900/10 hover:shadow-2xl hover:shadow-primary/5 min-h-55 flex flex-col justify-center will-change-transform",
+        )}
+      >
         {effectiveUser ? (
           /* --- LOGGED IN: CONVERSATIONAL UI --- */
           <div
