@@ -47,7 +47,7 @@ export function GuestbookForm({ user: serverUser }: { user?: User | null }) {
     return session?.user ?? null;
   }, [status, session, serverUser]);
 
-  // --- TILT LOGIC ---
+  // --- 3D TILT LOGIC ---
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current) return;
 
@@ -55,19 +55,19 @@ export function GuestbookForm({ user: serverUser }: { user?: User | null }) {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // Calculate center
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
 
-    // Calculate tilt (Max 3 degrees for subtle effect)
-    // RotateX is inverted (mouse up = tilt back)
-    const rotateX = ((y - centerY) / centerY) * -3;
-    const rotateY = ((x - centerX) / centerX) * 3;
+    // Calculate rotation (Max 4 degrees for subtle physical feel)
+    // rotateX is inverted so mouse-up tilts the top back
+    const rotateX = ((y - centerY) / centerY) * -5;
+    const rotateY = ((x - centerX) / centerX) * 5;
 
     setRotation({ x: rotateX, y: rotateY });
   };
 
   const handleMouseLeave = () => {
+    // Reset to flat when mouse leaves
     setRotation({ x: 0, y: 0 });
   };
 
@@ -99,6 +99,7 @@ export function GuestbookForm({ user: serverUser }: { user?: User | null }) {
     }
   }, [state, play]);
 
+  // Popup Polling
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isAuthenticating) {
@@ -129,6 +130,7 @@ export function GuestbookForm({ user: serverUser }: { user?: User | null }) {
     );
   };
 
+  // Optimistic Login
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
@@ -143,6 +145,7 @@ export function GuestbookForm({ user: serverUser }: { user?: User | null }) {
     return () => window.removeEventListener("message", handleMessage);
   }, [play, router, update]);
 
+  // Optimistic Logout
   const handleLogout = async () => {
     play("click");
     setIsLoggingOut(true);
@@ -154,6 +157,7 @@ export function GuestbookForm({ user: serverUser }: { user?: User | null }) {
 
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setCharCount(e.target.value.length);
+    play("type");
   };
 
   return (
@@ -167,8 +171,10 @@ export function GuestbookForm({ user: serverUser }: { user?: User | null }) {
           transform: `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`,
         }}
         className={cn(
-          // Changed duration-500 to duration-200 for responsive tilt
-          "group relative overflow-hidden rounded-3xl bg-zinc-50/5 dark:bg-zinc-900/5 backdrop-blur-3xl border border-white/10 dark:border-white/5 transition-all duration-200 ease-out hover:border-white/20 hover:bg-zinc-50/10 dark:hover:bg-zinc-900/10 hover:shadow-2xl hover:shadow-primary/5 min-h-55 flex flex-col justify-center will-change-transform",
+          "group relative overflow-hidden rounded-3xl bg-zinc-50/5 dark:bg-zinc-900/5 backdrop-blur-3xl border border-white/10 dark:border-white/5",
+          "transition-all duration-200 ease-out",
+          "hover:border-white/20 hover:bg-zinc-50/10 dark:hover:bg-zinc-900/10 hover:shadow-2xl hover:shadow-primary/5",
+          "min-h-55 flex flex-col justify-center will-change-transform",
         )}
       >
         {effectiveUser ? (
@@ -323,7 +329,7 @@ export function GuestbookForm({ user: serverUser }: { user?: User | null }) {
               </div>
             </div>
 
-            {/* Authentication Loader */}
+            {/* Auth Loader */}
             <div
               className={cn(
                 "absolute inset-0 flex flex-col items-center justify-center transition-all duration-500 z-20",
