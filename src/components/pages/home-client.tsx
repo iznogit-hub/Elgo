@@ -47,7 +47,10 @@ export function HomeClient() {
       {/* The grow utility here will center the HeroSection in the available space */}
       <div className="w-full z-10 grow flex flex-col justify-center items-center gap-8">
         {/* --- Ambient Decor (Home) --- */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-20 hidden md:block z-0">
+        <div
+          className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-20 hidden md:block z-0"
+          aria-hidden="true"
+        >
           <div className="decor-item absolute top-[20%] left-[10%] font-mono text-xs text-primary/60 opacity-0">
             {`> INITIALIZING_CORE...`}
           </div>
