@@ -1,6 +1,20 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* --- HIDE ONLY LIVEBLOCKS BADGE --- */
+a[href*="liveblocks.io"] {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Backup: Target by ID if it exists */
+#liveblocks-badge {
+  display: none !important;
+}
+
 @layer base {
   html,
   body {
