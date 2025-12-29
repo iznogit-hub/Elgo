@@ -193,9 +193,10 @@ function AchievementCard({
           ? `perspective(1000px) rotateX(${rotation.x}deg) rotateY(${rotation.y}deg) scale3d(1.02, 1.02, 1.02)`
           : "perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)",
         transition: "transform 0.1s ease-out",
+        transformStyle: "preserve-3d",
       }}
       className={cn(
-        "achievement-chip relative flex flex-col p-4 rounded-xl border overflow-hidden opacity-0 will-change-transform",
+        "achievement-chip relative flex flex-col p-4 rounded-xl border overflow-hidden opacity-0 will-change-transform backface-hidden",
         // Glassmorphism & Borders
         isUnlocked
           ? "bg-zinc-50/5 dark:bg-zinc-900/5 border-primary/20 hover:border-primary/50 shadow-lg shadow-primary/5"
@@ -210,16 +211,23 @@ function AchievementCard({
           background: `radial-gradient(circle at ${50 + rotation.y * 2}% ${
             50 + rotation.x * 2
           }%, rgba(255,255,255,0.8), transparent 60%)`,
+          transform: "translateZ(0)",
         }}
       />
 
       {/* Floating Background Icon */}
-      <div className="absolute top-0 right-0 p-2 opacity-[0.03] group-hover:opacity-10 transition-opacity pointer-events-none">
+      <div
+        className="absolute top-0 right-0 p-2 opacity-[0.03] group-hover:opacity-10 transition-opacity pointer-events-none"
+        style={{ transform: "translateZ(20px)" }}
+      >
         <Icon className="h-24 w-24 -rotate-12 translate-x-6 -translate-y-6" />
       </div>
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-4 z-10 relative">
+      <div
+        className="flex items-start justify-between mb-4 z-10 relative"
+        style={{ transform: "translateZ(30px)" }}
+      >
         <div
           className={cn(
             "p-2.5 rounded-lg border backdrop-blur-md shadow-inner transition-colors duration-300",
@@ -250,7 +258,10 @@ function AchievementCard({
       </div>
 
       {/* Content */}
-      <div className="space-y-1.5 mt-auto z-10 relative">
+      <div
+        className="space-y-1.5 mt-auto z-10 relative"
+        style={{ transform: "translateZ(20px)" }}
+      >
         <h3
           className={cn(
             "font-bold tracking-tight text-sm",
@@ -296,8 +307,9 @@ function AchievementCard({
 
       {/* Progress Line */}
       <div
+        style={{ transform: "translateZ(1px)" }}
         className={cn(
-          "absolute bottom-0 left-0 h-0.5 transition-all duration-700 ease-out",
+          "absolute bottom-0 left-0 h-0.5 transition-[width] duration-700 ease-out z-20",
           isUnlocked ? "w-full bg-primary" : "w-0 bg-muted-foreground",
         )}
       />
