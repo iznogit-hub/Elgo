@@ -2,24 +2,15 @@
 
 import React, { useRef, useState, useEffect } from "react";
 import Image from "next/image";
-import {
-  ArrowLeft,
-  Cpu,
-  ScanFace,
-  Terminal,
-  MapPin,
-  Code2,
-} from "lucide-react";
+import { Cpu, ScanFace, Terminal, MapPin, Code2 } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 
-import { Button } from "@/components/ui/button";
-import { useSfx } from "@/hooks/use-sfx";
 import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
 import { HackerText } from "@/components/ui/hacker-text";
 import { cn } from "@/lib/utils";
 import { TECH_STACK } from "@/data/about";
-import { TransitionLink } from "@/components/ui/transition-link";
+import { HudHeader } from "@/components/ui/hud-header";
 
 import dynamic from "next/dynamic";
 
@@ -118,7 +109,6 @@ function SecurityLogs() {
 
 export function AboutClient() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { play } = useSfx();
 
   useGSAP(
     () => {
@@ -198,55 +188,19 @@ export function AboutClient() {
       >
         <Globe />
       </div>
-
-      <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
-        <div className="floating-header pointer-events-auto">
-          <TransitionLink
-            href="/"
-            className="cursor-none"
-            onClick={() => play("click")}
-          >
-            <Button
-              variant="ghost"
-              className="group gap-3 pl-0 hover:bg-transparent hover:text-red-500 transition-colors cursor-none"
-              onMouseEnter={() => play("hover")}
-              asChild
-            >
-              <span>
-                <div className="flex items-center justify-center w-8 h-8 rounded-full border border-muted-foreground/30 group-hover:border-red-500/50 transition-colors">
-                  <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-                </div>
-                <div className="flex flex-col items-start">
-                  <span className="font-mono text-xs font-bold tracking-widest text-muted-foreground group-hover:text-red-500">
-                    ABORT
-                  </span>
-                  <span className="text-[10px] text-muted-foreground/50 hidden sm:block">
-                    RETURN_TO_BASE
-                  </span>
-                </div>
-              </span>
-            </Button>
-          </TransitionLink>
-        </div>
-
-        <div className="floating-header flex flex-col items-end gap-2">
-          <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 backdrop-blur-sm">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-            </span>
-            <span className="text-xs font-mono font-bold tracking-wider text-primary">
-              ID_VERIFIED
-            </span>
-            <ScanFace className="h-3 w-3 text-primary" />
-          </div>
-          <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
+      {/* --- FLOATING HEADER (HUD) --- */}
+      <HudHeader
+        title="ID_VERIFIED"
+        icon={ScanFace}
+        telemetry={
+          <>
             <span>LOC: JEDDAH</span>
-            <span className="text-primary/50">::</span>
+            <span>::</span>
             <LocationClock />
-          </div>
-        </div>
-      </div>
+          </>
+        }
+        dotColor="bg-blue-500"
+      />
 
       {/* --- Ambient Decor --- */}
       <div

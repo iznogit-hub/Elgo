@@ -1,14 +1,12 @@
 "use client";
 
 import React, { useRef } from "react";
-import { TransitionLink } from "@/components/ui/transition-link";
-import { ArrowLeft, Database, Server } from "lucide-react";
+import { Database, Server } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import { HackerText } from "@/components/ui/hacker-text";
-import { Button } from "@/components/ui/button";
-import { useSfx } from "@/hooks/use-sfx";
+import { HudHeader } from "@/components/ui/hud-header";
 
 // UPDATE: Props now accept 'form' slot instead of 'user' object
 export function GuestbookShell({
@@ -20,7 +18,6 @@ export function GuestbookShell({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const prefersReducedMotion = usePrefersReducedMotion();
-  const { play } = useSfx();
 
   useGSAP(
     () => {
@@ -83,55 +80,19 @@ export function GuestbookShell({
       ref={containerRef}
       className="flex min-h-dvh md:h-dvh w-full flex-col items-center md:overflow-hidden relative"
     >
-      {/* --- Floating Header (Static) --- */}
-      <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
-        <div className="floating-header pointer-events-auto">
-          <TransitionLink
-            href="/"
-            className="cursor-none"
-            onClick={() => play("click")}
-          >
-            <Button
-              variant="ghost"
-              className="group gap-3 pl-0 hover:bg-transparent hover:text-red-500 transition-colors cursor-none"
-              onMouseEnter={() => play("hover")}
-              asChild
-            >
-              <span>
-                <div className="flex items-center justify-center w-8 h-8 rounded-full border border-muted-foreground/30 group-hover:border-red-500/50 transition-colors">
-                  <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-                </div>
-                <div className="flex flex-col items-start">
-                  <span className="font-mono text-xs font-bold tracking-widest text-muted-foreground group-hover:text-red-500">
-                    ABORT
-                  </span>
-                  <span className="text-[10px] text-muted-foreground/50 hidden sm:block">
-                    RETURN_TO_BASE
-                  </span>
-                </div>
-              </span>
-            </Button>
-          </TransitionLink>
-        </div>
-
-        <div className="floating-header flex flex-col items-end gap-2">
-          <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 backdrop-blur-sm">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
-            </span>
-            <span className="text-xs font-mono font-bold tracking-wider text-primary">
-              DB_ACCESS
-            </span>
-            <Database className="h-3 w-3 text-primary" />
-          </div>
-          <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
+      {/* --- FLOATING HEADER (HUD) --- */}
+      <HudHeader
+        title="DB_ACCESS"
+        icon={Database}
+        telemetry={
+          <>
             <span>NODE: REDIS</span>
             <span>::</span>
             <span>WRITE_OK</span>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+        dotColor="bg-orange-500"
+      />
 
       {/* --- Ambient Decor (Static) --- */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-20 hidden md:block z-0">

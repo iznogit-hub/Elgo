@@ -1,18 +1,17 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
-import { TransitionLink } from "@/components/ui/transition-link";
-import { ArrowLeft, Cpu, Activity, Zap, Box, Check, Copy } from "lucide-react";
+import { Cpu, Activity, Zap, Box, Check, Copy } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 
-import { Button } from "@/components/ui/button";
 import { useSfx } from "@/hooks/use-sfx";
 import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
 import { HackerText } from "@/components/ui/hacker-text";
 import { cn } from "@/lib/utils";
 import { USES_DATA, type Rarity } from "@/data/uses";
+import { HudHeader } from "@/components/ui/hud-header";
 
 gsap.registerPlugin(useGSAP);
 
@@ -264,57 +263,18 @@ export function UsesClient() {
       className="relative h-dvh w-full overflow-hidden text-foreground flex flex-col"
     >
       {/* --- FLOATING HEADER (HUD) --- */}
-      <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-50">
-        <div className="floating-header pointer-events-auto">
-          <TransitionLink
-            href="/"
-            className="cursor-none group"
-            onClick={() => play("click")}
-          >
-            <Button
-              variant="ghost"
-              className="group gap-3 pl-0 hover:bg-transparent hover:text-red-500 dark:hover:text-red-400 transition-colors cursor-none"
-              onMouseEnter={() => play("hover")}
-              asChild
-            >
-              <span>
-                <div className="flex items-center justify-center w-8 h-8 rounded-full border border-border/50 group-hover:border-red-500/50 transition-colors">
-                  <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-                </div>
-                <div className="flex flex-col items-start">
-                  <span className="font-mono text-xs font-bold tracking-widest text-muted-foreground group-hover:text-red-500 dark:group-hover:text-red-400">
-                    ABORT
-                  </span>
-                  <span className="text-[10px] text-muted-foreground/50 hidden sm:block">
-                    RETURN_TO_BASE
-                  </span>
-                </div>
-              </span>
-            </Button>
-          </TransitionLink>
-        </div>
-
-        <div className="floating-header flex flex-col items-end gap-2">
-          {/* Main Status Chip */}
-          <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 backdrop-blur-sm">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-            </span>
-            <span className="text-xs font-mono font-bold tracking-wider text-primary">
-              SYSTEM_ZYGOTE
-            </span>
-            <Zap className="h-3 w-3 text-primary" />
-          </div>
-
-          {/* Telemetry Row */}
-          <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
+      <HudHeader
+        title="SYSTEM_ZYGOTE"
+        icon={Zap}
+        telemetry={
+          <>
             <span>KERNEL: {systemInfo.os}</span>
             <span>::</span>
             <span>STABLE</span>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+        dotColor="bg-cyan-400"
+      />
 
       {/* --- AMBIENT DECOR --- */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-20 hidden md:block z-0">
