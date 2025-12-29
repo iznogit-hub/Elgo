@@ -4,8 +4,15 @@ import { useEffect, useRef } from "react";
 import { useAchievements } from "@/hooks/use-achievements";
 import { usePathname } from "next/navigation";
 
+// ✅ Fix TypeScript error globally
+declare global {
+  interface Window {
+    hack: () => string;
+  }
+}
+
 export function AchievementsManager() {
-  const { unlock } = useAchievements();
+  const { unlock, unlocked } = useAchievements();
   const pathname = usePathname();
   const visits = useRef<number[]>([]);
 
@@ -48,17 +55,39 @@ export function AchievementsManager() {
     };
   }, [unlock]);
 
-  // 5. Trigger: CONSOLE_COWBOY (DevTools Hack) ⚡ NEW
+  // 5. Trigger: CONSOLE_COWBOY (DevTools Hack)
   useEffect(() => {
-    // A. Log the hint with style
-    console.log(
-      "%c⚠ SYSTEM ALERT: Port 3000 vulnerable. Type 'window.hack()' to patch.",
-      "color: red; font-family: monospace; font-size: 14px; font-weight: bold; padding: 4px; border: 1px solid red; background: #220000;",
-    );
+    // Stop if already unlocked
+    if (unlocked.includes("CONSOLE_COWBOY")) return;
+
+    // Stylish Console Log (Delayed to ensure it's not buried by other logs)
+    const timer = setTimeout(() => {
+      // Double check inside timeout in case state changed quickly
+      if (unlocked.includes("CONSOLE_COWBOY")) return;
+
+      console.log(
+        `%c
+   ▄▄▄       ██▓     ▓█████  ██▀███  ▄▄▄█████▓
+  ▒████▄    ▓██▒     ▓█   ▀ ▓██ ▒ ██▒▓  ██▒ ▓▒
+  ▒██  ▀█▄  ▒██░     ▒███   ▓██ ░▄█ ▒▒ ▓██░ ▒░
+  ░██▄▄▄▄██ ▒██░     ▒▓█  ▄ ▒██▀▀█▄  ░ ▓██▓ ░ 
+   ▓█   ▓██▒░██████▒ ░▒████▒░██▓ ▒██▒  ▒██▒ ░ 
+   ▒▒   ▓▒█░░ ▒░▓  ░ ░░ ▒░ ░░ ▒▓ ░▒▓░  ▒ ░░   
+    ▒   ▒▒ ░░ ░ ▒  ░  ░ ░  ░  ░▒ ░ ▒░    ░    
+    ░   ▒     ░ ░       ░     ░░   ░   ░      
+        ░  ░    ░  ░    ░  ░   ░              
+                                              
+  %c⚠ SYSTEM ALERT: Port 3000 vulnerable.
+  %c> Type 'window.hack()' to patch the mainframe.
+      `,
+        "color: #ef4444; font-weight: bold;",
+        "color: #ef4444; font-family: monospace; font-size: 14px; font-weight: bold; background: #220000; padding: 4px;",
+        "color: #fff; font-family: monospace; font-size: 12px; background: #000; padding: 4px;",
+      );
+    }, 1500);
 
     // B. Expose the hack function
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).hack = () => {
+    window.hack = () => {
       unlock("CONSOLE_COWBOY");
       console.log(
         "%cACCESS GRANTED. SYSTEM PATCHED.",
@@ -67,12 +96,12 @@ export function AchievementsManager() {
       return "Achievement Unlocked: CONSOLE_COWBOY";
     };
 
-    // Cleanup
     return () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (window as any).hack;
+      clearTimeout(timer);
+      // @ts-expect-error - cleanup property
+      delete window.hack;
     };
-  }, [unlock]);
+  }, [unlock, unlocked]);
 
   // 6. Trigger: ROOT_ACCESS & SPEED_RUNNER
   useEffect(() => {
@@ -82,11 +111,8 @@ export function AchievementsManager() {
 
     const now = Date.now();
     visits.current.push(now);
+    // Keep only timestamps from the last 10 seconds
     visits.current = visits.current.filter((t) => now - t < 10000);
-
-    if (visits.current.length >= 5) {
-      unlock("SPEED_RUNNER");
-    }
   }, [pathname, unlock]);
 
   return null;
