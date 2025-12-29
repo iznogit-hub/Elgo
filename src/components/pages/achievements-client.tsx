@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useMemo } from "react";
+import React, { useRef, useMemo, useState } from "react";
 import {
   useAchievements,
   ACHIEVEMENTS,
@@ -9,18 +9,9 @@ import {
 import { cn } from "@/lib/utils";
 import {
   Trophy,
-  ArrowLeft,
   Terminal,
   Shield,
-  Award,
-  Palette,
-  Power,
-  Code2,
-  Fingerprint,
-  Wifi,
-  Disc,
   Activity,
-  Gamepad2,
   Share2,
   Ghost,
   Clock,
@@ -33,12 +24,18 @@ import {
   Lock,
   Network,
   Bot,
+  Power,
+  Code2,
+  Fingerprint,
+  Wifi,
+  Palette,
+  Gamepad2,
+  Award,
+  Disc,
 } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { useSfx } from "@/hooks/use-sfx";
-import { TransitionLink } from "@/components/ui/transition-link";
-import { Button } from "@/components/ui/button";
 import { HackerText } from "@/components/ui/hacker-text";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import { Badge } from "@/components/ui/badge";
@@ -47,11 +44,14 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import { HudHeader } from "@/components/ui/hud-header";
 
 gsap.registerPlugin(useGSAP);
 
-// --- Configuration & Helpers ---
+// --- TYPES ---
+type Achievement = (typeof ACHIEVEMENTS)[AchievementId];
 
+// --- ICONS & RANKS ---
 const ACHIEVEMENT_ICONS: Record<AchievementId, React.ElementType> = {
   FIRST_BOOT: Power,
   ROOT_ACCESS: Fingerprint,
@@ -70,7 +70,6 @@ const ACHIEVEMENT_ICONS: Record<AchievementId, React.ElementType> = {
   CONSOLE_COWBOY: Binary,
 };
 
-// UPDATED RANKS: Calibrated for Total XP of 3611
 const RANKS = [
   {
     threshold: 0,
@@ -134,9 +133,180 @@ const RANKS = [
   },
 ];
 
+// --- COMPONENTS ---
+
+function AchievementCard({
+  id,
+  achievement,
+  isUnlocked,
+}: {
+  id: string;
+  achievement: Achievement;
+  isUnlocked: boolean;
+}) {
+  const { play } = useSfx();
+  const Icon = ACHIEVEMENT_ICONS[id as AchievementId] || Trophy;
+  const isSecretLocked = achievement.secret && !isUnlocked;
+
+  // 3D Tilt State
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [rotation, setRotation] = useState({ x: 0, y: 0 });
+  const [isHovering, setIsHovering] = useState(false);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return;
+
+    const rect = cardRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+
+    // Intensity of tilt (higher = more tilt)
+    const intensity = 12;
+
+    // Invert Y for natural feel
+    const rotateX = ((y - centerY) / centerY) * -intensity;
+    const rotateY = ((x - centerX) / centerX) * intensity;
+
+    setRotation({ x: rotateX, y: rotateY });
+  };
+
+  const handleMouseEnter = () => {
+    setIsHovering(true);
+    play("hover");
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovering(false);
+    setRotation({ x: 0, y: 0 });
+  };
+
+  return (
+    <div
+      ref={cardRef}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        transform: isHovering
+          ? `perspective(1000px) rotateX(${rotation.x}deg) rotateY(${rotation.y}deg) scale3d(1.02, 1.02, 1.02)`
+          : "perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)",
+        transition: "transform 0.1s ease-out",
+      }}
+      className={cn(
+        "achievement-chip relative flex flex-col p-4 rounded-xl border overflow-hidden opacity-0 will-change-transform",
+        // Glassmorphism & Borders
+        isUnlocked
+          ? "bg-zinc-50/5 dark:bg-zinc-900/5 border-primary/20 hover:border-primary/50 shadow-lg shadow-primary/5"
+          : "bg-secondary/5 border-white/5 hover:border-white/10",
+      )}
+    >
+      {/* Dynamic Shine Effect */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-0 transition-opacity duration-300"
+        style={{
+          opacity: isHovering ? 0.1 : 0,
+          background: `radial-gradient(circle at ${50 + rotation.y * 2}% ${
+            50 + rotation.x * 2
+          }%, rgba(255,255,255,0.8), transparent 60%)`,
+        }}
+      />
+
+      {/* Floating Background Icon */}
+      <div className="absolute top-0 right-0 p-2 opacity-[0.03] group-hover:opacity-10 transition-opacity pointer-events-none">
+        <Icon className="h-24 w-24 -rotate-12 translate-x-6 -translate-y-6" />
+      </div>
+
+      {/* Header */}
+      <div className="flex items-start justify-between mb-4 z-10 relative">
+        <div
+          className={cn(
+            "p-2.5 rounded-lg border backdrop-blur-md shadow-inner transition-colors duration-300",
+            isUnlocked
+              ? "bg-primary/10 border-primary/20 text-primary"
+              : "bg-zinc-500/5 border-white/5 text-muted-foreground",
+          )}
+        >
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="flex flex-col items-end">
+          <Badge
+            variant="outline"
+            className={cn(
+              "font-mono text-[10px] font-bold px-2 py-0.5 transition-colors",
+              isUnlocked
+                ? "border-primary/30 bg-primary/5 text-primary"
+                : "border-white/10 bg-white/5 text-muted-foreground",
+            )}
+          >
+            {isSecretLocked
+              ? "???"
+              : achievement.xp === 0
+                ? "SPECIAL"
+                : `${achievement.xp} XP`}
+          </Badge>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="space-y-1.5 mt-auto z-10 relative">
+        <h3
+          className={cn(
+            "font-bold tracking-tight text-sm",
+            isUnlocked ? "text-foreground" : "text-muted-foreground",
+          )}
+        >
+          {isSecretLocked ? "???" : achievement.title}
+        </h3>
+        <p
+          className={cn(
+            "text-[11px] leading-relaxed transition-all duration-300",
+            isUnlocked
+              ? "text-muted-foreground"
+              : isSecretLocked
+                ? "text-primary/60 font-mono"
+                : "text-muted-foreground/30 blur-[2px] select-none",
+          )}
+        >
+          {isSecretLocked ? (
+            <span className="animate-pulse">Encrypted signal...</span>
+          ) : (
+            achievement.description
+          )}
+        </p>
+      </div>
+
+      {/* Locked Noise Overlay */}
+      {!isUnlocked && (
+        <div className="absolute inset-0 z-0 opacity-20 pointer-events-none mix-blend-overlay">
+          <svg className="h-full w-full opacity-50">
+            <filter id="noise">
+              <feTurbulence
+                type="fractalNoise"
+                baseFrequency="0.8"
+                numOctaves="3"
+                stitchTiles="stitch"
+              />
+            </filter>
+            <rect width="100%" height="100%" filter="url(#noise)" />
+          </svg>
+        </div>
+      )}
+
+      {/* Progress Line */}
+      <div
+        className={cn(
+          "absolute bottom-0 left-0 h-0.5 transition-all duration-700 ease-out",
+          isUnlocked ? "w-full bg-primary" : "w-0 bg-muted-foreground",
+        )}
+      />
+    </div>
+  );
+}
+
 export function AchievementsShell({ children }: { children: React.ReactNode }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { play } = useSfx();
   const prefersReducedMotion = usePrefersReducedMotion();
 
   useGSAP(
@@ -175,56 +345,21 @@ export function AchievementsShell({ children }: { children: React.ReactNode }) {
       ref={containerRef}
       className="relative flex min-h-dvh w-full flex-col items-center overflow-hidden text-foreground pt-24 md:pt-32 pb-20 px-4 md:px-6"
     >
-      <div className="absolute top-0 left-0 right-0 pt-24 md:pt-32 px-6 md:px-12 flex justify-between items-start pointer-events-none z-20">
-        <div className="floating-header pointer-events-auto opacity-0">
-          <TransitionLink
-            href="/"
-            className="cursor-none"
-            onClick={() => play("click")}
-          >
-            <Button
-              variant="ghost"
-              className="group gap-3 pl-0 hover:bg-transparent hover:text-red-500 transition-colors cursor-none"
-              onMouseEnter={() => play("hover")}
-              asChild
-            >
-              <span>
-                <div className="flex items-center justify-center w-8 h-8 rounded-full border border-muted-foreground/30 group-hover:border-red-500/50 transition-colors">
-                  <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-                </div>
-                <div className="flex flex-col items-start">
-                  <span className="font-mono text-xs font-bold tracking-widest text-muted-foreground group-hover:text-red-500">
-                    ABORT
-                  </span>
-                  <span className="text-[10px] text-muted-foreground/50 hidden sm:block">
-                    RETURN_TO_BASE
-                  </span>
-                </div>
-              </span>
-            </Button>
-          </TransitionLink>
-        </div>
-
-        <div className="floating-header flex flex-col items-end gap-2 opacity-0">
-          <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 backdrop-blur-sm">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-            </span>
-            <span className="text-xs font-mono font-bold tracking-wider text-primary">
-              ARCHIVE_LIVE
-            </span>
-            <Award className="h-3 w-3 text-primary" />
-          </div>
-
-          <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
+      {/* --- FLOATING HEADER (HUD) --- */}
+      <HudHeader
+        title="ARCHIVE_LIVE"
+        icon={Award}
+        telemetry={
+          <>
             <span>REF: 0x4E1</span>
             <span>::</span>
             <span>INDEXED</span>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+        dotColor="bg-amber-400"
+      />
 
+      {/* --- DECOR --- */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-20 hidden md:block z-0">
         <div className="decor-item absolute top-[18%] left-[6%] font-mono text-xs text-primary/60 opacity-0">
           {`> VERIFYING_PROTOCOLS...`}
@@ -270,14 +405,35 @@ export function AchievementsContent() {
       ? ((currentXP - currentRank.threshold) /
           (nextRank.threshold - currentRank.threshold)) *
         100
-      : 100; // If no next rank (max level), progress is 100%
+      : 100;
 
     return { totalXP, currentXP, currentRank, nextRank, progressToNext };
   }, [unlocked]);
 
-  const isSpeedRunner = unlocked.includes("SPEED_RUNNER");
-  const isCompletionist = unlocked.includes("COMPLETIONIST");
-  const isConsoleCowboy = unlocked.includes("CONSOLE_COWBOY");
+  // Special Badges
+  const badges = [
+    {
+      id: "SPEED_RUNNER",
+      active: unlocked.includes("SPEED_RUNNER"),
+      icon: Zap,
+      color: "amber",
+      title: "OVERCLOCKED",
+    },
+    {
+      id: "CONSOLE_COWBOY",
+      active: unlocked.includes("CONSOLE_COWBOY"),
+      icon: Binary,
+      color: "green",
+      title: "CONSOLE_COWBOY",
+    },
+    {
+      id: "COMPLETIONIST",
+      active: unlocked.includes("COMPLETIONIST"),
+      icon: Crown,
+      color: "purple",
+      title: "PROTOCOL_OMEGA",
+    },
+  ];
 
   useGSAP(
     () => {
@@ -298,8 +454,8 @@ export function AchievementsContent() {
           opacity: 1,
           scale: 1,
           duration: 0.5,
-          stagger: 0.08,
-          clearProps: "transform",
+          stagger: 0.05,
+          clearProps: "transform", // Important for Tilt to take over
         },
         "-=0.6",
       );
@@ -307,17 +463,18 @@ export function AchievementsContent() {
     { scope: containerRef, dependencies: [prefersReducedMotion] },
   );
 
+  // Animate XP Bar
   useGSAP(
     () => {
       if (prefersReducedMotion) {
         gsap.set(".xp-bar-fill", { width: `${stats.progressToNext}%` });
         return;
       }
-
       gsap.to(".xp-bar-fill", {
         width: `${stats.progressToNext}%`,
         duration: 1.5,
         ease: "expo.out",
+        delay: 0.5,
       });
     },
     {
@@ -329,265 +486,142 @@ export function AchievementsContent() {
   return (
     <div
       ref={containerRef}
-      className="z-10 w-full max-w-4xl flex flex-col gap-8 md:gap-12 mt-4"
+      className="z-10 w-full max-w-5xl flex flex-col gap-8 md:gap-12 mt-4"
     >
-      <div className="stats-hud w-full relative overflow-hidden rounded-xl border bg-background/50 backdrop-blur-xl p-5 md:p-6 opacity-0">
-        <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-transparent opacity-50" />
+      {/* --- STATS HUD --- */}
+      <div className="stats-hud w-full relative overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/40 backdrop-blur-xl p-6 md:p-8 opacity-0 shadow-2xl shadow-black/20">
+        <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-transparent opacity-50 pointer-events-none" />
 
-        <div className="relative flex flex-col md:flex-row gap-6 md:items-center justify-between">
-          <div className="flex items-center gap-5">
+        <div className="relative flex flex-col md:flex-row gap-8 md:items-center justify-between">
+          <div className="flex items-center gap-6">
+            {/* Rank Icon Box */}
             <div
               className={cn(
-                "h-16 w-16 rounded-xl border-2 flex items-center justify-center bg-background shadow-lg shrink-0",
+                "h-20 w-20 rounded-2xl border-2 flex items-center justify-center bg-black/50 shadow-inner shrink-0 relative overflow-hidden group",
                 stats.currentRank.color.replace("text-", "border-"),
               )}
             >
+              <div className="absolute inset-0 bg-current opacity-10 group-hover:opacity-20 transition-opacity" />
               <stats.currentRank.icon
-                className={cn("h-8 w-8", stats.currentRank.color)}
+                className={cn(
+                  "h-10 w-10 relative z-10 drop-shadow-lg",
+                  stats.currentRank.color,
+                )}
               />
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <div className="flex items-center gap-3">
                 <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
-                  Current Rank
+                  System Rank
                 </span>
-                <div className="h-px w-6 bg-border" />
+                <div className="h-px w-8 bg-border/50" />
 
-                {/* SPEED RUNNER BADGE */}
-                {isSpeedRunner && (
-                  <HoverCard openDelay={200} closeDelay={100}>
-                    <HoverCardTrigger asChild>
-                      <Badge
-                        variant="outline"
-                        className="h-9 w-9 p-0 flex items-center justify-center rounded-md border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 transition-all duration-500 animate-in fade-in zoom-in-0 cursor-help"
-                        onMouseEnter={() => play("hover")}
-                      >
-                        <Zap className="h-5 w-5 text-amber-500 animate-pulse" />
-                      </Badge>
-                    </HoverCardTrigger>
-                    <HoverCardContent
-                      className="w-80 border-amber-500/20 bg-black/90 backdrop-blur-xl shadow-[0_0_40px_-10px_rgba(245,158,11,0.2)]"
-                      sideOffset={10}
-                    >
-                      <div className="flex justify-between items-start gap-4">
-                        <div className="space-y-1">
-                          <h4 className="text-sm font-bold text-amber-500 flex items-center gap-2">
-                            <Zap className="h-4 w-4" />
-                            <HackerText text="OVERCLOCKED" />
-                          </h4>
-                          <p className="text-xs text-muted-foreground leading-relaxed">
-                            {ACHIEVEMENTS.SPEED_RUNNER.description}
-                          </p>
-                        </div>
-                        <div className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border bg-amber-500/10 border-amber-500/20 text-amber-500">
-                          SPECIAL
-                        </div>
-                      </div>
-                    </HoverCardContent>
-                  </HoverCard>
-                )}
-
-                {/* CONSOLE COWBOY BADGE */}
-                {isConsoleCowboy && (
-                  <HoverCard openDelay={200} closeDelay={100}>
-                    <HoverCardTrigger asChild>
-                      <Badge
-                        variant="outline"
-                        className="h-9 w-9 p-0 flex items-center justify-center rounded-md border-green-500/50 bg-green-500/10 hover:bg-green-500/20 transition-all duration-500 animate-in fade-in zoom-in-0 cursor-help"
-                        onMouseEnter={() => play("hover")}
-                      >
-                        <Binary className="h-5 w-5 text-green-500 animate-pulse" />
-                      </Badge>
-                    </HoverCardTrigger>
-                    <HoverCardContent
-                      className="w-80 border-green-500/20 bg-black/90 backdrop-blur-xl shadow-[0_0_40px_-10px_rgba(34,197,94,0.2)]"
-                      sideOffset={10}
-                    >
-                      <div className="flex justify-between items-start gap-4">
-                        <div className="space-y-1">
-                          <h4 className="text-sm font-bold text-green-500 flex items-center gap-2">
-                            <Binary className="h-4 w-4" />
-                            <HackerText text="CONSOLE_COWBOY" />
-                          </h4>
-                          <p className="text-xs text-muted-foreground leading-relaxed">
-                            {ACHIEVEMENTS.CONSOLE_COWBOY.description}
-                          </p>
-                        </div>
-                        <div className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border bg-green-500/10 border-green-500/20 text-green-500">
-                          1337
-                        </div>
-                      </div>
-                    </HoverCardContent>
-                  </HoverCard>
-                )}
-
-                {/* COMPLETIONIST BADGE */}
-                {isCompletionist && (
-                  <HoverCard openDelay={200} closeDelay={100}>
-                    <HoverCardTrigger asChild>
-                      <Badge
-                        variant="outline"
-                        className="h-9 w-9 p-0 flex items-center justify-center rounded-md border-purple-500/50 bg-purple-500/10 hover:bg-purple-500/20 transition-all duration-500 animate-in fade-in zoom-in-0 cursor-help"
-                        onMouseEnter={() => play("hover")}
-                      >
-                        <Crown className="h-5 w-5 text-purple-500 animate-pulse" />
-                      </Badge>
-                    </HoverCardTrigger>
-                    <HoverCardContent
-                      className="w-80 border-purple-500/20 bg-black/90 backdrop-blur-xl shadow-[0_0_40px_-10px_rgba(168,85,247,0.2)]"
-                      sideOffset={10}
-                    >
-                      <div className="flex justify-between items-start gap-4">
-                        <div className="space-y-1">
-                          <h4 className="text-sm font-bold text-purple-500 flex items-center gap-2">
-                            <Crown className="h-4 w-4" />
-                            <HackerText text="PROTOCOL_OMEGA" />
-                          </h4>
-                          <p className="text-xs text-muted-foreground leading-relaxed">
-                            {ACHIEVEMENTS.COMPLETIONIST.description}
-                          </p>
-                        </div>
-                        <div className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border bg-purple-500/10 border-purple-500/20 text-purple-500">
-                          MAX
-                        </div>
-                      </div>
-                    </HoverCardContent>
-                  </HoverCard>
-                )}
+                {/* Special Badges Row */}
+                <div className="flex gap-1.5">
+                  {badges.map(
+                    (badge) =>
+                      badge.active && (
+                        <HoverCard
+                          key={badge.id}
+                          openDelay={200}
+                          closeDelay={100}
+                        >
+                          <HoverCardTrigger asChild>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "h-7 px-1.5 flex items-center justify-center rounded-md cursor-help transition-all duration-300",
+                                `border-${badge.color}-500/30 bg-${badge.color}-500/5 hover:bg-${badge.color}-500/10`,
+                              )}
+                              onMouseEnter={() => play("hover")}
+                            >
+                              <badge.icon
+                                className={cn(
+                                  "h-3.5 w-3.5",
+                                  `text-${badge.color}-500`,
+                                )}
+                              />
+                            </Badge>
+                          </HoverCardTrigger>
+                          <HoverCardContent
+                            className="w-64 border-white/10 bg-black/90 backdrop-blur-xl"
+                            sideOffset={8}
+                          >
+                            <div className="space-y-1">
+                              <h4
+                                className={cn(
+                                  "text-xs font-bold flex items-center gap-2",
+                                  `text-${badge.color}-500`,
+                                )}
+                              >
+                                <badge.icon className="h-3 w-3" />
+                                {badge.title}
+                              </h4>
+                              <p className="text-[10px] text-muted-foreground">
+                                {
+                                  ACHIEVEMENTS[badge.id as AchievementId]
+                                    .description
+                                }
+                              </p>
+                            </div>
+                          </HoverCardContent>
+                        </HoverCard>
+                      ),
+                  )}
+                </div>
               </div>
-              <h1 className="text-2xl md:text-3xl font-black tracking-tighter uppercase">
+
+              <h1 className="text-3xl md:text-4xl font-black tracking-tighter uppercase drop-shadow-sm">
                 <HackerText text={stats.currentRank.title} />
               </h1>
-              <p className="text-xs text-muted-foreground font-mono">
-                <span className="text-foreground font-bold">
+              <p className="text-xs text-muted-foreground font-mono flex items-center gap-2">
+                <span className="text-foreground font-bold text-sm">
                   {stats.currentXP}
                 </span>{" "}
-                / {stats.totalXP} XP
+                <span className="opacity-50">/</span> {stats.totalXP} XP
               </p>
             </div>
           </div>
 
-          <div className="w-full md:w-72 space-y-2">
-            <div className="flex justify-between text-[10px] font-mono uppercase text-muted-foreground">
-              <span>Progress</span>
-              <span>{stats.nextRank ? "Next Rank" : "Max Level"}</span>
+          {/* XP Progress */}
+          <div className="w-full md:w-80 space-y-3">
+            <div className="flex justify-between text-[10px] font-mono uppercase text-muted-foreground/70">
+              <span>Next Milestone</span>
+              <span>
+                {stats.nextRank ? (
+                  <span className="text-primary">
+                    {stats.nextRank.threshold - stats.currentXP} XP Needed
+                  </span>
+                ) : (
+                  "MAX_LEVEL"
+                )}
+              </span>
             </div>
-            <div className="h-2 w-full bg-secondary/50 rounded-full overflow-hidden border border-border/50 relative">
-              <div className="absolute inset-0 w-full h-full flex justify-evenly opacity-20 z-10">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="w-px h-full bg-background" />
+            <div className="h-2.5 w-full bg-black/40 rounded-full overflow-hidden border border-white/5 relative">
+              <div className="absolute inset-0 w-full h-full flex justify-evenly opacity-10 z-10 pointer-events-none">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="w-px h-full bg-white" />
                 ))}
               </div>
-              <div className="xp-bar-fill h-full bg-primary relative w-0">
-                <div className="absolute top-0 right-0 bottom-0 w-1 bg-white/50 shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
-              </div>
+              <div className="xp-bar-fill h-full bg-linear-to-r from-primary/60 to-primary relative w-0 shadow-[0_0_15px_rgba(var(--primary),0.5)]" />
             </div>
-            {stats.nextRank && (
-              <p className="text-[10px] text-right font-mono text-muted-foreground/50">
-                {stats.nextRank.threshold - stats.currentXP} XP to upgrade
-              </p>
-            )}
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+      {/* --- GRID --- */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 pb-20">
         {Object.entries(ACHIEVEMENTS)
-          // ⚡ FILTER: Hide invisible items
           .filter(([, achievement]) => !achievement.invisible)
-          .map(([id, achievement]) => {
-            const achievementId = id as AchievementId;
-            const isUnlocked = unlocked.includes(achievementId);
-            const Icon = ACHIEVEMENT_ICONS[achievementId] || Trophy;
-
-            const isSecretLocked = achievement.secret && !isUnlocked;
-
-            return (
-              <div
-                key={id}
-                className={cn(
-                  "achievement-chip group relative flex flex-col p-4 rounded-lg border transition-all duration-300 overflow-hidden opacity-0",
-                  "hover:scale-[1.02] hover:-translate-y-1",
-                  isUnlocked
-                    ? "bg-primary/5 border-primary/20 hover:border-primary/50 shadow-[0_4px_20px_-10px_rgba(var(--primary),0.1)]"
-                    : "bg-secondary/10 border-border/40 hover:opacity-100",
-                )}
-                onMouseEnter={() => play("hover")}
-              >
-                <div className="absolute top-0 right-0 p-2 opacity-[0.03] group-hover:opacity-10 transition-opacity pointer-events-none">
-                  <Icon className="h-20 w-20 -rotate-12 translate-x-4 -translate-y-4" />
-                </div>
-
-                <div className="flex items-start justify-between mb-3 z-10">
-                  <div
-                    className={cn(
-                      "p-2 rounded-md border backdrop-blur-md",
-                      isUnlocked
-                        ? "bg-primary/10 border-primary/20 text-primary"
-                        : "bg-muted/20 border-border/20 text-muted-foreground",
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <div className="flex flex-col items-end">
-                    <span
-                      className={cn(
-                        "text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border",
-                        isUnlocked
-                          ? "bg-primary/10 border-primary/20 text-primary"
-                          : "bg-muted/20 border-border/20 text-muted-foreground",
-                      )}
-                    >
-                      {isSecretLocked
-                        ? "???"
-                        : achievement.xp === 0
-                          ? "SPECIAL"
-                          : `${achievement.xp} XP`}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-1 mt-auto z-10">
-                  <h3
-                    className={cn(
-                      "font-bold tracking-tight text-sm",
-                      isUnlocked ? "text-foreground" : "text-muted-foreground",
-                    )}
-                  >
-                    {isSecretLocked ? "???" : achievement.title}
-                  </h3>
-                  <p
-                    className={cn(
-                      "text-[10px] leading-relaxed",
-                      isUnlocked
-                        ? "text-muted-foreground"
-                        : isSecretLocked
-                          ? "text-primary/70 font-mono"
-                          : "text-muted-foreground/40 blur-[2px] select-none",
-                    )}
-                  >
-                    {isSecretLocked
-                      ? "Encrypted signal detected..."
-                      : achievement.description}
-                  </p>
-                </div>
-
-                {!isUnlocked && (
-                  <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.65\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\' opacity=\'0.5\'/%3E%3C/svg%3E')] opacity-10 pointer-events-none mix-blend-overlay" />
-                )}
-
-                <div
-                  className={cn(
-                    "absolute bottom-0 left-0 h-0.5 transition-all duration-500",
-                    isUnlocked
-                      ? "w-full bg-primary"
-                      : "w-0 bg-muted-foreground",
-                  )}
-                />
-              </div>
-            );
-          })}
+          .map(([id, achievement]) => (
+            <AchievementCard
+              key={id}
+              id={id}
+              achievement={achievement}
+              isUnlocked={unlocked.includes(id as AchievementId)}
+            />
+          ))}
       </div>
     </div>
   );
