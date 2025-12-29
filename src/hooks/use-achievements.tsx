@@ -261,7 +261,13 @@ export function AchievementsProvider({
       setUnlocked(newSet);
       updateLocalCache(newSet);
 
-      play("success");
+      // Play Sound based on importance
+      if (id === "COMPLETIONIST" || id === "KONAMI_CODE") {
+        play("success"); // Maybe a 'rare' sound in future
+      } else {
+        play("success");
+      }
+
       const achievement = ACHIEVEMENTS[id];
 
       let Icon = Trophy;
