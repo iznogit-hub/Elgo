@@ -13,7 +13,7 @@ import { Footer } from "@/components/footer";
 import { RealtimeProvider } from "@/providers/realtime-provider";
 import { SystemContextMenu } from "@/components/ui/system-context-menu";
 import { AchievementsProvider } from "@/hooks/use-achievements";
-import { AchievementManager } from "@/components/achievement-manager";
+import { AchievementsManager } from "@/components/achievements-manager";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -101,7 +101,7 @@ export default function RootLayout({
               <AchievementsProvider>
                 <SystemContextMenu />
                 <CyberChat />
-                <AchievementManager />
+                <AchievementsManager />
                 <AdminProvider>
                   <GlobalAppWrapper>
                     <div className="flex min-h-screen flex-col">

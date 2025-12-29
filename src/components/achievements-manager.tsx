@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useAchievements } from "@/hooks/use-achievements";
 import { usePathname } from "next/navigation";
 
-export function AchievementManager() {
+export function AchievementsManager() {
   const { unlock } = useAchievements();
   const pathname = usePathname();
   const visits = useRef<number[]>([]);
