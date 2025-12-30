@@ -355,7 +355,7 @@ export function AchievementsShell({ children }: { children: React.ReactNode }) {
   return (
     <main
       ref={containerRef}
-      className="relative flex min-h-dvh w-full flex-col items-center overflow-hidden text-foreground pt-24 md:pt-32 pb-20 px-4 md:px-6"
+      className="relative flex h-dvh w-full flex-col items-center overflow-hidden text-foreground pt-24 md:pt-32"
     >
       {/* --- FLOATING HEADER (HUD) --- */}
       <HudHeader
@@ -467,7 +467,7 @@ export function AchievementsContent() {
           scale: 1,
           duration: 0.5,
           stagger: 0.05,
-          clearProps: "transform", // Important for Tilt to take over
+          clearProps: "transform",
         },
         "-=0.6",
       );
@@ -498,7 +498,7 @@ export function AchievementsContent() {
   return (
     <div
       ref={containerRef}
-      className="z-10 w-full max-w-5xl flex flex-col gap-8 md:gap-12 mt-4"
+      className="z-10 w-full max-w-5xl flex flex-col gap-8 md:gap-12 mx-auto"
     >
       {/* --- STATS HUD --- */}
       <div className="stats-hud w-full relative overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/40 backdrop-blur-xl p-6 md:p-8 opacity-0 shadow-2xl shadow-black/20">
