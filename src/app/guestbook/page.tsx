@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { auth } from "@/auth";
 import { Metadata } from "next";
 import { GuestbookShell } from "@/components/pages/guestbook-client";
-import { GuestbookForm } from "@/components/guestbook/form";
+import { GuestbookForm } from "@/components/guestbook/guestbook-form";
 import { InfiniteGuestbookList } from "@/components/guestbook/infinite-list";
 import { fetchGuestbookEntries } from "@/app/actions/guestbook";
 import { GuestbookSkeleton } from "@/components/skeletons/guestbook-skeleton";
