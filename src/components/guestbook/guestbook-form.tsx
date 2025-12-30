@@ -193,6 +193,7 @@ export function GuestbookForm({ user: serverUser }: { user?: User | null }) {
                 variant="ghost"
                 size="icon"
                 onClick={handleLogout}
+                onMouseEnter={() => play("hover")}
                 className="h-6 w-6 rounded-full text-muted-foreground/30 hover:text-red-500 hover:bg-red-500/10 transition-all"
                 title="Sign out"
               >
@@ -242,6 +243,7 @@ export function GuestbookForm({ user: serverUser }: { user?: User | null }) {
                   maxLength={500}
                   onChange={handleInput}
                   onFocus={() => play("hover")}
+                  onMouseEnter={() => play("hover")}
                 />
                 {state.errors?.message && (
                   <p className="text-[10px] font-medium text-red-400 mt-1 animate-in slide-in-from-top-1">
@@ -266,6 +268,7 @@ export function GuestbookForm({ user: serverUser }: { user?: User | null }) {
                   type="submit"
                   disabled={isPending}
                   onClick={() => play("click")}
+                  onMouseEnter={() => play("hover")}
                   className={cn(
                     "h-8 px-4 rounded-full text-xs font-semibold shadow-sm transition-all duration-300",
                     isPending
@@ -320,6 +323,7 @@ export function GuestbookForm({ user: serverUser }: { user?: User | null }) {
                   <button
                     key={id}
                     onClick={() => openLoginPopup(id)}
+                    onMouseEnter={() => play("hover")}
                     className="group relative flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 transition-all hover:bg-foreground hover:text-background hover:scale-110 active:scale-95"
                     title={`Sign in with ${label}`}
                   >
@@ -361,7 +365,11 @@ export function GuestbookForm({ user: serverUser }: { user?: User | null }) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setIsAuthenticating(null)}
+                onClick={() => {
+                  play("click");
+                  setIsAuthenticating(null);
+                }}
+                onMouseEnter={() => play("hover")}
                 className="mt-6 h-7 text-[10px] text-muted-foreground hover:text-red-400 gap-1"
               >
                 <X className="w-3 h-3" /> Cancel

@@ -11,6 +11,7 @@ import { HackerText } from "@/components/ui/hacker-text";
 import { cn } from "@/lib/utils";
 import { TECH_STACK } from "@/data/about";
 import { HudHeader } from "@/components/ui/hud-header";
+import { useSfx } from "@/hooks/use-sfx";
 
 import dynamic from "next/dynamic";
 
@@ -109,6 +110,7 @@ function SecurityLogs() {
 
 export function AboutClient() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const { play } = useSfx();
 
   useGSAP(
     () => {
@@ -281,6 +283,7 @@ export function AboutClient() {
                     "hover:border-primary/40 hover:bg-primary/5 hover:shadow-[0_0_20px_-5px_rgba(var(--primary),0.2)]",
                     "group-hover:-translate-y-1",
                   )}
+                  onMouseEnter={() => play("hover")}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
