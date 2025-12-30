@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useRef, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { AlertTriangle, Bug, ServerCrash } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -19,10 +20,14 @@ export default function NotFound() {
   const { play } = useSfx();
   const { unlock } = useAchievements();
   const containerRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
 
-  // Unlock achievement on mount
+  // Logic: Unlock achievement with stability delay
   useEffect(() => {
-    unlock("VOID_WALKER");
+    const timer = setTimeout(() => {
+      unlock("VOID_WALKER");
+    }, 500);
+    return () => clearTimeout(timer);
   }, [unlock]);
 
   useGSAP(
@@ -97,7 +102,8 @@ export default function NotFound() {
           <>
             <span>ERR: 404</span>
             <span>::</span>
-            <span>NULL</span>
+            {/* Logic Upgrade: Show the actual broken path */}
+            <span className="max-w-25 truncate">{pathname}</span>
           </>
         }
         dotColor="bg-red-500"
@@ -105,6 +111,7 @@ export default function NotFound() {
 
       {/* --- CENTERED CONTENT --- */}
       <div className="z-10 flex flex-col items-center justify-center relative w-full max-w-4xl px-4">
+        {/* Giant Glitch Text */}
         <div className="relative font-black text-[25vw] md:text-[20rem] leading-none tracking-tighter select-none">
           <div className="invisible" aria-hidden="true">
             404
@@ -148,8 +155,7 @@ export default function NotFound() {
               className="w-full sm:w-auto min-w-60 gap-3 border border-red-500/50 bg-red-500/10 text-red-500 font-mono font-bold shadow-[0_0_15px_rgba(220,38,38,0.2)] hover:bg-red-500 hover:text-white hover:border-red-500 hover:shadow-[0_0_30px_rgba(220,38,38,0.6)] transition-all duration-300"
               onClick={() => {
                 play("click");
-                window.location.href =
-                  "mailto:contact@t7sen.com?subject=System%20Anomaly%20Report%20(404)";
+                window.location.href = `mailto:contact@t7sen.com?subject=System Anomaly Report (404)&body=Path attempted: ${pathname}`;
               }}
               onMouseEnter={() => play("hover")}
             >
