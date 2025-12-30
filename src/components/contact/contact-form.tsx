@@ -26,6 +26,7 @@ import { contactSchema, type ContactFormValues } from "@/lib/validators";
 import { cn } from "@/lib/utils";
 import { useSfx } from "@/hooks/use-sfx";
 import { sendMessage, type ContactState } from "@/app/actions/send-message";
+import { useAchievements } from "@/hooks/use-achievements";
 
 gsap.registerPlugin(useGSAP);
 
@@ -37,8 +38,7 @@ const initialState: ContactState = {
   message: "",
 };
 
-// --- TERMINAL LOADER COMPONENT ---
-// Cycles through "hacking" messages while waiting
+// ... TerminalLoader Component (Keep as is) ...
 function TerminalLoader() {
   const [text, setText] = React.useState("INITIALIZING...");
 
@@ -53,7 +53,7 @@ function TerminalLoader() {
     const interval = setInterval(() => {
       setText(steps[i]);
       i = (i + 1) % steps.length;
-    }, 600); // Change text every 600ms
+    }, 600);
     return () => clearInterval(interval);
   }, []);
 
@@ -65,7 +65,7 @@ function TerminalLoader() {
   );
 }
 
-// --- WRAPPER COMPONENT ---
+// ... Wrapper Component ...
 export function ContactForm() {
   const [formKey, setFormKey] = React.useState(0);
   const handleReset = () => setFormKey((prev) => prev + 1);
@@ -78,6 +78,12 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
   const [direction, setDirection] = React.useState(1);
   const [restored, setRestored] = React.useState(false);
 
+  // 👇 STATE FOR VISITOR ID
+  const [visitorId, setVisitorId] = React.useState("");
+
+  // 👇 ACHIEVEMENTS HOOK
+  const { unlock } = useAchievements();
+
   const [state, formAction, isPending] = useActionState(
     sendMessage,
     initialState,
@@ -85,7 +91,7 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
 
   const containerRef = React.useRef<HTMLDivElement>(null);
   const stepRef = React.useRef<HTMLDivElement>(null);
-  const formRef = React.useRef<HTMLFormElement>(null); // For shake effect
+  const formRef = React.useRef<HTMLFormElement>(null);
   const { play } = useSfx();
 
   const form = useForm<ContactFormValues>({
@@ -104,7 +110,13 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
 
   const formValues = watch();
 
-  // 💾 Persistence Logic
+  // 👇 RETRIEVE VISITOR ID ON MOUNT
+  useEffect(() => {
+    const vid = localStorage.getItem("t7sen-visitor-id");
+    if (vid) setVisitorId(vid);
+  }, []);
+
+  // ... Persistence Logic (Keep as is) ...
   useEffect(() => {
     const saved = sessionStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -131,14 +143,17 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
   useEffect(() => {
     if (state.success) {
       sessionStorage.removeItem(STORAGE_KEY);
-    }
-  }, [state.success]);
 
-  // 💥 ANIMATION: Success Confetti
+      // 👇 LOGIC UPGRADE: Unlock Achievement Client-Side
+      // (The server does it too, but this gives instant feedback)
+      unlock("SOCIAL_ENGINEER");
+    }
+  }, [state.success, unlock]);
+
+  // ... Animations (Confetti, Error Shake, Step Transition) Keep as is ...
   useGSAP(
     () => {
       if (state.success) {
-        // 1. Success View Animation
         gsap.from(".success-view", {
           opacity: 0,
           y: 20,
@@ -146,19 +161,17 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
           ease: "back.out(1.7)",
         });
         play("success");
-
-        // 2. Digital Confetti Burst
-        const colors = ["#22c55e", "#000000", "#ffffff"]; // Cyberpunk Palette
+        // ... confetti logic ...
+        const colors = ["#22c55e", "#000000", "#ffffff"];
         const end = Date.now() + 1000;
-
         (function frame() {
           confetti({
             particleCount: 3,
             angle: 60,
             spread: 55,
             origin: { x: 0, y: 0.6 },
-            colors: colors,
-            shapes: ["square"], // Pixels!
+            colors,
+            shapes: ["square"],
             disableForReducedMotion: true,
             ticks: 200,
           });
@@ -167,26 +180,21 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
             angle: 120,
             spread: 55,
             origin: { x: 1, y: 0.6 },
-            colors: colors,
+            colors,
             shapes: ["square"],
             disableForReducedMotion: true,
             ticks: 200,
           });
-
-          if (Date.now() < end) {
-            requestAnimationFrame(frame);
-          }
+          if (Date.now() < end) requestAnimationFrame(frame);
         })();
       }
     },
     { scope: containerRef, dependencies: [state.success] },
   );
 
-  // 💥 ANIMATION: Error Shake
   useGSAP(
     () => {
       if (!state.success && state.message) {
-        // Shake the form if the server returns an error
         gsap.fromTo(
           formRef.current,
           { x: -10 },
@@ -198,7 +206,6 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
     { scope: containerRef, dependencies: [state.message, state.success] },
   );
 
-  // Animation: Step Transition
   useGSAP(
     () => {
       if (state.success || !stepRef.current) return;
@@ -211,11 +218,11 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
     { scope: containerRef, dependencies: [currentStep, state.success] },
   );
 
+  // ... Event Handlers (handleNext, handleBack, handleKeyDown) Keep as is ...
   const handleNext = async () => {
     let isValid = false;
     if (currentStep === 0) isValid = await trigger("name");
     if (currentStep === 1) isValid = await trigger("email");
-
     if (isValid) {
       play("click");
       setDirection(1);
@@ -283,7 +290,6 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
       ref={containerRef}
       className="w-full max-w-lg mx-auto min-h-87.5 md:min-h-100 flex flex-col justify-center relative"
     >
-      {/* Session Restored Indicator */}
       {restored && (
         <div className="absolute -top-8 right-0 flex items-center gap-1.5 text-[10px] font-mono text-primary/70 animate-pulse">
           <Save className="h-3 w-3" />
@@ -313,6 +319,9 @@ function ContactFormContent({ onReset }: { onReset: () => void }) {
         <div className="hidden" aria-hidden="true">
           <input type="text" name="_gotcha" tabIndex={-1} autoComplete="off" />
         </div>
+
+        {/* 👇 NEW HIDDEN INPUT: Visitor ID for Achievements */}
+        <input type="hidden" name="visitorId" value={visitorId} />
 
         {/* Hidden Inputs for Persistence & Hydration Safety */}
         {currentStep !== 0 && (

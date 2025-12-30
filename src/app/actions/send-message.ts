@@ -8,6 +8,7 @@ import { headers } from "next/headers";
 import logger from "@/lib/logger";
 import { ContactTemplate } from "@/components/email/contact-template";
 import { redis } from "@/lib/redis";
+import { unlockServerAchievement } from "@/app/actions/achievements";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -43,7 +44,6 @@ export async function sendMessage(
 
   // 2. Rate Limit (Strict: "contact" type)
   try {
-    // FIX: Use specific "contact" limiter (3 req / 1 hour)
     await checkRateLimit(ip, "contact");
   } catch (error) {
     const errorMsg =
@@ -63,6 +63,7 @@ export async function sendMessage(
     message: formData.get("message"),
   };
 
+  const visitorId = formData.get("visitorId")?.toString();
   const validatedFields = contactSchema.safeParse(rawData);
 
   if (!validatedFields.success) {
@@ -106,6 +107,16 @@ export async function sendMessage(
           "Signal jamming detected (API Error). Message saved to archive.",
         timestamp: Date.now(),
       };
+    }
+
+    // 5. UNLOCK ACHIEVEMENT (Server-Side)
+    if (visitorId) {
+      try {
+        await unlockServerAchievement(visitorId, "SOCIAL_ENGINEER");
+      } catch (achError) {
+        console.error("Failed to unlock achievement:", achError);
+        // Don't fail the contact form just because achievement failed
+      }
     }
 
     logger.info({ email }, "Email sent successfully");
