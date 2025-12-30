@@ -8,59 +8,86 @@ import {
   Activity,
   Swords,
   Zap,
-  ShieldCheck,
-  Crosshair,
+  Server,
+  Code2,
 } from "lucide-react";
+import { SiValorant, SiLeagueoflegends } from "react-icons/si";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
 import { HackerText } from "@/components/ui/hacker-text";
 import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
-import type { DashboardData } from "@/app/actions/dashboard";
+// 👇 CHANGED: Import the server action for polling
+import {
+  fetchDashboardData,
+  type DashboardData,
+} from "@/app/actions/dashboard";
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import { HudHeader } from "@/components/ui/hud-header";
+import { Badge } from "@/components/ui/badge";
 
-// --- HELPER COMPONENTS (Keep these as they are) ---
+// --- HELPERS ---
+
 const getHeatmapColor = (level: number) => {
   switch (level) {
     case 0:
       return "bg-white/5";
     case 1:
-      return "bg-purple-900/40";
+      return "bg-purple-500/20";
     case 2:
-      return "bg-purple-700/60";
+      return "bg-purple-500/40 shadow-[0_0_5px_rgba(168,85,247,0.2)]";
     case 3:
-      return "bg-purple-500/80";
+      return "bg-purple-500/70 shadow-[0_0_10px_rgba(168,85,247,0.4)]";
     case 4:
-      return "bg-purple-400";
+      return "bg-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.6)]";
     default:
       return "bg-white/5";
   }
 };
 
-function LoadGraph() {
-  const [bars, setBars] = useState<{ height: number; delay: number }[]>([]);
+function LoadGraph({ data }: { data?: number[] }) {
+  // 👇 ADDED: 'value' property for tooltips
+  const [normalizedBars, setNormalizedBars] = useState<
+    { height: number; delay: number; value: number }[]
+  >([]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
-      const newBars = Array.from({ length: 30 }).map(() => ({
-        height: Math.random() * 100,
-        delay: Math.random(),
-      }));
-      setBars(newBars);
+      if (data && data.length > 0) {
+        const maxLoad = Math.max(...data, 1.5);
+        const bars = data.slice(-24).map((val, i) => ({
+          height: Math.max(10, Math.min((val / maxLoad) * 100, 100)),
+          delay: i * 0.05,
+          value: val, // Store real value
+        }));
+        setNormalizedBars(bars);
+      } else {
+        const newBars = Array.from({ length: 24 }).map(() => ({
+          height: Math.max(15, Math.random() * 100),
+          delay: Math.random() * 2,
+          value: 0,
+        }));
+        setNormalizedBars(newBars);
+      }
     }, 0);
     return () => clearTimeout(timer);
-  }, []);
+  }, [data]);
+
   return (
-    <div className="flex items-end gap-0.5 h-8 w-full mt-2 opacity-50 min-h-8">
-      {bars.map((bar, i) => (
+    <div className="flex items-end gap-1 h-10 w-full mt-2 opacity-80 mask-image-b">
+      {normalizedBars.map((bar, i) => (
         <div
           key={i}
-          className="w-1 bg-blue-500/50 rounded-t-[1px]"
+          // 👇 ADDED: Tooltip for hover
+          title={`Load: ${bar.value.toFixed(2)}`}
+          className="flex-1 bg-cyan-500/40 rounded-t-[1px] relative overflow-hidden group cursor-crosshair transition-all hover:bg-cyan-400/60"
           style={{
             height: `${bar.height}%`,
-            animation: `pulse 2s infinite ${bar.delay}s`,
+            animation: `pulse-height 2s ease-in-out infinite ${bar.delay}s`,
           }}
-        />
+        >
+          <div className="absolute top-0 inset-x-0 h-px bg-cyan-400/80" />
+        </div>
       ))}
     </div>
   );
@@ -69,31 +96,42 @@ function LoadGraph() {
 function MatchHistory({
   history,
   winRate,
+  color = "green",
 }: {
   history?: ("W" | "L")[];
   winRate: number;
+  color?: "green" | "blue" | "red";
 }) {
   const [visualHistory, setVisualHistory] = useState<string[]>([]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       if (history && history.length > 0) setVisualHistory(history);
       else {
-        const results = Array.from({ length: 5 }).map(() =>
-          Math.random() < winRate / 100 ? "W" : "L",
+        setVisualHistory(
+          Array.from({ length: 5 }).map(() =>
+            Math.random() < winRate / 100 ? "W" : "L",
+          ),
         );
-        setVisualHistory(results);
       }
     }, 0);
     return () => clearTimeout(timer);
   }, [history, winRate]);
+
+  const winColor =
+    color === "blue"
+      ? "bg-blue-500 shadow-blue-500/50"
+      : "bg-emerald-500 shadow-emerald-500/50";
+  const loseColor = "bg-red-500/20 border border-red-500/20";
+
   return (
-    <div className="flex gap-1 mt-1 min-h-1.5">
+    <div className="flex gap-1.5 mt-2">
       {visualHistory.map((result, i) => (
         <div
           key={i}
           className={cn(
-            "h-1.5 w-full rounded-sm",
-            result === "W" ? "bg-green-500" : "bg-red-500/50",
+            "h-1.5 flex-1 rounded-full transition-all duration-500",
+            result === "W" ? `${winColor} shadow-[0_0_8px]` : loseColor,
           )}
         />
       ))}
@@ -105,39 +143,97 @@ function DashboardCard({
   title,
   icon: Icon,
   children,
-  accent,
-  border,
+  color = "cyan",
 }: {
   title: string;
   icon: React.ElementType;
   children: React.ReactNode;
-  accent: string;
-  border: string;
+  color?: "cyan" | "purple" | "red" | "emerald" | "amber";
 }) {
+  const theme = {
+    cyan: {
+      border: "group-hover:border-cyan-500/50",
+      glow: "from-cyan-500/20",
+      icon: "text-cyan-400",
+      bgIcon: "bg-cyan-500/10",
+      dot: "bg-cyan-400",
+    },
+    purple: {
+      border: "group-hover:border-purple-500/50",
+      glow: "from-purple-500/20",
+      icon: "text-purple-400",
+      bgIcon: "bg-purple-500/10",
+      dot: "bg-purple-400",
+    },
+    red: {
+      border: "group-hover:border-red-500/50",
+      glow: "from-red-500/20",
+      icon: "text-red-400",
+      bgIcon: "bg-red-500/10",
+      dot: "bg-red-400",
+    },
+    emerald: {
+      border: "group-hover:border-emerald-500/50",
+      glow: "from-emerald-500/20",
+      icon: "text-emerald-400",
+      bgIcon: "bg-emerald-500/10",
+      dot: "bg-emerald-400",
+    },
+    amber: {
+      border: "group-hover:border-amber-500/50",
+      glow: "from-amber-500/20",
+      icon: "text-amber-400",
+      bgIcon: "bg-amber-500/10",
+      dot: "bg-amber-400",
+    },
+  }[color];
+
   return (
-    <MagneticWrapper strength={0.05} className="dashboard-card opacity-0">
+    <MagneticWrapper strength={0.05} className="dashboard-card h-full">
       <div
         className={cn(
-          "relative h-full p-6 rounded-xl border border-white/5 bg-linear-to-br from-white/5 to-white/0 backdrop-blur-md transition-all duration-500 group",
-          border,
+          "relative flex flex-col h-full p-6 rounded-2xl border bg-black/40 backdrop-blur-xl overflow-hidden transition-all duration-500 group",
+          "border-white/5",
+          theme.border,
         )}
       >
-        <div className="absolute inset-0 bg-noise opacity-[0.03] pointer-events-none" />
-        <div className="flex items-center gap-3 mb-6">
-          <div className={cn("p-2 rounded-md bg-white/5", accent)}>
-            <Icon className="h-5 w-5" />
+        <div
+          className={cn(
+            "absolute inset-0 opacity-0 group-hover:opacity-30 transition-opacity duration-500 pointer-events-none bg-linear-to-br via-transparent to-transparent",
+            theme.glow,
+          )}
+        />
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('/noise.svg')] bg-repeat mix-blend-overlay" />
+
+        <div className="relative z-10 flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div
+              className={cn(
+                "p-2.5 rounded-lg border border-white/5 shadow-inner backdrop-blur-md transition-colors duration-300",
+                theme.bgIcon,
+              )}
+            >
+              <Icon className={cn("h-5 w-5", theme.icon)} />
+            </div>
+            <h3 className="font-mono text-xs font-bold tracking-[0.2em] text-muted-foreground group-hover:text-foreground transition-colors uppercase">
+              {title}
+            </h3>
           </div>
-          <h3 className="font-mono text-sm font-bold tracking-widest text-muted-foreground group-hover:text-foreground transition-colors">
-            {title}
-          </h3>
+          <div className="flex gap-1">
+            <div
+              className={cn(
+                "h-1.5 w-1.5 rounded-full animate-pulse",
+                theme.dot,
+              )}
+            />
+          </div>
         </div>
-        <div className="relative z-10">{children}</div>
+        <div className="relative z-10 flex-1">{children}</div>
       </div>
     </MagneticWrapper>
   );
 }
 
-// --- PART 1: THE STATIC SHELL (Header, Footer, Decor) ---
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const prefersReducedMotion = usePrefersReducedMotion();
@@ -145,7 +241,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   useGSAP(
     () => {
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-      // Animate ONLY the header elements here
+
       tl.fromTo(
         ".floating-header",
         { y: -30, opacity: 0 },
@@ -177,7 +273,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       ref={containerRef}
       className="relative flex min-h-dvh md:h-dvh w-full flex-col items-center pt-24 md:pt-40 pb-20 px-6 overflow-hidden"
     >
-      {/* --- FLOATING HEADER (HUD) --- */}
       <HudHeader
         title="LIVE_FEED"
         icon={Activity}
@@ -200,12 +295,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             Real-time telemetry of my digital existence.
           </p>
         </div>
-
-        {/* DYNAMIC CONTENT INJECTION POINT */}
         {children}
       </div>
 
-      {/* AMBIENT DECOR */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-20 hidden md:block z-0">
         <div className="decor-item absolute top-[20%] left-[5%] font-mono text-xs text-primary/60 opacity-0">{`> ESTABLISHING_UPLINK...`}</div>
         <div className="decor-item absolute top-[25%] right-[10%] font-mono text-xs text-muted-foreground/60 opacity-0">{`{ "stream": "encrypted" }`}</div>
@@ -222,16 +314,17 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-// --- PART 2: THE DYNAMIC METRICS (The 3 Cards) ---
 export function DashboardMetrics({
   initialData,
 }: {
   initialData: DashboardData;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // 👇 CHANGED: Store data in state to allow updates
+  const [data, setData] = useState<DashboardData>(initialData);
   const [latency, setLatency] = useState<number>(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Data-specific GSAP animation
   useGSAP(
     () => {
       gsap.fromTo(
@@ -243,6 +336,24 @@ export function DashboardMetrics({
     { scope: containerRef },
   );
 
+  // 👇 ADDED: Polling Logic (Every 30 seconds)
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      setIsRefreshing(true);
+      try {
+        const freshData = await fetchDashboardData();
+        setData(freshData);
+      } catch (error) {
+        console.error("Failed to poll dashboard data", error);
+      } finally {
+        setTimeout(() => setIsRefreshing(false), 1000);
+      }
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Latency Check (Kept Separate for faster ping)
   useEffect(() => {
     const checkLatency = async () => {
       const start = performance.now();
@@ -264,216 +375,261 @@ export function DashboardMetrics({
       ref={containerRef}
       className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
     >
-      {/* 1. SYSTEM STATUS */}
-      <DashboardCard
-        title="SYSTEM_INFRA"
-        icon={Cpu}
-        accent="text-blue-500"
-        border="hover:border-blue-500/50"
-      >
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground text-sm font-mono">
-              STATUS
+      {/* --- CARD 1: SYSTEM INFRASTRUCTURE --- */}
+      <DashboardCard title="SYSTEM_INFRA" icon={Server} color="cyan">
+        <div className="space-y-6">
+          <div className="flex items-center justify-between p-3 rounded-lg border border-cyan-500/20 bg-cyan-500/5">
+            <span className="text-[10px] font-mono text-cyan-200/70 uppercase tracking-wider">
+              Server Status
             </span>
-            <span className="text-green-500 font-bold text-sm tracking-widest uppercase">
-              {initialData.system.status.toUpperCase()}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+              </span>
+              <span className="text-xs font-bold text-cyan-400">
+                {data.system.status.toUpperCase()}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center justify-between bg-white/5 p-2 rounded border border-white/10">
-            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-              <ShieldCheck className="h-3 w-3" /> AVAILABILITY
-            </span>
-            <span className="font-mono text-xs text-green-400">
-              {initialData.system.uptime}%
-            </span>
-          </div>
-          <div className="space-y-3 mt-2">
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs font-mono">
-                <span className="text-muted-foreground flex items-center gap-1">
-                  <Cpu className="h-3 w-3" /> CPU USAGE
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-[10px] font-mono">
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <Cpu className="h-3 w-3" /> CPU_CORE
                 </span>
-                <span className="text-blue-400">
-                  {initialData.system.specs.cpu}%
+                <span className="text-cyan-400 font-bold">
+                  {data.system.specs.cpu}%
                 </span>
               </div>
-              <div className="h-1.5 w-full bg-black/20 rounded-full overflow-hidden">
+              <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
                 <div
-                  className="h-full bg-blue-500 transition-all duration-1000"
-                  style={{ width: `${initialData.system.specs.cpu}%` }}
+                  className="h-full bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)] transition-all duration-1000 ease-in-out"
+                  style={{ width: `${data.system.specs.cpu}%` }}
                 />
               </div>
             </div>
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs font-mono">
-                <span className="text-muted-foreground flex items-center gap-1">
-                  <Zap className="h-3 w-3" /> RAM USAGE
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-[10px] font-mono">
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <Zap className="h-3 w-3" /> MEMORY_ALLOC
                 </span>
-                <span className="text-purple-400">
-                  {initialData.system.specs.memory.percent}%
+                <span className="text-indigo-400 font-bold">
+                  {data.system.specs.memory.percent}%
                 </span>
               </div>
-              <div className="h-1.5 w-full bg-black/20 rounded-full overflow-hidden">
+              <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
                 <div
-                  className="h-full bg-purple-500 transition-all duration-1000"
+                  className="h-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)] transition-all duration-1000 ease-in-out"
                   style={{
-                    width: `${initialData.system.specs.memory.percent}%`,
+                    width: `${data.system.specs.memory.percent}%`,
                   }}
                 />
               </div>
             </div>
           </div>
-          <div className="space-y-1 pt-2">
-            <div className="flex justify-between items-end">
+
+          <div className="pt-2">
+            <div className="flex justify-between items-end mb-1">
               <span className="text-[10px] text-muted-foreground font-mono">
-                SYS_LOAD
+                REALTIME_LOAD
               </span>
-              <span className="text-xs font-mono text-blue-400">
-                {initialData.system.specs.load.toFixed(2)}
+              <div className="flex items-center gap-2">
+                {/* Tiny indicator when refreshing */}
+                <span
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full bg-cyan-500 transition-opacity",
+                    isRefreshing ? "opacity-100" : "opacity-0",
+                  )}
+                />
+                <span className="text-[10px] font-mono text-cyan-500/50">
+                  {data.system.specs.load.toFixed(2)} avg
+                </span>
+              </div>
+            </div>
+            <LoadGraph data={data.system.specs.loadHistory} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 pt-4 border-t border-white/5">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[9px] text-muted-foreground font-mono">
+                UPTIME
+              </span>
+              <span className="text-xs font-mono text-foreground">
+                {data.system.uptime}%
               </span>
             </div>
-            <LoadGraph />
-          </div>
-          <div className="mt-2 pt-4 border-t border-border/50 flex items-center justify-between text-xs font-mono text-muted-foreground">
-            <span className="flex items-center gap-2">
-              <Wifi className="h-3 w-3" /> LATENCY
-            </span>
-            <span
-              className={cn(
-                latency > 100 ? "text-yellow-500" : "text-green-500",
-              )}
-            >
-              {latency}ms
-            </span>
+            <div className="flex flex-col gap-0.5 items-end">
+              <span className="text-[9px] text-muted-foreground font-mono">
+                PING
+              </span>
+              <span
+                className={cn(
+                  "text-xs font-mono",
+                  latency > 100 ? "text-amber-500" : "text-emerald-500",
+                )}
+              >
+                {latency}ms
+              </span>
+            </div>
           </div>
         </div>
       </DashboardCard>
 
-      {/* 2. CODING METRICS */}
-      <DashboardCard
-        title="DEV_ACTIVITY"
-        icon={GitCommit}
-        accent="text-purple-500"
-        border="hover:border-purple-500/50"
-      >
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground text-sm font-mono">
-              COMMITS (YTD)
-            </span>
-            <span className="text-xl font-bold font-mono">
-              {initialData.coding.commits}
-            </span>
-          </div>
-          <div className="space-y-1">
-            <div className="flex items-center justify-between text-xs font-mono">
-              <span className="text-muted-foreground">
-                C::S LEVEL {initialData.coding.level}
-              </span>
-              <span className="text-purple-400">
-                {initialData.coding.progress}%
-              </span>
+      {/* --- CARD 2: DEV ACTIVITY --- */}
+      <DashboardCard title="DEV_MATRIX" icon={GitCommit} color="purple">
+        <div className="space-y-6">
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-[10px] font-mono text-muted-foreground mb-1">
+                TOTAL_COMMITS
+              </p>
+              <div className="text-3xl font-black text-purple-100 tracking-tight">
+                {data.coding.commits}
+              </div>
             </div>
-            <div className="h-1.5 w-full bg-muted/20 rounded-full overflow-hidden">
+            <Badge
+              variant="outline"
+              className="border-purple-500/20 bg-purple-500/10 text-purple-300 font-mono text-[10px]"
+            >
+              LVL.{data.coding.level}
+            </Badge>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-[10px] font-mono text-purple-300/60">
+              <span>XP_PROGRESS</span>
+              <span>{data.coding.progress}%</span>
+            </div>
+            <div className="h-2 w-full bg-black/40 rounded-full overflow-hidden border border-white/5 p-px">
               <div
-                className="h-full bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]"
-                style={{ width: `${initialData.coding.progress}%` }}
+                className="h-full rounded-full bg-linear-to-r from-purple-600 to-pink-500 shadow-[0_0_15px_rgba(168,85,247,0.4)]"
+                style={{ width: `${data.coding.progress}%` }}
               />
             </div>
           </div>
-          <div className="space-y-2 mt-4 pt-4 border-t border-border/50">
-            <span className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase">
-              Contribution Matrix (Last 12 Weeks)
-            </span>
-            <div className="grid grid-rows-7 grid-flow-col gap-1 w-full h-25">
-              {initialData.coding.heatmap.map((day, i) => (
+
+          <div className="space-y-2 pt-2">
+            <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
+              <span>CONTRIBUTION_LOG</span>
+              <span className="text-xs text-white/20">84_DAYS</span>
+            </div>
+            <div className="grid grid-rows-7 grid-flow-col gap-0.5 w-full h-24 mask-image-r">
+              {data.coding.heatmap.map((day, i) => (
                 <div
                   key={i}
                   className={cn(
-                    "w-full h-full rounded-[1px] transition-colors hover:scale-125 hover:z-10",
+                    "rounded-[1px] transition-all duration-300 hover:scale-150 hover:z-50 hover:shadow-lg",
                     getHeatmapColor(day.level),
                   )}
-                  title={`${day.date}: ${day.count} commits`}
+                  title={`${day.date}: ${day.count}`}
                 />
               ))}
             </div>
           </div>
-          <div className="flex gap-2 mt-1">
-            {initialData.coding.languages.map((lang) => (
-              <span
+
+          <div className="flex flex-wrap gap-2 pt-2">
+            {data.coding.languages.map((lang) => (
+              <div
                 key={lang.name}
-                className="px-1.5 py-0.5 rounded bg-white/5 text-[10px] border border-white/10"
+                className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/5 border border-white/5 text-[10px] text-muted-foreground hover:text-purple-300 hover:border-purple-500/30 transition-colors cursor-default"
               >
+                <Code2 className="h-3 w-3 opacity-50" />
                 {lang.name}
-              </span>
+              </div>
             ))}
           </div>
         </div>
       </DashboardCard>
 
-      {/* 3. GAMING STATS */}
-      <DashboardCard
-        title="COMBAT_RECORDS"
-        icon={Swords}
-        accent="text-red-500"
-        border="hover:border-red-500/50"
-      >
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs font-mono text-muted-foreground">
-              <span>VALORANT</span>
-              <div className="flex gap-3">
-                <span className="text-red-400">
-                  WIN: {initialData.gaming.valorant.winRate}%
-                </span>
-                <span className="text-muted-foreground flex items-center gap-1">
-                  <Crosshair className="h-3 w-3" />
-                  {initialData.gaming.valorant.kd} KD
+      {/* --- CARD 3: COMBAT RECORDS --- */}
+      <DashboardCard title="COMBAT_LOGS" icon={Swords} color="red">
+        <div className="flex flex-col h-full gap-6">
+          {/* Valorant Section */}
+          <div className="relative group/game">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <SiValorant className="h-3.5 w-3.5 text-red-500" />
+                <span className="text-xs font-bold tracking-wide">
+                  VALORANT
                 </span>
               </div>
+              <span className="text-[10px] font-mono text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">
+                {data.gaming.valorant.rank.toUpperCase()}
+              </span>
             </div>
-            <div className="bg-background/50 p-3 rounded border border-border/50 flex flex-col gap-2">
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-sm">
-                  {initialData.gaming.valorant.rank}
-                </span>
-                <span className="font-mono text-xs text-red-400 flex gap-2">
-                  <span>{initialData.gaming.valorant.rr} RR</span>
-                  <span className="text-muted-foreground/50">|</span>
-                  <span>HS {initialData.gaming.valorant.hs}</span>
-                </span>
+
+            <div className="bg-linear-to-br from-red-500/5 to-transparent p-3 rounded-lg border border-red-500/10 hover:border-red-500/30 transition-colors">
+              <div className="flex justify-between items-end mb-2">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] text-muted-foreground block font-mono">
+                    RANK_RATING
+                  </span>
+                  <span className="text-lg font-bold text-red-100">
+                    {data.gaming.valorant.rr} RR
+                  </span>
+                </div>
+                <div className="text-right space-y-0.5">
+                  <span className="text-[10px] text-muted-foreground block font-mono">
+                    K/D
+                  </span>
+                  <span className="text-sm font-mono text-white">
+                    {data.gaming.valorant.kd}
+                  </span>
+                </div>
               </div>
-              <MatchHistory
-                history={initialData.gaming.valorant.lastMatches}
-                winRate={initialData.gaming.valorant.winRate}
-              />
+              <div className="space-y-1">
+                <div className="flex justify-between text-[9px] text-red-300/50 font-mono">
+                  <span>RECENT_MATCHES</span>
+                  <span>{data.gaming.valorant.winRate}% WINRATE</span>
+                </div>
+                <MatchHistory
+                  history={data.gaming.valorant.lastMatches}
+                  winRate={data.gaming.valorant.winRate}
+                  color="red"
+                />
+              </div>
             </div>
           </div>
-          <div className="space-y-2 border-t border-border/50 pt-4">
-            <div className="flex items-center justify-between text-xs font-mono text-muted-foreground">
-              <span>LEAGUE</span>
-              <div className="flex gap-3">
-                <span className="text-blue-400">
-                  WIN: {initialData.gaming.lol.winRate}%
-                </span>
-                <span className="text-muted-foreground">
-                  {initialData.gaming.lol.main}
-                </span>
+
+          <div className="h-px w-full bg-linear-to-r from-transparent via-white/10 to-transparent" />
+
+          {/* League Section */}
+          <div className="relative group/game">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <SiLeagueoflegends className="h-3.5 w-3.5 text-blue-500" />
+                <span className="text-xs font-bold tracking-wide">LEAGUE</span>
               </div>
+              <span className="text-[10px] font-mono text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">
+                {data.gaming.lol.rank}
+              </span>
             </div>
-            <div className="bg-background/50 p-3 rounded border border-border/50 flex flex-col gap-2">
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-sm">
-                  {initialData.gaming.lol.rank}
-                </span>
-                <span className="font-mono text-xs text-blue-400">
-                  {initialData.gaming.lol.lp} LP
-                </span>
+
+            <div className="bg-linear-to-br from-blue-500/5 to-transparent p-3 rounded-lg border border-blue-500/10 hover:border-blue-500/30 transition-colors">
+              <div className="flex justify-between items-end mb-2">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] text-muted-foreground block font-mono">
+                    MAIN_CHAMP
+                  </span>
+                  <span className="text-sm font-bold text-blue-100">
+                    {data.gaming.lol.main}
+                  </span>
+                </div>
+                <div className="text-right space-y-0.5">
+                  <span className="text-[10px] text-muted-foreground block font-mono">
+                    LP
+                  </span>
+                  <span className="text-sm font-mono text-white">
+                    {data.gaming.lol.lp}
+                  </span>
+                </div>
               </div>
               <MatchHistory
-                history={initialData.gaming.lol.lastMatches}
-                winRate={initialData.gaming.lol.winRate}
+                history={data.gaming.lol.lastMatches}
+                winRate={data.gaming.lol.winRate}
+                color="blue"
               />
             </div>
           </div>

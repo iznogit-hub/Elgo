@@ -3,8 +3,9 @@
 "use server";
 
 import { cacheLife, cacheTag } from "next/cache";
+import { redis } from "@/lib/redis";
 
-// --- Types (Preserved) ---
+// --- Types ---
 export type HeatmapData = {
   date: string;
   count: number;
@@ -59,37 +60,62 @@ export interface DashboardData {
       };
       os: string;
       load: number;
+      loadHistory: number[];
     };
   };
 }
 
-// --- 1. CODING STATS (Cached) ---
+// --- HELPER: Redis Fallback Wrapper ---
+// Tries to fetch fresh data. If it fails, tries to get last cached version from Redis.
+async function fetchWithFallback<T>(
+  key: string,
+  fetcher: () => Promise<T>,
+  fallbackValue: T,
+): Promise<T> {
+  try {
+    const data = await fetcher();
+    // Save successful fetch to Redis (expire in 24h to keep it somewhat fresh)
+    await redis.set(key, JSON.stringify(data), { ex: 86400 });
+    return data;
+  } catch (error) {
+    console.error(`Fetch failed for ${key}, checking Redis cache...`);
+    try {
+      const cached = await redis.get<T>(key);
+      if (cached) return cached;
+    } catch (redisError) {
+      console.error(`Redis fallback failed for ${key}`, redisError);
+    }
+    return fallbackValue;
+  }
+}
+
+// --- 1. CODING STATS ---
 async function getGitHubStats() {
   "use cache";
   cacheLife("minutes");
   cacheTag("dashboard-github", "dashboard", "coding");
 
-  const GITHUB_USERNAME = process.env.GITHUB_USERNAME || "t7sen";
-  const query = `
-			query($userName:String!) {
-				user(login: $userName){
-					contributionsCollection {
-						contributionCalendar {
-							totalContributions
-							weeks {
-								contributionDays {
-									contributionCount
-									date
-									contributionLevel
-								}
-							}
-						}
-					}
-				}
-			}
-		`;
+  const fetcher = async () => {
+    const GITHUB_USERNAME = process.env.GITHUB_USERNAME || "t7sen";
+    const query = `
+      query($userName:String!) {
+        user(login: $userName){
+          contributionsCollection {
+            contributionCalendar {
+              totalContributions
+              weeks {
+                contributionDays {
+                  contributionCount
+                  date
+                  contributionLevel
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
 
-  try {
     const res = await fetch("https://api.github.com/graphql", {
       method: "POST",
       headers: {
@@ -102,7 +128,7 @@ async function getGitHubStats() {
       }),
     });
 
-    if (!res.ok) return { total: 0, heatmap: [] as HeatmapData[] };
+    if (!res.ok) throw new Error("GitHub API error");
     const json = await res.json();
     const calendar =
       json.data?.user?.contributionsCollection?.contributionCalendar;
@@ -128,9 +154,12 @@ async function getGitHubStats() {
                   : 4,
       })) as HeatmapData[],
     };
-  } catch (error) {
-    return { total: 0, heatmap: [] as HeatmapData[] };
-  }
+  };
+
+  return fetchWithFallback("dashboard:github", fetcher, {
+    total: 0,
+    heatmap: [],
+  });
 }
 
 async function getCodeStats() {
@@ -138,13 +167,12 @@ async function getCodeStats() {
   cacheLife("minutes");
   cacheTag("dashboard-codestats", "dashboard", "coding");
 
-  const CODESTATS_USERNAME = process.env.CODESTATS_USERNAME || "t7sen";
-  try {
+  const fetcher = async () => {
+    const CODESTATS_USERNAME = process.env.CODESTATS_USERNAME || "t7sen";
     const res = await fetch(
       `https://codestats.net/api/users/${CODESTATS_USERNAME}`,
     );
-
-    if (!res.ok) throw new Error("Failed to fetch CodeStats");
+    if (!res.ok) throw new Error("CodeStats API error");
 
     const data = await res.json();
     const LEVEL_FACTOR = 0.025;
@@ -168,25 +196,21 @@ async function getCodeStats() {
       topLanguage: languages[0]?.name || "TypeScript",
       languages,
     };
-  } catch (error) {
-    return {
-      level: 0,
-      progress: 0,
-      topLanguage: "TypeScript",
-      languages: [] as LanguageData[],
-    };
-  }
+  };
+
+  return fetchWithFallback("dashboard:codestats", fetcher, {
+    level: 0,
+    progress: 0,
+    topLanguage: "TypeScript",
+    languages: [],
+  });
 }
 
-// --- 2. GAMING STATS (Cached) ---
+// --- 2. GAMING STATS ---
 async function getValorantStats() {
   "use cache";
   cacheLife("minutes");
   cacheTag("dashboard-valorant", "dashboard", "gaming");
-
-  const REGION = process.env.VALORANT_REGION || "eu";
-  const PUUID = process.env.VALORANT_PUUID;
-  const API_KEY = process.env.HENRIK_API_KEY;
 
   const fallback = {
     rank: "Unranked",
@@ -198,9 +222,13 @@ async function getValorantStats() {
     lastMatches: [] as ("W" | "L")[],
   };
 
-  if (!PUUID || !API_KEY) return fallback;
+  const fetcher = async () => {
+    const REGION = process.env.VALORANT_REGION || "eu";
+    const PUUID = process.env.VALORANT_PUUID;
+    const API_KEY = process.env.HENRIK_API_KEY;
 
-  try {
+    if (!PUUID || !API_KEY) throw new Error("Missing Env Vars");
+
     const [mmrRes, matchesRes] = await Promise.all([
       fetch(
         `https://api.henrikdev.xyz/valorant/v2/by-puuid/mmr/${REGION}/${PUUID}`,
@@ -259,7 +287,6 @@ async function getValorantStats() {
       });
     }
 
-    const matchesCount = history.length || 1;
     const realKD =
       totalDeaths > 0 ? (totalKills / totalDeaths).toFixed(2) : "0.0";
     const realHS =
@@ -276,21 +303,33 @@ async function getValorantStats() {
       hs: `${realHS}%`,
       lastMatches: history,
     };
-  } catch (error) {
-    console.error("Valorant Fetch Error:", error);
-    return fallback;
-  }
+  };
+
+  return fetchWithFallback("dashboard:valorant", fetcher, fallback);
+}
+
+// ✅ Improved Region Mapper
+function getRiotMatchRegion(regionUrl: string): string {
+  if (
+    regionUrl.includes("na1") ||
+    regionUrl.includes("br1") ||
+    regionUrl.includes("la")
+  )
+    return "americas";
+  if (regionUrl.includes("kr") || regionUrl.includes("jp")) return "asia";
+  if (
+    regionUrl.includes("oc") ||
+    regionUrl.includes("sg") ||
+    regionUrl.includes("ph")
+  )
+    return "sea";
+  return "europe"; // Default to europe for euw1, eune1, tr1, ru, etc.
 }
 
 async function getLoLStats() {
   "use cache";
   cacheLife("minutes");
   cacheTag("dashboard-lol", "dashboard", "gaming");
-
-  const PUUID = process.env.RIOT_PUUID;
-  const REGION_URL =
-    process.env.RIOT_REGION_URL || "https://euw1.api.riotgames.com";
-  const API_KEY = process.env.RIOT_API_KEY;
 
   const fallback = {
     rank: "Unranked",
@@ -302,13 +341,17 @@ async function getLoLStats() {
     lastMatches: [] as ("W" | "L")[],
   };
 
-  if (!PUUID || !API_KEY) return fallback;
+  const fetcher = async () => {
+    const PUUID = process.env.RIOT_PUUID;
+    const REGION_URL =
+      process.env.RIOT_REGION_URL || "https://euw1.api.riotgames.com";
+    const API_KEY = process.env.RIOT_API_KEY;
 
-  const MATCH_REGION_URL = REGION_URL.includes("eu")
-    ? "https://europe.api.riotgames.com"
-    : "https://americas.api.riotgames.com";
+    if (!PUUID || !API_KEY) throw new Error("Missing Env Vars");
 
-  try {
+    const MATCH_REGION = getRiotMatchRegion(REGION_URL);
+    const MATCH_REGION_URL = `https://${MATCH_REGION}.api.riotgames.com`;
+
     const [leagueRes, masteryRes] = await Promise.all([
       fetch(`${REGION_URL}/lol/league/v4/entries/by-puuid/${PUUID}`, {
         headers: { "X-Riot-Token": API_KEY },
@@ -328,7 +371,7 @@ async function getLoLStats() {
       },
     );
 
-    if (!leagueRes.ok) return fallback;
+    if (!leagueRes.ok) throw new Error("League API Error");
 
     const leagueData: any[] = await leagueRes.json();
     const soloQ = leagueData.find((q) => q.queueType === "RANKED_SOLO_5x5");
@@ -344,7 +387,6 @@ async function getLoLStats() {
           if (ddragonRes.ok) {
             const ddragon = await ddragonRes.json();
             const champId = masteryData[0].championId;
-
             const champName = Object.values(ddragon.data).find(
               (c: any) => c.key == champId,
             ) as any;
@@ -366,10 +408,8 @@ async function getLoLStats() {
       );
 
       const matchesResults = await Promise.all(matchPromises);
-
       matchesResults.forEach((match: any) => {
         if (!match.info) return;
-
         const participant = match.info.participants.find(
           (p: any) => p.puuid === PUUID,
         );
@@ -379,16 +419,7 @@ async function getLoLStats() {
       });
     }
 
-    if (!soloQ)
-      return {
-        rank: "Unranked",
-        lp: 0,
-        winRate: 0,
-        matches: 0,
-        kda: "0.0",
-        main: mainChamp,
-        lastMatches,
-      };
+    if (!soloQ) return { ...fallback, main: mainChamp, lastMatches };
 
     const wins = soloQ.wins;
     const losses = soloQ.losses;
@@ -403,16 +434,15 @@ async function getLoLStats() {
       main: mainChamp,
       lastMatches,
     };
-  } catch (error) {
-    console.error("LoL Fetch Error:", error);
-    return fallback;
-  }
+  };
+
+  return fetchWithFallback("dashboard:lol", fetcher, fallback);
 }
 
-// --- 3. SYSTEM STATS (Cached) ---
+// --- 3. SYSTEM STATS ---
 async function getSystemStats() {
   "use cache";
-  cacheLife("seconds"); // Kept fresh, but not real-time to save API calls
+  cacheLife("seconds");
   cacheTag("dashboard-system", "dashboard", "system");
 
   const DROPLET_ID = process.env.DIGITALOCEAN_DROPLET_ID;
@@ -428,6 +458,7 @@ async function getSystemStats() {
       memory: { total: 4096, used: 2048, percent: 50 },
       os: "Ubuntu 22.04",
       load: 0.5,
+      loadHistory: Array(24).fill(0.5) as number[], // ✅ Fix 2: Ensure number[] type
     },
   };
 
@@ -445,18 +476,18 @@ async function getSystemStats() {
     const dropletJson = await dropletRes.json();
     const droplet = dropletJson.droplet;
 
+    // Explicitly typed variable to ensure matching union type
     let status: "operational" | "degraded" | "outage" = "outage";
     if (droplet.status === "active") status = "operational";
     else if (droplet.status === "new" || droplet.status === "off")
       status = "degraded";
 
-    const availability = status === "operational" ? 100 : 0;
     const totalMem = droplet.memory;
     const cpuCores = droplet.vcpus;
     const osName = `${droplet.image?.distribution} ${droplet.image?.name}`;
 
     const end = Math.floor(Date.now() / 1000);
-    const start = end - 300;
+    const start = end - 1800;
     const metricsUrl = `https://api.digitalocean.com/v2/monitoring/metrics/droplet`;
 
     const [loadRes, memRes] = await Promise.all([
@@ -472,11 +503,14 @@ async function getSystemStats() {
 
     let realLoad = 0;
     let realFreeMem = 0;
+    let loadHistory: number[] = [];
 
     if (loadRes.ok) {
       const json = await loadRes.json();
-      const values = json.data?.result?.[0]?.values;
-      if (values && values.length > 0)
+      const values = json.data?.result?.[0]?.values || [];
+      loadHistory = values.map((v: any) => parseFloat(v[1]));
+
+      if (values.length > 0)
         realLoad = parseFloat(values[values.length - 1][1]);
     }
 
@@ -488,12 +522,10 @@ async function getSystemStats() {
     }
 
     const hasMetrics = realLoad > 0 || realFreeMem > 0;
-    const finalLoad = hasMetrics
-      ? realLoad
-      : Number((Math.random() * 0.5 + 0.1).toFixed(2));
+    const finalLoad = hasMetrics ? realLoad : 0.5;
     const finalUsedMem = hasMetrics
       ? Math.round(totalMem - realFreeMem)
-      : Math.floor((totalMem * (Math.random() * 20 + 30)) / 100);
+      : Math.floor(totalMem * 0.5);
     const cpuPercent = Math.min(Math.round((finalLoad / cpuCores) * 100), 100);
     const memPercent = Math.min(
       Math.round((finalUsedMem / totalMem) * 100),
@@ -502,7 +534,7 @@ async function getSystemStats() {
 
     return {
       status,
-      uptime: availability,
+      uptime: status === "operational" ? 100 : 0,
       latency: 0,
       region: droplet.region?.slug.toUpperCase() || "FRA",
       specs: {
@@ -510,31 +542,23 @@ async function getSystemStats() {
         memory: { total: totalMem, used: finalUsedMem, percent: memPercent },
         os: osName,
         load: finalLoad,
+        loadHistory:
+          loadHistory.length > 0
+            ? loadHistory
+            : (Array(24).fill(0.1) as number[]),
       },
     };
   } catch (error) {
     return {
-      status: "outage" as const,
-      uptime: 0,
-      latency: 0,
-      region: "ERR",
-      specs: {
-        cpu: 0,
-        memory: { total: 0, used: 0, percent: 0 },
-        os: "Unknown",
-        load: 0,
-      },
+      ...fallback,
+      status: "outage" as const, // ✅ Fix 3: Force literal type for the catch block return
+      specs: { ...fallback.specs, loadHistory: Array(24).fill(0) as number[] },
     };
   }
 }
 
 // --- MAIN AGGREGATOR ---
 export async function fetchDashboardData(): Promise<DashboardData> {
-  // Note: Explicit rate limiting (checkRateLimit) removed because:
-  // 1. This function is called within a cached scope (DashboardPage with "use cache").
-  // 2. Dynamic APIs like headers() are forbidden in "use cache" scopes.
-  // 3. The server-side cache inherently protects the backend from excessive calls.
-
   const [github, codeStats, valorant, lol, system] = await Promise.all([
     getGitHubStats(),
     getCodeStats(),
