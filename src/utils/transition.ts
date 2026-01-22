@@ -36,16 +36,14 @@ export const animatePageIn = (container: HTMLElement) => {
     window.scrollTo(0, 0);
 
     // 1. Set Initial GSAP State (Inline styles)
-    // This effectively "takes over" the opacity control
     gsap.set(container, {
       autoAlpha: 0,
       scale: 0.95,
-      filter: "blur(20px) grayscale(100%) brightness(0)", // Start dark
+      filter: "blur(20px) grayscale(100%) brightness(0)",
       x: 0,
     });
 
-    // ⚡ CRITICAL: Remove the CSS lock.
-    // Now that GSAP has set 'opacity: 0' inline, we can safely remove the !important class.
+    // ⚡ CRITICAL: Remove the CSS lock class so GSAP can take over
     container.classList.remove("invisible-hold");
 
     const tl = gsap.timeline({
@@ -68,14 +66,6 @@ export const animatePageIn = (container: HTMLElement) => {
       filter: "blur(0px) grayscale(0%) brightness(1)",
       scale: 1,
     });
-
-    // Twitch
-    tl.fromTo(
-      container,
-      { x: 5 },
-      { x: 0, duration: 0.1, ease: "rough({ strength: 2, points: 5 })" },
-      "<",
-    );
   }
 };
 

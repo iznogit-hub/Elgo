@@ -5,9 +5,9 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      // Disallow specific paths if you have private dashboards later
-      // disallow: '/private/',
+      disallow: ["/admin/", "/api/"], // Protect admin and API routes
     },
-    sitemap: "https://t7sen.com/sitemap.xml",
+    // TODO: Replace with your actual deployed domain
+    sitemap: "https://bubblepops.com/sitemap.xml", 
   };
 }

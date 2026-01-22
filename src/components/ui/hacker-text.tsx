@@ -1,62 +1,46 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
-
-const LETTERS =
-  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+";
+import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 
 interface HackerTextProps {
-  text: string;
+  text: string | number | null | undefined;
+  speed?: number;
   className?: string;
-  speed?: number; // ms per frame
 }
 
-export function HackerText({ text, className, speed = 30 }: HackerTextProps) {
-  const [displayText, setDisplayText] = useState(text);
-  const [isHovered, setIsHovered] = useState(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+export function HackerText({ text, speed = 30, className }: HackerTextProps) {
+  const safeText = String(text || "");
+  const [displayText, setDisplayText] = useState(safeText);
 
-  const scramble = () => {
+  useEffect(() => {
+    const targetText = String(text || "");
     let iteration = 0;
 
-    if (intervalRef.current) clearInterval(intervalRef.current);
-
-    intervalRef.current = setInterval(() => {
-      setDisplayText((prev) =>
-        text
+    const interval = setInterval(() => {
+      setDisplayText(() => {
+        return targetText
           .split("")
           .map((letter, index) => {
             if (index < iteration) {
-              return text[index];
+              return targetText[index];
             }
-            return LETTERS[Math.floor(Math.random() * 26)];
+            return "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()"[
+              Math.floor(Math.random() * 46)
+            ];
           })
-          .join("")
-      );
+          .join("");
+      });
 
-      if (iteration >= text.length) {
-        if (intervalRef.current) clearInterval(intervalRef.current);
+      if (iteration >= targetText.length) {
+        clearInterval(interval);
       }
 
-      iteration += 1 / 3; // Controls the speed of the "lock in" (lower = slower resolve)
+      iteration += 1 / 3;
     }, speed);
-  };
 
-  // Scramble on mount
-  useEffect(() => {
-    scramble();
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => clearInterval(interval);
+  }, [text, speed]);
 
-  return (
-    <span
-      className={className}
-      onMouseEnter={scramble} // Re-scramble on hover for fun
-      style={{ fontFamily: "monospace" }} // Monospace ensures letters don't jump around
-    >
-      {displayText}
-    </span>
-  );
+  return <span className={cn("font-mono", className)}>{displayText}</span>;
 }

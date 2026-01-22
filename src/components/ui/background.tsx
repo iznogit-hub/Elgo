@@ -16,8 +16,7 @@ export function Background() {
 
       if (!container || !grid) return;
 
-      // Parallax Grid Movement (Preserved)
-      // We kept this as it adds depth without the "flashlight" feel
+      // Parallax Logic
       const xToGrid = gsap.quickTo(grid, "x", {
         duration: 0.6,
         ease: "power2.out",
@@ -31,7 +30,6 @@ export function Background() {
         const { clientX, clientY } = e;
         const { innerWidth, innerHeight } = window;
 
-        // Calculate parallax offset from center
         const xOffset = (clientX - innerWidth / 2) / -25;
         const yOffset = (clientY - innerHeight / 2) / -25;
 
@@ -40,54 +38,47 @@ export function Background() {
       };
 
       window.addEventListener("mousemove", handleMouseMove);
-
-      return () => {
-        window.removeEventListener("mousemove", handleMouseMove);
-      };
+      return () => window.removeEventListener("mousemove", handleMouseMove);
     },
-    { scope: containerRef },
+    { scope: containerRef }
   );
 
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 -z-50 h-full w-full overflow-hidden bg-background"
+      className="fixed inset-0 z-0 h-full w-full overflow-hidden bg-black pointer-events-none"
     >
-      {/* LAYER 1: The Parallax Grid 
-          - Restored the 'mask' property to create the "Dark to Light" fade.
-          - Maintained the high-contrast grid lines for Light Mode visibility.
-      */}
+      {/* LAYER 1: The Cyan Grid */}
       <div
         ref={gridRef}
         className={cn(
-          "absolute -inset-[10%] w-[120%] h-[120%] opacity-40 will-change-transform",
-          // Light Mode Grid: Darker lines for visibility
-          "bg-[linear-gradient(to_right,rgba(0,0,0,0.3)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.3)_1px,transparent_1px)]",
-          // Dark Mode Grid: Lighter lines
-          "dark:bg-[linear-gradient(to_right,#ffffff12_1px,transparent_1px),linear-gradient(to_bottom,#ffffff12_1px,transparent_1px)]",
-          "bg-size-[40px_40px]",
-          // RESTORED: The gradient mask (Fade out from top-center)
-          "mask-[radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)]",
+          "absolute inset-[-50%] h-[200%] w-[200%]",
+          // ⚡ CHANGE: Use Cyan-900 for the grid lines instead of white
+          "bg-[linear-gradient(to_right,#083344_1px,transparent_1px),linear-gradient(to_bottom,#083344_1px,transparent_1px)]",
+          "bg-[size:40px_40px]",
+          // Fade out edges
+          "mask-[radial-gradient(ellipse_80%_50%_at_50%_50%,#000_70%,transparent_100%)]",
+          "opacity-40"
         )}
       />
 
-      {/* LAYER 2: Static Top Glow (Restored)
-          This replaces the "flashlight" with a stable ambient light source at the top.
-      */}
-      <div className="absolute left-0 right-0 top-[-10%] h-125 w-125 rounded-full bg-primary/10 blur-[100px] opacity-20 mx-auto pointer-events-none" />
+      {/* LAYER 2: Ambient Glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-cyan-900/20 blur-[120px] rounded-full mix-blend-screen opacity-30" />
 
-      {/* LAYER 3: Film Grain Texture */}
-      <div className="pointer-events-none absolute inset-0 opacity-[0.03] mix-blend-overlay">
-        <div
-          className="absolute inset-0 h-full w-full"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-          }}
-        />
+      {/* LAYER 3: Noise Texture */}
+      <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay pointer-events-none">
+        <svg className="h-full w-full">
+          <filter id="noise">
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.8"
+              numOctaves="4"
+              stitchTiles="stitch"
+            />
+          </filter>
+          <rect width="100%" height="100%" filter="url(#noise)" />
+        </svg>
       </div>
-
-      {/* LAYER 4: Vignette */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.2)_100%)] dark:bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)]" />
     </div>
   );
 }

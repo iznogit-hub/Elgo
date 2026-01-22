@@ -1,130 +1,89 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Orbitron, Inter, JetBrains_Mono } from "next/font/google";
+import "./globals.css";
+import { Toaster } from "sonner";
+
+// --- PROVIDERS ---
+import { AuthProvider } from "@/lib/context/auth-context";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SoundProvider } from "@/components/sound-provider";
-import { GlobalAppWrapper } from "@/components/global-app-wrapper";
-import { JsonLd } from "@/components/seo/json-ld";
-import "./globals.css";
-import { GoogleAnalytics } from "@next/third-parties/google";
-import { AdminProvider } from "@/providers/admin-provider";
-import { Toaster } from "sonner";
-import { CyberChat } from "@/components/cyber-chat";
-import { Footer } from "@/components/footer";
-import { RealtimeProvider } from "@/providers/realtime-provider";
-import { SystemContextMenu } from "@/components/ui/system-context-menu";
-import { AchievementsProvider } from "@/hooks/use-achievements";
-import { AchievementsManager } from "@/components/achievements-manager";
+import { RealtimeProvider } from "@/providers/realtime-provider"; 
+import { GlobalAppWrapper } from "@/components/global-app-wrapper"; 
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-  display: "swap",
-});
+// FONTS
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+const orbitron = Orbitron({ subsets: ["latin"], variable: "--font-orbitron" });
+const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL ||
-      (process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : "http://localhost:3000"),
-  ),
+  // ⚡ FIX: Sets the base URL for social images
+  metadataBase: new URL("https://bubblepops.com"),
+
   title: {
-    default: "T7SEN | SEC_OPS // Frontend",
-    template: "%s | T7SEN",
+    default: "BubblePops Zaibatsu // Algorithmic Dominance",
+    template: "%s | BubblePops Zaibatsu",
   },
-  description:
-    "Software Architect and Developer specializing in high-performance web applications, scalable systems, and immersive digital experiences.",
-  keywords: [
-    "Software Architect",
-    "Full Stack Developer",
-    "Next.js",
-    "React",
-    "TypeScript",
-    "Portfolio",
-    "Cyberpunk Design",
-  ],
-  authors: [{ name: "T7SEN", url: "https://t7sen.com" }],
-  creator: "T7SEN",
+  description: "Join the Inner Circle. Control the Signal. The elite Instagram growth cartel.",
+  keywords: ["Instagram Growth", "Zaibatsu", "Cyberpunk", "Marketing", "BubblePops"],
+  authors: [{ name: "Amber", url: "https://bubblepops.com" }],
   openGraph: {
     type: "website",
     locale: "en_US",
-    title: "t7sen | Cyber Developer",
-    description:
-      "Crafting digital reality through code. Specialized in high-performance web graphics and scalable architecture.",
-    siteName: "T7SEN Portfolio",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "t7sen | Cyber Developer",
-    description:
-      "Crafting digital reality through code. Specialized in high-performance web graphics and scalable architecture.",
-    creator: "@T7ME_",
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-    },
+    url: "https://bubblepops.com",
+    title: "BubblePops Zaibatsu",
+    description: "Join the Inner Circle. Control the Signal.",
+    siteName: "BubblePops",
   },
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`}
+        className={`${inter.variable} ${orbitron.variable} ${mono.variable} font-sans bg-black text-white antialiased selection:bg-cyan-500/30 selection:text-cyan-100 overflow-x-hidden`}
       >
-        <RealtimeProvider>
-          <JsonLd />
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="dark"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <SoundProvider>
-              <AchievementsProvider>
-                <SystemContextMenu />
-                <CyberChat />
-                <AchievementsManager />
-                <AdminProvider>
-                  <GlobalAppWrapper>
-                    <div className="flex min-h-screen flex-col">
-                      <main className="flex-1">
-                        {children}
-                        <div
-                          className="h-24 w-full block lg:hidden"
-                          aria-hidden="true"
-                        />
-                      </main>
-                      <Footer />
-                    </div>
-                  </GlobalAppWrapper>
-                  <Toaster position="top-center" richColors />
-                </AdminProvider>
-              </AchievementsProvider>
-            </SoundProvider>
-          </ThemeProvider>
-        </RealtimeProvider>
+        {/* 1. THEME PROVIDER */}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem={false}
+          disableTransitionOnChange
+        >
+          {/* 2. SOUND ENGINE */}
+          <SoundProvider>
+            {/* 3. AUTHENTICATION */}
+            <AuthProvider>
+              {/* 4. REALTIME (Ghost Mode) */}
+              <RealtimeProvider>
+                
+                {/* 5. VISUAL WRAPPER */}
+                <GlobalAppWrapper>
+                  {children}
+                </GlobalAppWrapper>
+
+                {/* 6. TOASTS */}
+                <Toaster 
+                  position="bottom-right" 
+                  toastOptions={{
+                    style: {
+                      background: 'rgba(0,0,0,0.8)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      color: 'white',
+                      fontFamily: 'var(--font-mono)',
+                      backdropFilter: 'blur(10px)'
+                    }
+                  }} 
+                />
+
+              </RealtimeProvider>
+            </AuthProvider>
+          </SoundProvider>
+        </ThemeProvider>
       </body>
-      {process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID && (
-        <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID} />
-      )}
     </html>
   );
 }

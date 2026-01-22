@@ -3,8 +3,6 @@
 import React, { useRef, useState, useEffect } from "react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
-import { useSfx } from "@/hooks/use-sfx";
-import { Logo } from "@/components/ui/logo";
 
 interface PreloaderProps {
   contentLoaded: boolean;
@@ -12,325 +10,85 @@ interface PreloaderProps {
 
 const LOADING_PHASES = [
   "INITIALIZING_CORE",
-  "LOADING_MODULES",
-  "VERIFYING_INTEGRITY",
   "ESTABLISHING_UPLINK",
+  "VERIFYING_CREDENTIALS",
   "DECRYPTING_ASSETS",
   "SYSTEM_READY",
 ];
 
 export function Preloader({ contentLoaded }: PreloaderProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const logoWrapperRef = useRef<HTMLDivElement>(null);
-  const uiRef = useRef<HTMLDivElement>(null);
-  const bgRef = useRef<HTMLDivElement>(null);
-
   const [progress, setProgress] = useState(0);
-  const [statusText, setStatusText] = useState(LOADING_PHASES[0]);
   const [isClosed, setIsClosed] = useState(false);
 
-  const { play } = useSfx();
+  // Derived state (Fixes the synchronous setState error)
+  const statusIndex = Math.min(
+    Math.floor((progress / 100) * LOADING_PHASES.length),
+    LOADING_PHASES.length - 1
+  );
+  const statusText = LOADING_PHASES[statusIndex];
 
-  const timelineRef = useRef<gsap.core.Timeline | null>(null);
-  const isExitingRef = useRef(false);
-  const progressRef = useRef(0);
-
-  const contentLoadedRef = useRef(contentLoaded);
   useEffect(() => {
-    contentLoadedRef.current = contentLoaded;
-  }, [contentLoaded]);
-
-  // 1. SIMULATED PROGRESS
-  useEffect(() => {
+    if (contentLoaded) {
+      // Force finish
+      setProgress(100);
+      return;
+    }
+    
     const interval = setInterval(() => {
-      if (contentLoaded) return;
-
-      progressRef.current += Math.random() * 3;
-      if (progressRef.current > 95) progressRef.current = 95;
-
-      setProgress(Math.floor(progressRef.current));
-
-      const phaseIndex = Math.floor(
-        (progressRef.current / 100) * (LOADING_PHASES.length - 1)
-      );
-      setStatusText(LOADING_PHASES[phaseIndex]);
-    }, 150);
+      setProgress((prev) => {
+        // Slow down as we get closer to 90%
+        const next = prev + Math.random() * 5;
+        if (next > 90) return 90; 
+        return next;
+      });
+    }, 100);
 
     return () => clearInterval(interval);
   }, [contentLoaded]);
 
-  useGSAP(
-    () => {
-      const logoWrapper = logoWrapperRef.current;
-      const bg = bgRef.current;
-      const ui = uiRef.current;
-      const container = containerRef.current;
-
-      if (!logoWrapper || !bg || !container || !ui) return;
-
-      // --- EXIT SEQUENCE ---
-      const animateExit = () => {
-        if (isExitingRef.current) return;
-        isExitingRef.current = true;
-
-        if (timelineRef.current) timelineRef.current.kill();
-        gsap.killTweensOf(logoWrapper);
-        gsap.killTweensOf(ui);
-
-        // 1. HIDE NAVBAR LOGO
-        const targetEl = document.getElementById("navbar-logo");
-        if (targetEl) {
-          gsap.set(targetEl, { opacity: 0 });
-        }
-
-        // 2. CAPTURE COORDINATES
-        const startRect = logoWrapper.getBoundingClientRect();
-        const isMobile = window.innerWidth < 768;
-
-        // Default Target
-        let targetRect = {
-          top: 24,
-          left: isMobile ? 24 : 48,
-          width: 32,
-          height: 32,
-        };
-
-        if (targetEl) {
-          const rect = targetEl.getBoundingClientRect();
-          if (rect.width > 0) {
-            targetRect = {
-              top: rect.top,
-              left: rect.left,
-              width: rect.width,
-              height: rect.height,
-            };
-          }
-        }
-
-        // 3. FLIP: LOCK POSITION
-        // We set fixed on the wrapper. The parent 'placeholder' div (see JSX) keeps the layout structure.
-        gsap.set(logoWrapper, {
-          position: "fixed",
-          top: startRect.top,
-          left: startRect.left,
-          width: startRect.width,
-          height: startRect.height,
-          margin: 0,
-          x: 0,
-          y: 0,
-          transform: "none",
-          zIndex: 100,
-        });
-
-        const tl = gsap.timeline({
-          onStart: () => play("success"),
-          onComplete: () => {
-            if (targetEl) gsap.set(targetEl, { opacity: 1 });
-            setIsClosed(true);
-          },
-        });
-
-        // 4. PREP: FILL LOGO & FADE UI (Concurrent)
-        const path = logoWrapper.querySelector(".logo-path");
-        tl.to(path, {
-          fillOpacity: 1,
-          strokeOpacity: 0,
-          duration: 0.4,
-          ease: "power2.out",
-        }).to(ui, { opacity: 0, duration: 0.4, ease: "power2.in" }, "<");
-
-        // 5. THE MOVE
-        tl.to(logoWrapper, {
-          top: targetRect.top,
-          left: targetRect.left,
-          width: targetRect.width,
-          height: targetRect.height,
-          duration: 1.2,
-          ease: "expo.inOut",
-        });
-
-        // 6. CURTAIN REVEAL
-        tl.to(
-          bg,
-          {
-            yPercent: -100,
-            duration: 1.0,
-            ease: "power4.inOut",
-          },
-          "-=0.8"
-        );
-      };
-
-      // --- INTRO ---
-      const path = logoWrapper.querySelector(".logo-path") as SVGPathElement;
-      if (path) {
-        const length = path.getTotalLength();
-        gsap.set(path, {
-          strokeDasharray: length,
-          strokeDashoffset: length,
-          fillOpacity: 0,
-          stroke: "currentColor",
-          strokeWidth: 2,
-        });
-      }
-
+  useGSAP(() => {
+    if (contentLoaded && progress >= 90) {
       const tl = gsap.timeline({
-        onComplete: () => {
-          if (contentLoadedRef.current) {
-            animateExit();
-          } else {
-            // Idle Pulse (Scale only, no layout shift)
-            gsap.to(logoWrapper, {
-              scale: 1.05,
-              duration: 1,
-              repeat: -1,
-              yoyo: true,
-              ease: "sine.inOut",
-            });
-          }
-        },
+        onComplete: () => setIsClosed(true),
+        delay: 0.2,
       });
-      timelineRef.current = tl;
 
-      tl.to(path, {
-        strokeDashoffset: 0,
-        duration: 2.0,
-        ease: "power2.inOut",
+      tl.to(containerRef.current, {
+        yPercent: -100,
+        duration: 0.8,
+        ease: "power4.inOut",
       });
-    },
-    { scope: containerRef }
-  );
+    }
+  }, [contentLoaded, progress]);
 
-  // --- REACTIVE TRIGGER ---
-  useGSAP(
-    () => {
-      if (contentLoaded && timelineRef.current && !isExitingRef.current) {
-        const tl = timelineRef.current;
-
-        setProgress(100);
-        setStatusText("SYSTEM_READY");
-
-        if (tl.isActive()) {
-          tl.timeScale(8.0);
-        } else {
-          // Idle Breakout
-          const logoWrapper = logoWrapperRef.current;
-          const bg = bgRef.current;
-          const ui = uiRef.current;
-
-          if (logoWrapper && bg && ui) {
-            isExitingRef.current = true;
-            gsap.killTweensOf(logoWrapper);
-
-            const targetEl = document.getElementById("navbar-logo");
-            if (targetEl) gsap.set(targetEl, { opacity: 0 });
-
-            const startRect = logoWrapper.getBoundingClientRect();
-            const isMobile = window.innerWidth < 768;
-            let targetRect = {
-              top: 24,
-              left: isMobile ? 24 : 48,
-              width: 32,
-              height: 32,
-            };
-            if (targetEl) {
-              const rect = targetEl.getBoundingClientRect();
-              if (rect.width > 0)
-                targetRect = {
-                  top: rect.top,
-                  left: rect.left,
-                  width: rect.width,
-                  height: rect.height,
-                };
-            }
-
-            gsap.set(logoWrapper, {
-              position: "fixed",
-              top: startRect.top,
-              left: startRect.left,
-              width: startRect.width,
-              height: startRect.height,
-              margin: 0,
-              x: 0,
-              y: 0,
-              transform: "none",
-              zIndex: 100,
-            });
-
-            const exitTl = gsap.timeline({
-              onStart: () => play("success"),
-              onComplete: () => {
-                if (targetEl) gsap.set(targetEl, { opacity: 1 });
-                setIsClosed(true);
-              },
-            });
-
-            const path = logoWrapper.querySelector(".logo-path");
-            exitTl
-              .to(path, { fillOpacity: 1, strokeOpacity: 0, duration: 0.4 })
-              .to(ui, { opacity: 0, duration: 0.4 }, "<");
-
-            exitTl.to(logoWrapper, {
-              top: targetRect.top,
-              left: targetRect.left,
-              width: targetRect.width,
-              height: targetRect.height,
-              duration: 1.2,
-              ease: "expo.inOut",
-            });
-
-            exitTl.to(
-              bg,
-              { yPercent: -100, duration: 1.0, ease: "power4.inOut" },
-              "-=0.8"
-            );
-          }
-        }
-      }
-    },
-    { dependencies: [contentLoaded] }
-  );
+  // Safety fallback
+  useEffect(() => {
+    if (progress === 100 && !isClosed) {
+      const t = setTimeout(() => setIsClosed(true), 2000);
+      return () => clearTimeout(t);
+    }
+  }, [progress, isClosed]);
 
   if (isClosed) return null;
 
   return (
-    // CHANGED: div -> aside, added aria-label
-    <aside
-      aria-hidden="true"
-      aria-label="Startup Sequence"
+    <div
       ref={containerRef}
-      className="fixed inset-0 z-99999 flex items-center justify-center"
+      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black text-white"
     >
-      <div
-        ref={bgRef}
-        className="absolute inset-0 bg-background text-foreground z-0"
-      />
-
-      <div className="relative z-50 flex flex-col items-center gap-10 w-full">
-        <div className="relative flex items-center justify-center h-32 w-auto aspect-[464.22/442.36]">
+      <div className="relative z-10 flex flex-col items-center gap-8 w-64">
+        <div className="w-full h-[2px] bg-white/10 overflow-hidden relative rounded-full">
           <div
-            ref={logoWrapperRef}
-            className="relative flex items-center justify-center w-full h-full text-foreground"
-          >
-            <Logo outline className="w-full h-full" />
-          </div>
+            className="absolute left-0 top-0 h-full bg-cyan-500 shadow-[0_0_10px_#06b6d4] transition-all duration-100 ease-out"
+            style={{ width: `${progress}%` }}
+          />
         </div>
-
-        <div ref={uiRef} className="flex flex-col items-center gap-4 min-w-60">
-          <div className="w-full h-px bg-muted/20 overflow-hidden relative">
-            <div
-              className="absolute left-0 top-0 h-full bg-primary transition-all duration-200 ease-linear shadow-[0_0_15px_rgba(var(--primary),0.5)]"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <div className="flex items-center justify-between w-full text-[10px] font-mono text-muted-foreground tracking-widest">
-            <span className="uppercase animate-pulse">{`> ${statusText}`}</span>
-            <span className="text-foreground font-bold tabular-nums">
-              {progress}%
-            </span>
-          </div>
+        <div className="flex justify-between w-full text-[10px] font-mono tracking-widest text-gray-500">
+          <span>{statusText}</span>
+          <span>{Math.round(progress)}%</span>
         </div>
       </div>
-    </aside>
+    </div>
   );
 }

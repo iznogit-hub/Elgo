@@ -5,27 +5,33 @@ import { cn } from "@/lib/utils";
 
 interface LogoProps extends React.SVGProps<SVGSVGElement> {
   className?: string;
-  outline?: boolean;
+  outline?: boolean; 
 }
 
 export function Logo({ className, outline = false, ...props }: LogoProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 464.22 442.36"
-      // CRITICAL FIX: Always set a fill color, but control visibility with opacity.
-      // This allows GSAP to animate 'fillOpacity' from 0 to 1.
-      fill="currentColor"
-      fillOpacity={outline ? 0 : 1}
-      stroke={outline ? "currentColor" : "none"}
-      strokeWidth={outline ? "20" : "0"}
-      className={cn("h-10 w-auto", className)}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={outline ? "1.5" : "0"}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={cn("w-10 h-10", className)}
       {...props}
     >
-      <polygon
-        className="logo-path"
-        points="464.22 0 464.22 7.43 411.18 73.13 186.22 351.77 113.09 442.36 113.09 325.94 186.22 235.35 317.19 73.13 186.22 73.13 186.22 164.38 113.09 254.97 113.09 73.13 0 73.13 0 0 464.22 0"
+      {/* The Zaibatsu Core (Hexagon) */}
+      <path 
+        d="M12 2L2 7L12 12L22 7L12 2Z" 
+        className={outline ? "" : "fill-cyan-500"} 
+        fillOpacity={outline ? 0 : 0.2}
+        stroke="currentColor" 
       />
+      <path d="M2 17L12 22L22 17" stroke="currentColor" />
+      <path d="M2 7V17" stroke="currentColor" />
+      <path d="M22 7V17" stroke="currentColor" />
+      <path d="M12 12V22" stroke="currentColor" />
     </svg>
   );
 }

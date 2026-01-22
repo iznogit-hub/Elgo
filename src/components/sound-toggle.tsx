@@ -4,21 +4,11 @@ import * as React from "react";
 import { Volume2, VolumeX } from "lucide-react";
 import { useSound } from "@/components/sound-provider";
 import { Button } from "@/components/ui/button";
-import { sendGAEvent } from "@next/third-parties/google";
 
 export function SoundToggle() {
   const { isMuted, toggleMute, play } = useSound();
 
   const handleClick = () => {
-    const newStatus = isMuted ? "unmuted" : "muted";
-
-    // --- TRACKING START ---
-    sendGAEvent("event", "sound_toggle", {
-      event_category: "Preferences",
-      event_label: newStatus,
-    });
-    // --- TRACKING END ---
-
     if (isMuted) {
       toggleMute();
       setTimeout(() => play("click"), 50);
@@ -32,14 +22,13 @@ export function SoundToggle() {
       variant="ghost"
       size="icon"
       onClick={handleClick}
-      className="relative overflow-hidden w-10 h-10 rounded-full hover:bg-muted/50 transition-colors"
+      className="relative overflow-hidden w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 border border-white/5 text-gray-400 hover:text-white transition-colors"
       aria-label={isMuted ? "Unmute sounds" : "Mute sounds"}
     >
-      {/* Conditional Icon Rendering */}
       {isMuted ? (
-        <VolumeX className="h-5 w-5 text-muted-foreground" />
+        <VolumeX className="h-4 w-4" />
       ) : (
-        <Volume2 className="h-5 w-5 text-foreground" />
+        <Volume2 className="h-4 w-4" />
       )}
     </Button>
   );

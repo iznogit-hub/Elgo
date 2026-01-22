@@ -1,48 +1,38 @@
+// src/instrumentation-client.ts
 // This file configures the initialization of Sentry on the client.
-// The added config here will be used whenever a users loads a page in their browser.
-// https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from "@sentry/nextjs";
 
 Sentry.init({
   dsn: "https://1d927523e7a78cfd434339ed1b35883a@o1032877.ingest.us.sentry.io/4510457780633600",
 
-  // Add optional integrations for additional features
   integrations: [
     Sentry.replayIntegration(),
     Sentry.feedbackIntegration({
-      // OPTIONAL: Customize the look to match your site
-      colorScheme: "dark", // Forces dark mode to match your aesthetic
-      triggerLabel: "Report a Bug", // Text on the button
-      formTitle: "System Issue Report", // Title inside the modal
-      submitBtnLabel: "Send Report",
-
-      // Auto-inject the floating button
+      // ZAIBATSU VISUAL PROTOCOLS
+      colorScheme: "dark", 
+      triggerLabel: "REPORT_ANOMALY", // The Button
+      formTitle: "ZAIBATSU_DEBUG_LOG", // The Modal Header
+      submitBtnLabel: "TRANSMIT_LOG", // The Action
+      messagePlaceholder: "Describe the signal interruption...", // The Input
+      
+      // Auto-inject the floating button (Bottom Right)
       autoInject: true,
-
-      // Require email so you can reply to them
       isEmailRequired: true,
     }),
-    // send console.log, console.warn, and console.error calls as logs to Sentry
-    Sentry.consoleLoggingIntegration({ levels: ["log", "warn", "error"] }),
+    // Log console outputs to Sentry for debugging user actions
+    Sentry.consoleLoggingIntegration({ levels: ["error", "warn"] }),
   ],
 
-  // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
-  tracesSampleRate: 1,
-  // Enable logs to be sent to Sentry
+  // Sampling: 100% in Dev, lower this in Prod to save quota
+  tracesSampleRate: 1.0, 
+
+  // Replays: Watch the user's session when they crash
+  replaysSessionSampleRate: 0.1, // Record 10% of all sessions
+  replaysOnErrorSampleRate: 1.0, // Record 100% of sessions with errors
+
   enableLogs: true,
-
-  // Define how likely Replay events are sampled.
-  // This sets the sample rate to be 10%. You may want this to be 100% while
-  // in development and sample at a lower rate in production
-  replaysSessionSampleRate: 0.1,
-
-  // Define how likely Replay events are sampled when an error occurs.
-  replaysOnErrorSampleRate: 1.0,
-
-  // Enable sending user PII (Personally Identifiable Information)
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
-  sendDefaultPii: true,
+  sendDefaultPii: true, // Needed to track User ID vs Crash
 });
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

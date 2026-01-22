@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useSfx } from "@/hooks/use-sfx";
-import { useKonami } from "@/hooks/use-konami";
 import { gsap } from "gsap";
 
 import { Cursor } from "@/components/ui/cursor";
@@ -14,25 +13,15 @@ import { Navbar } from "@/components/navbar";
 import { LoadingContext } from "@/components/loading-context";
 import { TabManager } from "@/components/ui/tab-manager";
 import { SoundPrompter } from "@/components/ui/sound-prompter";
-
-import dynamic from "next/dynamic";
-
-const SnakeTerminal = dynamic(
-  () =>
-    import("@/components/snake/snake-terminal").then(
-      (mod) => mod.SnakeTerminal,
-    ),
-  { ssr: false },
-);
+import { Footer } from "@/components/footer";
 
 export function GlobalAppWrapper({ children }: { children: React.ReactNode }) {
   const [assetsLoaded, setAssetsLoaded] = useState(false);
-  const [isGameOpen, setIsGameOpen] = useState(false);
   const { play } = useSfx();
 
+  // --- 1. HANDLE REDUCED MOTION ---
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-
     const handleMotionChange = (e: MediaQueryListEvent | MediaQueryList) => {
       if (e.matches) {
         gsap.globalTimeline.timeScale(100);
@@ -42,88 +31,52 @@ export function GlobalAppWrapper({ children }: { children: React.ReactNode }) {
         document.documentElement.classList.remove("reduce-motion");
       }
     };
-
     handleMotionChange(mediaQuery);
     mediaQuery.addEventListener("change", handleMotionChange);
     return () => mediaQuery.removeEventListener("change", handleMotionChange);
   }, []);
 
-  // --- GAME LOGIC ---
-  const konamiAction = useCallback(async () => {
-    play("success");
-    setIsGameOpen(true);
-
-    // ✅ FIXED: Dynamic import. Loads only when function runs.
-    const confetti = (await import("canvas-confetti")).default;
-
-    const duration = 3 * 1000;
-    const animationEnd = Date.now() + duration;
-    const defaults = {
-      startVelocity: 30,
-      spread: 360,
-      ticks: 60,
-      zIndex: 99999,
-    };
-    const randomInRange = (min: number, max: number) =>
-      Math.random() * (max - min) + min;
-
-    const interval = setInterval(function () {
-      const timeLeft = animationEnd - Date.now();
-      if (timeLeft <= 0) return clearInterval(interval);
-      const particleCount = 50 * (timeLeft / duration);
-
-      confetti({
-        ...defaults,
-        particleCount,
-        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
-      });
-      confetti({
-        ...defaults,
-        particleCount,
-        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
-      });
-    }, 250);
-  }, [play]);
-
-  useKonami(konamiAction);
-
+  // --- 2. ASSET LOADING LOGIC ---
   useEffect(() => {
-    const handleOpenGame = () => {
-      setIsGameOpen(true);
-    };
-    window.addEventListener("open-snake-game", handleOpenGame);
-    return () => window.removeEventListener("open-snake-game", handleOpenGame);
-  }, []);
-
-  useEffect(() => {
+    // Standard Load Time
     const timer = setTimeout(() => {
       setAssetsLoaded(true);
+    }, 2500);
+
+    // ⚡ SAFETY FALLBACK: If anything crashes/hangs, force load after 4s
+    const safetyTimer = setTimeout(() => {
+      setAssetsLoaded(true);
     }, 4000);
-    return () => clearTimeout(timer);
+
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(safetyTimer);
+    };
   }, []);
 
-  const handleAvatarLoad = () => setAssetsLoaded(true);
-
   return (
-    <>
+    <LoadingContext.Provider value={{ assetsLoaded }}>
+      {/* System Overlay Elements */}
       <Cursor />
       <Background />
       <Preloader contentLoaded={assetsLoaded} />
-      <SoundPrompter />
+      
+      {/* Only show Prompter after load to prevent audio race conditions */}
+      {assetsLoaded && <SoundPrompter />}
+      
       <CommandMenu />
       <Navbar />
       <TabManager />
 
-      {isGameOpen && <SnakeTerminal onClose={() => setIsGameOpen(false)} />}
+      {/* 3D Avatar (Bottom Left) */}
+      <AvatarImage startAnimation={assetsLoaded} />
 
-      <AvatarImage
-        onImageLoad={handleAvatarLoad}
-        startAnimation={assetsLoaded}
-      />
+      {/* Main Page Content (Fade In) */}
+      <div className={assetsLoaded ? "opacity-100 transition-opacity duration-1000" : "opacity-0"}>
+          {children}
+      </div>
 
-      <LoadingContext.Provider value={{ assetsLoaded }}>
-        {children}
-      </LoadingContext.Provider>
-    </>
+      <Footer />
+    </LoadingContext.Provider>
   );
 }

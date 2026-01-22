@@ -3,11 +3,9 @@
 import { useEffect, useState } from "react";
 import { Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAchievements } from "@/hooks/use-achievements";
 
 export function Ping() {
   const [latency, setLatency] = useState<number | null>(null);
-  const { unlock } = useAchievements();
 
   useEffect(() => {
     const measure = async () => {
@@ -34,17 +32,16 @@ export function Ping() {
 
   return (
     <div
-      onClick={() => unlock("ECHO_LOCATOR")}
       className="group flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground/60 transition-colors hover:text-foreground cursor-pointer select-none"
       title="Server Latency"
     >
       <Activity
         className={cn(
-          "h-3 w-3 opacity-50 transition-all group-hover:opacity-100",
-          isLaggy ? "text-yellow-500" : "text-emerald-500",
+          "h-3 w-3",
+          isLaggy ? "text-yellow-500" : "text-green-500"
         )}
       />
-      <span className="tabular-nums">{latency}ms</span>
+      <span>{latency}ms</span>
     </div>
   );
 }

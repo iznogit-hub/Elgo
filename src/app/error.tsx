@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import { RefreshCcw, AlertOctagon, Terminal } from "lucide-react";
-import * as Sentry from "@sentry/nextjs";
-
+import { Terminal, RefreshCcw, Power } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HackerText } from "@/components/ui/hacker-text";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
+import { useSfx } from "@/hooks/use-sfx";
+import * as Sentry from "@sentry/nextjs";
 
 export default function ErrorBoundary({
   error,
@@ -15,60 +15,63 @@ export default function ErrorBoundary({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { play } = useSfx();
+
   useEffect(() => {
+    // Log to Sentry
     Sentry.captureException(error);
+    console.error(error);
   }, [error]);
 
   return (
-    <div className="flex min-h-[50vh] flex-col items-center justify-center gap-8 p-4 text-center md:p-12">
-      {/* Icon Graphic */}
-      <div className="relative">
-        <div className="absolute inset-0 animate-ping rounded-full bg-red-500/20 duration-1000" />
-        <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-background border-2 border-red-500 shadow-[0_0_40px_-10px_rgba(239,68,68,0.5)]">
-          <AlertOctagon className="h-10 w-10 text-red-500" />
-        </div>
-      </div>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-black text-red-500 font-mono p-4 overflow-hidden relative">
+      
+      {/* Glitch Overlay */}
+      <div className="absolute inset-0 bg-[url('https://media.giphy.com/media/oEI9uBYSzLpBK/giphy.gif')] opacity-[0.03] pointer-events-none mix-blend-screen" />
 
-      <div className="space-y-2">
-        <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl text-red-500">
-          <HackerText text="SYSTEM_MALFUNCTION" />
-        </h2>
-        <p className="text-muted-foreground font-mono text-sm uppercase tracking-widest">
-          ERR_CODE: {error.digest || "UNKNOWN_EXCEPTION"}
-        </p>
-      </div>
-
-      {/* Mock Terminal Output */}
-      <div className="w-full max-w-lg overflow-hidden rounded-lg border border-red-900/50 bg-black/80 font-mono text-xs text-red-400 shadow-inner">
-        <div className="flex items-center gap-2 border-b border-red-900/50 bg-red-950/20 px-4 py-2">
-          <Terminal className="h-3 w-3" />
-          <span className="opacity-70">panic.log</span>
+      <div className="border-2 border-red-600 p-8 md:p-12 max-w-2xl w-full bg-black/90 backdrop-blur-xl shadow-[0_0_50px_rgba(220,38,38,0.2)] relative z-10">
+        
+        <div className="flex items-center gap-4 mb-8 border-b border-red-900/50 pb-4">
+          <Terminal className="h-8 w-8 text-red-500" />
+          <h2 className="text-3xl font-bold tracking-widest font-orbitron text-white">
+            <HackerText text="SYSTEM_MALFUNCTION" />
+          </h2>
         </div>
-        <ScrollArea className="h-32 w-full p-4 text-left opacity-80">
-          <p className="mb-2 text-red-500 font-bold">
-            &gt; FATAL_EXCEPTION_OCCURRED
-          </p>
-          <p>&gt; {error.message}</p>
-          {error.stack && (
-            <p className="mt-2 text-[10px] text-red-500/50 whitespace-pre-wrap">
-              {error.stack.split("\n").slice(0, 3).join("\n")}...
-            </p>
+
+        <div className="bg-red-950/20 p-4 border-l-4 border-red-600 mb-8 font-mono text-sm">
+          <p className="opacity-70 mb-2 text-xs uppercase tracking-widest"> DIAGNOSTIC_TOOL_RUNNING...</p>
+          <p className="text-white font-bold break-all">FATAL EXCEPTION: {error.message || "Unknown Error"}</p>
+          {error.digest && (
+             <p className="text-red-400 text-xs mt-2">HASH: {error.digest}</p>
           )}
-          <p className="mt-2 animate-pulse text-red-500">
-            &gt; WAITING_FOR_INPUT_
-          </p>
-        </ScrollArea>
-      </div>
+        </div>
 
-      <div className="flex gap-4">
-        <Button
-          onClick={reset}
-          variant="default"
-          className="bg-red-600 text-white hover:bg-red-700 font-mono shadow-[0_0_20px_rgba(220,38,38,0.4)]"
-        >
-          <RefreshCcw className="mr-2 h-4 w-4" />
-          REBOOT_SYSTEM
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <MagneticWrapper>
+            <Button
+              onClick={() => { play("click"); reset(); }}
+              onMouseEnter={() => play("hover")}
+              className="w-full bg-red-600 text-white font-bold hover:bg-red-500 h-12"
+            >
+              <RefreshCcw className="w-4 h-4 mr-2" /> ATTEMPT_RECOVERY
+            </Button>
+          </MagneticWrapper>
+
+          <MagneticWrapper>
+            <Button
+              onClick={() => { play("click"); window.location.href = "/"; }}
+              onMouseEnter={() => play("hover")}
+              variant="outline"
+              className="w-full border-red-600 text-red-500 hover:bg-red-900/20 h-12"
+            >
+              <Power className="w-4 h-4 mr-2" /> EMERGENCY_REBOOT
+            </Button>
+          </MagneticWrapper>
+        </div>
+
+        <div className="absolute bottom-2 right-4 text-[10px] opacity-40">
+           SYS_HALT_CODE: 0xDEAD_BEEF
+        </div>
       </div>
     </div>
   );

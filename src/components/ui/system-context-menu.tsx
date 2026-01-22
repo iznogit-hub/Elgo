@@ -4,21 +4,19 @@ import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   RotateCw,
-  ArrowLeft,
   ArrowRight,
-  Copy,
+  Shield,
+  LayoutDashboard,
+  LogOut,
   Terminal,
   Minimize2,
-  Share2,
-  Printer, // ✅ NEW
-  Activity, // ✅ NEW
-  Send, // ✅ NEW
   type LucideIcon,
 } from "lucide-react";
 import { useSfx } from "@/hooks/use-sfx";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
-import { useAchievements } from "@/hooks/use-achievements";
+import { useAuth } from "@/lib/context/auth-context";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 interface MenuPosition {
   x: number;
@@ -28,10 +26,10 @@ interface MenuPosition {
 export function SystemContextMenu() {
   const { play } = useSfx();
   const router = useRouter();
+  const { userData } = useAuth();
   const [isVisible, setIsVisible] = useState(false);
   const [position, setPosition] = useState<MenuPosition>({ x: 0, y: 0 });
   const menuRef = useRef<HTMLDivElement>(null);
-  const { unlock } = useAchievements();
 
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => {
@@ -42,12 +40,11 @@ export function SystemContextMenu() {
       let x = pageX;
       let y = pageY;
 
+      // Prevent overflow
       if (menuRef.current) {
-        const width = 200;
-        // Increased height again to accommodate new items
-        const height = 400;
-        if (x + width > window.innerWidth) x -= width;
-        if (y + height > window.innerHeight) y -= height;
+        const { offsetWidth, offsetHeight } = menuRef.current;
+        if (x + offsetWidth > window.innerWidth) x -= offsetWidth;
+        if (y + offsetHeight > window.innerHeight) y -= offsetHeight;
       }
 
       setPosition({ x, y });
@@ -55,22 +52,19 @@ export function SystemContextMenu() {
     };
 
     const handleClick = () => setIsVisible(false);
-    const handleScroll = () => setIsVisible(false);
 
-    document.addEventListener("contextmenu", handleContextMenu);
-    document.addEventListener("click", handleClick);
-    document.addEventListener("scroll", handleScroll);
+    window.addEventListener("contextmenu", handleContextMenu);
+    window.addEventListener("click", handleClick);
 
     return () => {
-      document.removeEventListener("contextmenu", handleContextMenu);
-      document.removeEventListener("click", handleClick);
-      document.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("contextmenu", handleContextMenu);
+      window.removeEventListener("click", handleClick);
     };
   }, [play]);
 
-  const handleAction = (action: () => void) => {
-    action();
-    setIsVisible(false);
+  const handleLogout = async () => {
+    await signOut(auth);
+    window.location.href = "/";
   };
 
   if (!isVisible) return null;
@@ -78,118 +72,71 @@ export function SystemContextMenu() {
   return (
     <div
       ref={menuRef}
-      className="fixed z-9999 min-w-52 rounded-md border border-border/50 bg-background/90 p-1.5 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-100"
       style={{ top: position.y, left: position.x }}
+      className="fixed z-[9999] min-w-[200px] overflow-hidden rounded-lg border border-white/10 bg-black/90 p-1.5 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-100"
     >
-      <div className="flex flex-col gap-1">
-        {/* Header */}
-        <div className="px-2 py-1.5 text-[10px] font-mono font-bold text-muted-foreground/50 border-b border-border/30 mb-1 select-none">
-          SYS_OP_MENU_V3
-        </div>
+      <div className="px-2 py-1.5 text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest border-b border-white/5 mb-1 flex justify-between items-center">
+        <span>ZAIBATSU_OS</span>
+        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+      </div>
 
-        {/* Browser Navigation */}
-        <ContextItem
-          icon={ArrowLeft}
-          label="Back"
-          shortcut="Alt+Left"
-          onClick={() => handleAction(() => router.back())}
-        />
-        <ContextItem
-          icon={ArrowRight}
-          label="Forward"
-          shortcut="Alt+Right"
-          onClick={() => handleAction(() => router.forward())}
-        />
+      <div className="flex flex-col gap-0.5">
         <ContextItem
           icon={RotateCw}
-          label="Reload System"
-          shortcut="Ctrl+R"
-          onClick={() => handleAction(() => window.location.reload())}
+          label="Force Reload"
+          shortcut="⌘R"
+          onClick={() => window.location.reload()}
         />
+        
+        {userData ? (
+          <>
+            <div className="h-px bg-white/10 my-1" />
+            <ContextItem
+              icon={LayoutDashboard}
+              label="Open Launcher"
+              onClick={() => router.push("/dashboard")}
+            />
+            <ContextItem
+              icon={LogOut}
+              label="Disconnect"
+              destructive
+              onClick={handleLogout}
+            />
+          </>
+        ) : (
+          <ContextItem
+            icon={ArrowRight}
+            label="Initialize Session"
+            onClick={() => router.push("/auth/login")}
+          />
+        )}
 
-        <div className="h-px bg-border/40 my-1" />
+        <div className="h-px bg-white/10 my-1" />
 
-        {/* ✅ NEW: App Shortcuts */}
-        <ContextItem
-          icon={Activity}
-          label="Diagnostics"
-          onClick={() => handleAction(() => router.push("/dashboard"))}
-        />
-        <ContextItem
-          icon={Send}
-          label="Establish Uplink"
-          onClick={() => handleAction(() => router.push("/contact"))}
-        />
-
-        <div className="h-px bg-border/40 my-1" />
-
-        {/* Actions */}
-        <ContextItem
-          icon={Share2}
-          label="Share Node"
-          onClick={() =>
-            handleAction(async () => {
-              if (navigator.share) {
-                try {
-                  await navigator.share({
-                    title: "T7SEN | Portfolio",
-                    text: "Check out this high-performance cyber portfolio.",
-                    url: window.location.href,
-                  });
-                } catch (err) {
-                  console.error("Share failed:", err);
-                }
-              } else {
-                navigator.clipboard.writeText(window.location.href);
-                toast.success("Link copied to clipboard");
-              }
-            })
-          }
-        />
-
-        {/* Print/Save PDF */}
-        <ContextItem
-          icon={Printer}
-          label="Print Manifest"
-          shortcut="Ctrl+P"
-          onClick={() => handleAction(() => window.print())}
-        />
-
-        <ContextItem
-          icon={Copy}
-          label="Copy Link"
-          onClick={() =>
-            handleAction(() => {
-              navigator.clipboard.writeText(window.location.href);
-              toast.success("Link copied to clipboard");
-            })
-          }
-        />
         <ContextItem
           icon={Terminal}
-          label="Inspect Source"
-          onClick={() =>
-            handleAction(() => {
-              unlock("SOURCE_HUNTER");
-              window.open("https://github.com/t7sen/portfolio", "_blank");
-            })
-          }
+          label="System Status"
+          onClick={() => window.open("/api/health", "_blank")}
+        />
+        
+        <ContextItem
+          icon={Shield}
+          label="Support Uplink"
+          onClick={() => window.open("mailto:support@bubblepops.com")}
         />
 
-        <div className="h-px bg-border/40 my-1" />
+        <div className="h-px bg-white/10 my-1" />
 
         <ContextItem
           icon={Minimize2}
           label="Close Menu"
           onClick={() => setIsVisible(false)}
-          destructive
         />
       </div>
     </div>
   );
 }
 
-// Helper Subcomponent
 function ContextItem({
   icon: Icon,
   label,
@@ -214,18 +161,18 @@ function ContextItem({
       }}
       onMouseEnter={() => play("hover")}
       className={cn(
-        "group flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-xs transition-colors select-none",
+        "group flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs transition-colors select-none font-mono",
         destructive
-          ? "text-red-500 hover:bg-red-500/10 focus:bg-red-500/10"
-          : "text-foreground hover:bg-primary/10 hover:text-primary focus:bg-primary/10",
+          ? "text-red-500 hover:bg-red-900/20 hover:text-red-400"
+          : "text-gray-300 hover:bg-white/10 hover:text-white"
       )}
     >
       <div className="flex items-center gap-2">
-        <Icon className="h-3.5 w-3.5 opacity-70 group-hover:opacity-100" />
-        <span className="font-medium">{label}</span>
+        <Icon className="h-3.5 w-3.5" />
+        <span>{label}</span>
       </div>
       {shortcut && (
-        <span className="ml-4 font-mono text-[9px] text-muted-foreground/50">
+        <span className="text-[9px] text-gray-600 group-hover:text-gray-400">
           {shortcut}
         </span>
       )}

@@ -1,57 +1,55 @@
 import { describe, it, expect } from "vitest";
-import { contactSchema, newsletterSchema } from "./validators";
+import { loginSchema, signupSchema, scoutSchema } from "./validators";
 
-describe("Validators", () => {
-  describe("newsletterSchema", () => {
-    it("accepts a valid email", () => {
-      const result = newsletterSchema.safeParse({ email: "cyber@t7sen.com" });
+describe("Zaibatsu Validation Protocols", () => {
+  
+  // --- 1. AUTH TESTS ---
+  describe("signupSchema", () => {
+    it("accepts valid operative credentials", () => {
+      const result = signupSchema.safeParse({
+        username: "CyberWolf",
+        email: "operative@zaibatsu.com",
+        password: "secure_password_123"
+      });
       expect(result.success).toBe(true);
     });
 
-    it("rejects an invalid email", () => {
-      const result = newsletterSchema.safeParse({ email: "not-an-email" });
+    it("rejects invalid codenames (special chars)", () => {
+      const result = signupSchema.safeParse({
+        username: "Cyber@Wolf!", // Invalid chars
+        email: "op@test.com",
+        password: "password"
+      });
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].message).toBe(
-          "Please enter a valid email address."
-        );
+        expect(result.error.issues[0].message).toContain("SYNTAX_ERROR");
       }
     });
   });
 
-  describe("contactSchema", () => {
-    it("validates a correct form", () => {
-      const validData = {
-        name: "T7SEN",
-        email: "hello@t7sen.com",
-        message: "I would like to hire you for a project.",
-      };
-      const result = contactSchema.safeParse(validData);
+  // --- 2. HUNTER TESTS ---
+  describe("scoutSchema", () => {
+    it("accepts valid Instagram targets", () => {
+      const result = scoutSchema.safeParse({ 
+        url: "https://www.instagram.com/reel/C3xk9/" 
+      });
       expect(result.success).toBe(true);
     });
 
-    it("rejects short names", () => {
-      const result = contactSchema.safeParse({
-        name: "A",
-        email: "valid@email.com",
-        message: "Valid message length here.",
+    it("rejects non-Instagram signals (e.g. TikTok)", () => {
+      const result = scoutSchema.safeParse({ 
+        url: "https://tiktok.com/@user/video/123" 
       });
       expect(result.success).toBe(false);
-      // @ts-expect-error - we know it failed
-      expect(result.error.issues[0].message).toContain("at least 2 characters");
+      if (!result.success) {
+        expect(result.error.issues[0].message).toContain("TARGET_MISMATCH");
+      }
     });
 
-    it("rejects short messages", () => {
-      const result = contactSchema.safeParse({
-        name: "Valid Name",
-        email: "valid@email.com",
-        message: "Hi",
-      });
+    it("rejects malformed URLs", () => {
+      const result = scoutSchema.safeParse({ url: "not_a_url" });
       expect(result.success).toBe(false);
-      // @ts-expect-error - we know it failed
-      expect(result.error.issues[0].message).toContain(
-        "at least 10 characters"
-      );
     });
   });
+
 });

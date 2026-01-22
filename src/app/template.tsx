@@ -20,7 +20,7 @@ export default function Template({ children }: { children: React.ReactNode }) {
     <div
       id="page-transition-container"
       ref={containerRef}
-      // ⚡ APPLY CLASS: This is stronger than inline styles because of !important in CSS
+      // ⚡ APPLY CLASS: The CSS class 'invisible-hold' (defined in globals.css) prevents flash of unstyled content
       className="w-full origin-top will-change-transform invisible-hold"
     >
       {children}
