@@ -22,7 +22,7 @@ import { TransitionLink } from "@/components/ui/transition-link";
 import { useSfx } from "@/hooks/use-sfx";
 
 // ⚡ IMPORT 3D VIEWER (Will use 2D fallback if model missing)
-import OperativeViewer from "@/components/canvas/operative-viewer";
+import OperativeViewer from "@/components/canvas/video-stage";
 
 // 1. THE 15 WORLDS CONFIG
 const WORLDS = [

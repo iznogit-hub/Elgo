@@ -6,13 +6,12 @@ const bundleAnalyzer = withBundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
 });
 
-// ⚡ STRICT CSP POLICY (Fixed Formatting)
-// Note: Each directive MUST end with a semicolon (;).
+// ⚡ SYSTEM OVERRIDE: Expanded CSP to allow direct GitHub asset fetching
 const cspHeader = `
     default-src 'self';
     script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com https://va.vercel-scripts.com https://www.google-analytics.com;
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-    img-src 'self' blob: data: https://*.googleusercontent.com https://*.githubusercontent.com https://images.unsplash.com https://cdn.discordapp.com https://cdn.simpleicons.org https://media.giphy.com;
+    img-src 'self' blob: data: https://*.googleusercontent.com https://*.githubusercontent.com https://images.unsplash.com https://cdn.discordapp.com https://cdn.simpleicons.org https://media.giphy.com https://raw.githack.com https://raw.githubusercontent.com;
     font-src 'self' data: https://fonts.gstatic.com;
     object-src 'none';
     base-uri 'self';
@@ -20,7 +19,7 @@ const cspHeader = `
     frame-ancestors 'none';
     upgrade-insecure-requests;
     worker-src 'self' blob:;
-    connect-src 'self' https://*.sentry.io https://firebase.googleapis.com https://firebaseinstallations.googleapis.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.google-analytics.com https://*.google-analytics.com https://api.lanyard.rest wss://api.lanyard.rest;
+    connect-src 'self' https://*.sentry.io https://firebase.googleapis.com https://firebaseinstallations.googleapis.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.google-analytics.com https://*.google-analytics.com https://api.lanyard.rest wss://api.lanyard.rest https://raw.githack.com https://raw.githubusercontent.com;
 `;
 
 const nextConfig: NextConfig = {
@@ -35,13 +34,6 @@ const nextConfig: NextConfig = {
       "cobe",
     ],
   },
-
-  cacheComponents: true,
-
-  env: {
-    NEXT_PUBLIC_DEPLOY_TIME: new Date().toISOString(),
-  },
-
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "cdn.discordapp.com" },
@@ -51,36 +43,20 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "graph.instagram.com" },
       { protocol: "https", hostname: "scontent.cdninstagram.com" },
-      { protocol: "https", hostname: "media.giphy.com" }, // Added for Next.js Image component
+      { protocol: "https", hostname: "media.giphy.com" },
+      { protocol: "https", hostname: "raw.githubusercontent.com" },
     ],
   },
-
   async headers() {
     return [
       {
         source: "/:path*",
         headers: [
-          {
-            key: "X-Content-Type-Options",
-            value: "nosniff",
-          },
-          {
-            key: "X-Frame-Options",
-            value: "DENY",
-          },
-          {
-            key: "Referrer-Policy",
-            value: "strict-origin-when-cross-origin",
-          },
-          {
-            key: "Content-Security-Policy",
-            // ⚡ CLEANUP: Removes newlines to prevent header errors
-            value: cspHeader.replace(/\s{2,}/g, " ").trim(),
-          },
-          {
-            key: "Permissions-Policy",
-            value: "camera=(), microphone=(self), geolocation=(), browsing-topics=()",
-          },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Content-Security-Policy", value: cspHeader.replace(/\s{2,}/g, " ").trim() },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(self), geolocation=(), browsing-topics=()" },
         ],
       },
     ];

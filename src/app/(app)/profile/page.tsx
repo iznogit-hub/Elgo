@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input"; // Added Input
 import { Background } from "@/components/ui/background";
 import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
-import OperativeViewer from "@/components/canvas/operative-viewer";
+import OperativeViewer from "@/components/canvas/video-stage";
 import { useSfx } from "@/hooks/use-sfx";
 
 const NICHES = [
