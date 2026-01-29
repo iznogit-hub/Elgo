@@ -1,23 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useAuth } from "@/lib/context/auth-context";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { collection, getDocs, doc, updateDoc, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useAuth } from "@/lib/context/auth-context";
+import { 
+  ShieldAlert, Search, CheckCircle2, XCircle, 
+  Crown, DollarSign, Instagram, RefreshCw, Terminal, 
+  Lock, AlertTriangle, Loader2, ArrowLeft, Activity,
+  Users, UserMinus, ShieldCheck
+} from "lucide-react";
+import { toast } from "sonner";
+
+// 🧪 ZAIBATSU SYSTEM UI
 import { HackerText } from "@/components/ui/hacker-text";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Background } from "@/components/ui/background";
-import { 
-  ShieldAlert, Search, CheckCircle2, XCircle, 
-  Crown, DollarSign, Instagram, RefreshCw, Terminal, 
-  Lock, AlertTriangle, Loader2
-} from "lucide-react";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
+import { TransitionLink } from "@/components/ui/transition-link";
+import { SoundPrompter } from "@/components/ui/sound-prompter";
+import VideoStage from "@/components/canvas/video-stage";
 import { useSfx } from "@/hooks/use-sfx";
+import { cn } from "@/lib/utils";
 
-// TYPE DEFINITION
+// TYPE DEFINITION (Preserved)
 interface AdminUserView {
   uid: string;
   username: string;
@@ -39,23 +47,22 @@ export default function AdminDashboard() {
   const [processing, setProcessing] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // ⚡ ADMIN GATEKEEPER
-  // Replace "admin" with your actual admin tier or specific email check
-  const isAdmin = userData?.email === "iznoatwork@gmail.com"; // Fallback for dev
+  // ⚡ ADMIN GATEKEEPER (Preserved Logic)
+  const isAdmin = userData?.email === "iznoatwork@gmail.com"; 
 
-  // 1. SECURITY CHECK
+  // 1. SECURITY PROTOCOL (Preserved)
   useEffect(() => {
     if (!authLoading) {
         if (!userData) {
             router.push("/auth/login");
         } else if (!isAdmin) {
-            toast.error("UNAUTHORIZED ACCESS DETECTED. INCIDENT LOGGED.");
+            toast.error("UNAUTHORIZED_ACCESS_DETECTED. INCIDENT_LOGGED.");
             router.push("/dashboard");
         }
     }
   }, [isAdmin, authLoading, router, userData]);
 
-  // 2. FETCH DATA
+  // 2. FETCH INTEL (Preserved)
   const fetchOperatives = async () => {
     play("click");
     setLoading(true);
@@ -63,34 +70,29 @@ export default function AdminDashboard() {
       const q = query(collection(db, "users")); 
       const querySnapshot = await getDocs(q);
       const operatives: AdminUserView[] = [];
-      
       querySnapshot.forEach((docSnap) => {
-        // Ensure UID is captured correctly
         operatives.push({ ...docSnap.data(), uid: docSnap.id } as AdminUserView);
       });
-      
       setUsers(operatives);
       play("success");
     } catch (error) {
       play("error");
-      toast.error("DATABASE CONNECTION FAILED.");
+      toast.error("DATABASE_CONNECTION_FAILED");
     } finally {
       setLoading(false);
     }
   };
 
-  // Initial Fetch
   useEffect(() => {
     if (isAdmin) fetchOperatives();
   }, [isAdmin]);
 
-  // --- ACTIONS ---
+  // --- ACTIONS (All details preserved) ---
 
   const handleApprovePayment = async (uid: string, username: string) => {
     if (!confirm(`CONFIRM: Receive ₹49,999 from ${username}?`)) return;
-    play("click");
+    play("success");
     setProcessing(uid);
-
     try {
       const ref = doc(db, "users", uid);
       await updateDoc(ref, {
@@ -98,11 +100,11 @@ export default function AdminDashboard() {
         bubblePoints: 5000, 
         status: "active"
       });
-      toast.success(`${username} PROMOTED TO WARLORD.`);
+      toast.success(`${username} PROMOTED TO INNER_CIRCLE.`);
       await fetchOperatives(); 
     } catch (e) {
       play("error");
-      toast.error("UPDATE FAILED.");
+      toast.error("PROMOTION_FAILED");
     } finally {
       setProcessing(null);
     }
@@ -117,11 +119,11 @@ export default function AdminDashboard() {
         metaWhitelisted: true,
         status: "active"
       });
-      toast.success(`${username} SIGNALED FOR CONNECTION.`);
+      toast.success(`${username} SIGNALED FOR META CONNECTION.`);
       await fetchOperatives();
     } catch (e) {
       play("error");
-      toast.error("UPDATE FAILED.");
+      toast.error("WHITELIST_UPDATE_FAILED");
     } finally {
       setProcessing(null);
     }
@@ -133,191 +135,194 @@ export default function AdminDashboard() {
     setProcessing(uid);
     try {
       await updateDoc(doc(db, "users", uid), { status: "banned" });
-      toast.success("USER PURGED.");
+      toast.success("OPERATIVE_PURGED.");
       await fetchOperatives();
     } catch (e) {
-      toast.error("ERROR.");
+      toast.error("PURGE_FAILED");
     } finally {
       setProcessing(null);
     }
   };
 
-  // FILTER LOGIC
   const filteredUsers = users.filter(u => 
     u.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Render Nothing while checking auth to prevent flicker
   if (authLoading || (!isAdmin && !loading)) return null;
 
   return (
-    <div className="min-h-screen bg-black text-white p-4 md:p-8 pb-24 font-mono relative overflow-x-hidden selection:bg-red-900 selection:text-white">
+    <main className="relative min-h-screen bg-black text-white selection:bg-red-500/30 font-sans overflow-hidden flex flex-col">
       
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <Background />
-      </div>
+      {/* 📽️ THE THEATER: Admin Console Background */}
+      <VideoStage src="/video/main.mp4" overlayOpacity={0.6} />
+      <Background /> 
+      <SoundPrompter />
 
-      {/* HEADER */}
-      <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center mb-12 border-b border-red-900/30 pb-6 gap-6">
-        <div>
-          <div className="flex items-center gap-2 text-red-500 mb-2 animate-pulse">
-            <ShieldAlert className="w-5 h-5" />
-            <span className="font-bold tracking-[0.3em] text-xs">GOD_MODE // ADMIN_ACCESS</span>
-          </div>
-          <h1 className="text-4xl font-black text-white font-orbitron">
-            <HackerText text="OPERATIONS COMMAND" />
-          </h1>
-        </div>
-        
-        <div className="flex gap-4 w-full md:w-auto">
-          <Button 
-            onClick={fetchOperatives} 
-            variant="outline" 
-            className="border-red-900/50 hover:bg-red-950/20 text-red-400 font-bold"
-            onMouseEnter={() => play("hover")}
+      {/* 📱 TOP HUD NAVIGATION */}
+      <nav className="fixed top-0 left-0 right-0 z-[100] p-6 pointer-events-none">
+        <div className="max-w-md mx-auto flex items-center justify-between pointer-events-auto">
+          <TransitionLink 
+            href="/dashboard"
+            className="w-10 h-10 border border-red-500/20 bg-black/40 backdrop-blur-md flex items-center justify-center rounded-xs"
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} /> REFRESH INTEL
-          </Button>
+            <ArrowLeft size={18} className="text-red-500" />
+          </TransitionLink>
+          
+          <div className="px-4 py-1.5 bg-red-500/10 border border-red-500/20 backdrop-blur-md rounded-full flex items-center gap-2">
+            <ShieldAlert size={12} className="text-red-500 animate-pulse" />
+            <span className="text-[9px] font-mono font-black tracking-widest uppercase text-red-500">God_Mode: Active</span>
+          </div>
         </div>
-      </div>
+      </nav>
 
-      {/* SEARCH */}
-      <div className="relative z-10 mb-8 max-w-xl">
-        <div className="relative group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-red-500 transition-colors" />
-          <Input 
-            placeholder="Search Operative by Name or Email..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="bg-black/50 border-white/10 pl-12 h-14 text-white focus:border-red-500 font-mono"
-            onFocus={() => play("hover")}
-          />
-        </div>
-      </div>
-
-      {/* --- SECTION 1: PENDING WHITELIST (Priority) --- */}
-      <section className="relative z-10 mb-16">
-        <div className="flex items-center gap-3 mb-6">
-            <Instagram className="w-5 h-5 text-yellow-500" /> 
-            <h3 className="text-xl font-bold font-orbitron text-yellow-500">PENDING META WHITELIST</h3>
-            <span className="text-[10px] bg-yellow-900/20 border border-yellow-600/30 px-2 py-1 rounded text-yellow-500 font-bold animate-pulse">
-                ACTION REQUIRED
-            </span>
-        </div>
+      {/* 🛠️ ADMIN INTERFACE */}
+      <section className="relative z-50 flex-1 w-full max-w-md mx-auto flex flex-col pt-28 px-6 pb-28 space-y-8 overflow-y-auto no-scrollbar">
         
-        <div className="grid gap-4">
-          {filteredUsers.filter(u => u.tier === "inner_circle" && !u.metaWhitelisted).map(user => (
-            <div key={user.uid} className="bg-yellow-950/10 border border-yellow-500/30 p-6 rounded-xl flex flex-col md:flex-row justify-between items-center gap-6 group hover:bg-yellow-950/20 transition-colors">
-              <div className="flex items-center gap-4 w-full md:w-auto">
-                <div className="w-12 h-12 bg-yellow-900/20 rounded-full flex items-center justify-center border border-yellow-600/50">
-                    <AlertTriangle className="w-6 h-6 text-yellow-600" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-white text-lg">{user.username}</h4>
-                    <span className="text-[10px] bg-red-900/50 border border-red-500/30 text-red-200 px-1.5 py-0.5 rounded font-mono">VIP</span>
-                  </div>
-                  <p className="text-sm text-gray-400 font-mono mt-1">
-                    <span className="text-yellow-600">ID:</span> {user.email}
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
-                <div className="text-right text-[10px] text-gray-500 font-mono hidden md:block">
-                  [Step 1] Add to Meta App Dashboard<br/>
-                  [Step 2] Confirm Here
-                </div>
-                <Button 
-                  onClick={() => handleConfirmWhitelist(user.uid, user.username)}
-                  disabled={processing === user.uid}
-                  className="bg-yellow-600 hover:bg-yellow-500 text-black font-bold h-12 px-6 w-full md:w-auto"
-                  onMouseEnter={() => play("hover")}
-                >
-                  {processing === user.uid ? <Loader2 className="animate-spin" /> : "CONFIRM WHITELIST"}
-                </Button>
-              </div>
-            </div>
-          ))}
-          {filteredUsers.filter(u => u.tier === "inner_circle" && !u.metaWhitelisted).length === 0 && (
-            <div className="p-8 border border-white/5 rounded-xl text-center text-gray-600 italic font-mono bg-black/40">
-                No operatives waiting for whitelist protocol.
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* --- SECTION 2: ALL OPERATIVES --- */}
-      <section className="relative z-10">
-        <div className="flex items-center gap-3 mb-6">
-            <Terminal className="w-5 h-5 text-cyan-500" />
-            <h3 className="text-xl font-bold font-orbitron text-cyan-500">FIELD OPERATIVES DATABASE</h3>
-        </div>
-
+        {/* Header Telemetry */}
         <div className="space-y-2">
-          {filteredUsers.map((user) => (
-            <div key={user.uid} className="bg-[#0A0A0A]/80 border border-white/5 p-4 rounded-lg flex flex-col md:flex-row justify-between items-center gap-4 hover:border-cyan-500/30 transition-all">
-              
-              {/* INFO */}
-              <div className="flex-1 min-w-0 w-full">
-                <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full ${user.tier === 'inner_circle' ? 'bg-red-500 shadow-[0_0_8px_red]' : 'bg-cyan-500'}`} />
-                  <p className="font-bold text-white truncate font-orbitron tracking-wide">{user.username}</p>
-                  {user.status === 'banned' && <span className="text-[10px] bg-red-950 text-red-500 px-2 rounded border border-red-900">PURGED</span>}
-                </div>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-gray-500 font-mono">
-                    <span>{user.email}</span>
-                    <span className="text-cyan-700">//</span>
-                    <span className="uppercase text-gray-400">{user.niche || "GENERAL"}</span>
-                    <span className="text-cyan-700">//</span>
-                    <span className="uppercase text-yellow-600">{user.tier}</span>
-                    <span className="text-cyan-700">//</span>
-                    <span className="text-white">{user.bubblePoints} BP</span>
-                </div>
-              </div>
-
-              {/* ACTIONS */}
-              <div className="flex gap-2 w-full md:w-auto justify-end">
-                {/* UPGRADE BUTTON (If Free) */}
-                {user.tier !== "inner_circle" && user.status !== "banned" && (
-                  <Button 
-                    size="sm" 
-                    onClick={() => handleApprovePayment(user.uid, user.username)}
-                    disabled={processing === user.uid}
-                    className="bg-green-900/10 text-green-500 border border-green-900/50 hover:bg-green-500 hover:text-black font-mono text-[10px] h-8"
-                    onMouseEnter={() => play("hover")}
-                  >
-                    {processing === user.uid ? <Loader2 className="w-3 h-3 animate-spin" /> : <><DollarSign className="w-3 h-3 mr-1" /> APPROVE PAY</>}
-                  </Button>
-                )}
-
-                {/* BAN BUTTON */}
-                {user.status !== "banned" && (
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
-                    onClick={() => handleBan(user.uid)}
-                    className="text-gray-600 hover:text-red-500 hover:bg-red-950/30 h-8 w-8 p-0"
-                    title="Purge User"
-                    onMouseEnter={() => play("hover")}
-                  >
-                    <XCircle className="w-4 h-4" />
-                  </Button>
-                )}
-                
-                {user.status === "banned" && (
-                    <Button size="sm" variant="ghost" disabled className="text-red-900 h-8 w-8 p-0">
-                        <Lock className="w-3 h-3" />
-                    </Button>
-                )}
-              </div>
-
-            </div>
-          ))}
+           <h1 className="text-3xl font-black font-orbitron tracking-tighter italic uppercase leading-none">
+              <HackerText text="Operations_Command" speed={40} />
+           </h1>
+           <div className="flex items-center gap-2 text-red-500/50">
+              <Terminal size={12} />
+              <span className="text-[8px] font-mono font-bold tracking-[0.4em] uppercase italic">System_Override_V3.1</span>
+           </div>
         </div>
+
+        {/* Global Controls */}
+        <div className="flex gap-3">
+           <div className="flex-1 relative group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within:text-red-500 transition-colors" />
+              <Input 
+                placeholder="Search_Operative..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="bg-black/40 border-white/10 text-white h-12 pl-12 font-mono text-[10px] focus:border-red-500 transition-all"
+              />
+           </div>
+           <Button 
+             onClick={fetchOperatives}
+             variant="outline"
+             className="w-12 h-12 border-white/10 bg-black/40 p-0"
+           >
+              <RefreshCw size={16} className={cn(loading && "animate-spin")} />
+           </Button>
+        </div>
+
+        {/* 1. PENDING META WHITELIST (Priority preserved) */}
+        <section className="space-y-4">
+           <div className="flex items-center justify-between px-2">
+              <div className="flex items-center gap-2">
+                 <Instagram size={14} className="text-yellow-500" />
+                 <h3 className="text-[10px] font-black font-orbitron tracking-widest uppercase italic text-yellow-500">Pending_Whitelist</h3>
+              </div>
+              <span className="text-[7px] font-mono bg-yellow-500/10 text-yellow-500 px-2 py-0.5 rounded border border-yellow-500/20 animate-pulse">Action_Required</span>
+           </div>
+
+           <div className="space-y-3">
+              {filteredUsers.filter(u => u.tier === "inner_circle" && !u.metaWhitelisted).map(user => (
+                <div key={user.uid} className="bg-yellow-500/5 border border-yellow-500/20 p-4 rounded-xl space-y-4 backdrop-blur-md">
+                   <div className="flex justify-between items-start">
+                      <div>
+                         <p className="text-sm font-black font-orbitron leading-none">{user.username}</p>
+                         <p className="text-[8px] font-mono text-white/30 truncate mt-1">{user.email}</p>
+                      </div>
+                      <Crown size={14} className="text-red-500" />
+                   </div>
+                   <Button 
+                     onClick={() => handleConfirmWhitelist(user.uid, user.username)}
+                     disabled={processing === user.uid}
+                     className="w-full h-10 bg-yellow-600 text-black font-black italic text-[9px] tracking-widest"
+                   >
+                      {processing === user.uid ? <Loader2 className="animate-spin" size={14} /> : "CONFIRM_META_HANDSHAKE"}
+                   </Button>
+                </div>
+              ))}
+              {filteredUsers.filter(u => u.tier === "inner_circle" && !u.metaWhitelisted).length === 0 && (
+                <p className="text-center text-[9px] font-mono text-white/20 italic uppercase py-4">No operatives in whitelist queue.</p>
+              )}
+           </div>
+        </section>
+
+        {/* 2. FIELD OPERATIVES DATABASE (Preserved) */}
+        <section className="space-y-4">
+           <div className="flex items-center gap-2 px-2">
+              <Users size={14} className="text-cyan-500" />
+              <h3 className="text-[10px] font-black font-orbitron tracking-widest uppercase italic">Operative_Database</h3>
+           </div>
+
+           <div className="space-y-2">
+              {filteredUsers.map((user) => (
+                <div key={user.uid} className={cn(
+                  "p-4 border backdrop-blur-xl rounded-xl transition-all group",
+                  user.status === 'banned' ? "bg-red-500/5 border-red-500/20" : "bg-white/5 border-white/10 hover:border-cyan-500/30"
+                )}>
+                   <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                         <div className={cn(
+                            "w-8 h-8 rounded-full flex items-center justify-center border",
+                            user.tier === 'inner_circle' ? "border-red-500 text-red-500" : "border-cyan-500 text-cyan-500",
+                            user.status === 'banned' && "grayscale opacity-20"
+                         )}>
+                            {user.tier === 'inner_circle' ? <Crown size={14} /> : <Terminal size={14} />}
+                         </div>
+                         <div>
+                            <p className="text-xs font-black font-orbitron leading-none uppercase">{user.username}</p>
+                            <p className="text-[7px] font-mono text-white/20 uppercase mt-1">
+                               {user.niche} // {user.tier} // {user.bubblePoints}BP
+                            </p>
+                         </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                         {/* Approve Payment (Only for non-Inner Circle) */}
+                         {user.tier !== "inner_circle" && user.status !== "banned" && (
+                           <button 
+                             onClick={() => handleApprovePayment(user.uid, user.username)}
+                             className="p-2 bg-green-500/10 text-green-500 rounded-xs hover:bg-green-500 hover:text-black transition-all"
+                           >
+                              <DollarSign size={14} />
+                           </button>
+                         )}
+                         {/* Purge Protocol */}
+                         {user.status !== "banned" ? (
+                           <button 
+                             onClick={() => handleBan(user.uid)}
+                             className="p-2 bg-white/5 text-white/20 rounded-xs hover:bg-red-600 hover:text-black transition-all"
+                           >
+                              <UserMinus size={14} />
+                           </button>
+                         ) : (
+                           <div className="p-2 text-red-900 opacity-40"><Lock size={14} /></div>
+                         )}
+                      </div>
+                   </div>
+                </div>
+              ))}
+           </div>
+        </section>
+
       </section>
 
-    </div>
+      {/* 🧪 SYSTEM FOOTER */}
+      <footer className="fixed bottom-0 left-0 right-0 z-[100] px-6 py-5 flex items-center justify-between border-t border-white/5 bg-black/80 backdrop-blur-2xl">
+         <div className="flex items-center gap-4 opacity-50 text-red-500">
+            <ShieldCheck size={14} />
+            <div className="h-1 w-16 bg-white/10 rounded-full overflow-hidden">
+               <div className="h-full bg-red-500 w-full animate-pulse" />
+            </div>
+            <span className="text-[9px] font-mono uppercase tracking-[0.2em] font-bold">GOD_MODE_SYNCED</span>
+         </div>
+         <div className="text-[9px] font-bold text-white/20 uppercase tracking-[0.3em]">SECURE_ADMIN_UPLINK</div>
+      </footer>
+
+      <style jsx global>{`
+        @keyframes progress {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+      `}</style>
+    </main>
   );
 }

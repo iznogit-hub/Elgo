@@ -1,255 +1,181 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { doc, getDoc, updateDoc, increment } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
-import { onAuthStateChanged } from "firebase/auth";
-import { useRouter } from "next/navigation";
+import React, { useState } from "react";
 import { 
-  ShoppingCart, Zap, Trophy, Lock, 
-  CheckCircle2, AlertTriangle, ArrowLeft
+  Zap, ShoppingBag, Lock, Shield, 
+  Cpu, ArrowLeft, Trophy,
+  Sparkles, Database,
+  Shirt, Users, Activity
 } from "lucide-react";
-import { toast } from "sonner";
-import Link from "next/link";
 
-// --- UI COMPONENTS ---
-import { Button } from "@/components/ui/button";
+// 🧪 SYSTEM UI COMPONENTS
 import { Background } from "@/components/ui/background";
+import { Button } from "@/components/ui/button";
 import { HackerText } from "@/components/ui/hacker-text";
+import { TransitionLink } from "@/components/ui/transition-link";
+import { SoundPrompter } from "@/components/ui/sound-prompter";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import VideoStage from "@/components/canvas/video-stage";
 import { useSfx } from "@/hooks/use-sfx";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/context/auth-context";
 
-// --- STORE ITEMS CONFIG ---
-const STORE_ITEMS = [
-  { 
-    id: "velocity_boost", 
-    name: "VELOCITY SURGE", 
-    desc: "Instant +500 Reach Velocity for 24h.", 
-    price: 1500, 
-    currency: "BP", 
-    icon: Zap,
-    color: "text-cyan-400",
-    border: "group-hover:border-cyan-500"
-  },
-  { 
-    id: "sister_protocol", 
-    name: "SISTER PROTOCOL", 
-    desc: "Unlock collaboration with Tier-2 operatives.", 
-    price: 300, 
-    currency: "PC", 
-    icon: UsersIcon, // Helper below
-    color: "text-green-400",
-    border: "group-hover:border-green-500"
-  },
-  { 
-    id: "titan_call", 
-    name: "THE TITAN CALL", 
-    desc: "Summon the 800k Mothership. Legend Status required.", 
-    price: 10000, 
-    currency: "BP", 
-    icon: Lock, 
-    color: "text-red-500",
-    border: "group-hover:border-red-500",
-    locked: true
-  },
-];
-
-function UsersIcon({ className }: { className?: string }) {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-    )
-}
-
-interface UserData {
-  uid: string;
-  username: string;
-  bubblePoints: number;
-  popCoins: number;
-}
-
-export default function StorePage() {
-  const router = useRouter();
+export default function ArmoryPage() {
   const { play } = useSfx();
-  const [user, setUser] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [purchasing, setPurchasing] = useState<string | null>(null);
+  const { userData } = useAuth();
+  const [activeTab, setActiveTab] = useState<"skins" | "modules">("skins");
 
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (currentUser) => {
-      if (!currentUser) {
-        router.push("/auth/login");
-        return;
-      }
-      try {
-        const docRef = doc(db, "users", currentUser.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setUser(docSnap.data() as UserData);
-        } else {
-           // ⚡ FALLBACK DATA TO PREVENT CRASH
-           setUser({
-               uid: currentUser.uid,
-               username: currentUser.displayName || "Operative",
-               bubblePoints: 0,
-               popCoins: 0
-           });
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    });
-    return () => unsub();
-  }, [router]);
-
-  const handlePurchase = async (item: typeof STORE_ITEMS[0]) => {
-    if (!user) return;
-    play("click");
-
-    if (item.locked) {
-        play("error");
-        toast.error("ACCESS_DENIED: INSUFFICIENT CLEARANCE");
-        return;
-    }
-
-    // Check Funds
-    const balance = item.currency === "BP" ? user.bubblePoints : user.popCoins;
-    if (balance < item.price) {
-        play("error");
-        toast.error(`INSUFFICIENT FUNDS: NEED ${item.price - balance} MORE ${item.currency}`);
-        return;
-    }
-
-    // Execute Purchase
-    setPurchasing(item.id);
-    toast.loading("PROCESSING TRANSACTION...");
-    
-    try {
-        const userRef = doc(db, "users", user.uid);
-        
-        // Deduct Funds
-        if (item.currency === "BP") {
-            await updateDoc(userRef, { bubblePoints: increment(-item.price) });
-            setUser(prev => prev ? ({ ...prev, bubblePoints: prev.bubblePoints - item.price }) : null);
-        } else {
-            await updateDoc(userRef, { popCoins: increment(-item.price) });
-            setUser(prev => prev ? ({ ...prev, popCoins: prev.popCoins - item.price }) : null);
-        }
-
-        play("success");
-        toast.dismiss();
-        toast.success(`PURCHASE SUCCESSFUL: ${item.name} ACQUIRED`);
-    } catch (error) {
-        play("error");
-        toast.dismiss();
-        toast.error("TRANSACTION FAILED");
-    } finally {
-        setPurchasing(null);
-    }
+  const stats = {
+    points: userData?.bubblePoints ?? 2000,
+    coins: userData?.popCoins ?? 500,
+    velocity: userData?.velocity ?? 1200,
+    rank: userData?.tier ?? "RECRUIT"
   };
 
-  if (loading) {
-     return (
-        <div className="min-h-screen bg-black flex items-center justify-center text-cyan-500 font-mono">
-           <HackerText text="LOADING_MARKETPLACE..." />
-        </div>
-     );
-  }
-
   return (
-    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-cyan-500/30 overflow-x-hidden relative pb-24">
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <Background />
+    <main className="relative min-h-screen bg-black text-white font-sans overflow-hidden flex flex-col items-center">
+      
+      {/* 📽️ THE THEATER: Central Focus for Gear Showcase */}
+      <VideoStage src="/video/main.mp4" overlayOpacity={0.4} />
+      <Background /> 
+      <SoundPrompter />
+
+      {/* 📱 TOP HUD: Pushed to Edges */}
+      <nav className="fixed top-0 left-0 right-0 z-[100] p-6 flex items-center justify-between pointer-events-none">
+        <div className="pointer-events-auto">
+            <TransitionLink 
+              href="/dashboard"
+              className="w-12 h-12 border border-white/10 bg-black/40 backdrop-blur-md flex items-center justify-center group hover:border-cyan-500 transition-all"
+            >
+              <ArrowLeft size={20} className="text-gray-400 group-hover:text-cyan-400" />
+            </TransitionLink>
+        </div>
+        
+        <div className="pointer-events-auto flex gap-2">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/20 backdrop-blur-md rounded-xs">
+                <Zap size={10} className="text-cyan-400 fill-cyan-400" />
+                <span className="text-[10px] font-mono font-black tracking-tighter text-cyan-400">
+                    <HackerText text={stats.points} /> <span className="opacity-40">BP</span>
+                </span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-pink-500/10 border border-pink-500/20 backdrop-blur-md rounded-xs">
+                <Database size={10} className="text-pink-400" />
+                <span className="text-[10px] font-mono font-black tracking-tighter text-pink-400">
+                    <HackerText text={stats.coins} /> <span className="opacity-40">PC</span>
+                </span>
+            </div>
+        </div>
+      </nav>
+
+      {/* 🛠️ ARMORY INTERFACE: Floating Flanks */}
+      <div className="relative z-50 w-full h-screen pointer-events-none">
+        
+        {/* LEFT FLANK: Rank & Tab Selector */}
+        <div className="absolute left-6 top-32 w-44 space-y-6 pointer-events-auto">
+            <div className="space-y-1">
+                <span className="text-[8px] font-mono text-cyan-500/60 uppercase tracking-widest">System_Rank</span>
+                <Progress value={(stats.velocity / 10000) * 100} className="h-1 bg-white/5 border border-white/10" />
+                <span className="text-[9px] font-black font-orbitron text-white/40 italic uppercase">{stats.rank}</span>
+            </div>
+
+            <div className="flex flex-col gap-2">
+                <button 
+                    onClick={() => { setActiveTab("skins"); play("click"); }}
+                    className={cn(
+                        "py-5 flex flex-col items-center justify-center gap-1 font-black tracking-widest text-[8px] uppercase border transition-all backdrop-blur-md",
+                        activeTab === "skins" ? "bg-cyan-500/20 border-cyan-400 text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.2)]" : "bg-black/40 border-white/5 text-white/30"
+                    )}
+                >
+                    <Shirt size={14} /> Skins
+                </button>
+                <button 
+                    onClick={() => { setActiveTab("modules"); play("click"); }}
+                    className={cn(
+                        "py-5 flex flex-col items-center justify-center gap-1 font-black tracking-widest text-[8px] uppercase border transition-all backdrop-blur-md",
+                        activeTab === "modules" ? "bg-pink-500/20 border-pink-400 text-pink-400 shadow-[0_0_20px_rgba(236,72,153,0.2)]" : "bg-black/40 border-white/5 text-white/30"
+                    )}
+                >
+                    <Cpu size={14} /> Modules
+                </button>
+            </div>
+        </div>
+
+        {/* RIGHT FLANK: Item Feed */}
+        <div className="absolute right-6 top-32 w-52 pointer-events-auto max-h-[60vh] overflow-y-auto no-scrollbar pb-10">
+            <div className="space-y-3 animate-in fade-in slide-in-from-right-4">
+                {activeTab === "skins" ? (
+                    <>
+                        <StoreItem name="STEALTH OPS" cost={2000} tier="COMMON" icon={<Shield size={16}/>} userBalance={stats.points} />
+                        <StoreItem name="NEON DEMON" cost={5000} tier="RARE" icon={<Sparkles size={16}/>} userBalance={stats.points} glowColor="text-pink-500" border="border-pink-500/30" />
+                        <StoreItem name="GOLD EMPEROR" cost={10000} tier="LEGENDARY" icon={<Trophy size={16}/>} userBalance={stats.points} glowColor="text-yellow-500" border="border-yellow-500/30" />
+                    </>
+                ) : (
+                    <>
+                        <StoreItem name="NEURAL LINK" cost={1500} tier="UNCOMMON" icon={<Activity size={16}/>} userBalance={stats.points} />
+                        <StoreItem name="AMBASSADOR" cost={1000} tier="UNCOMMON" icon={<Users size={16}/>} userBalance={stats.points} glowColor="text-green-400" />
+                    </>
+                )}
+            </div>
+        </div>
       </div>
 
-      {/* HEADER */}
-      <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-white/10 h-20 flex items-center justify-between px-4 md:px-8 shadow-2xl">
-         <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="p-2 hover:bg-white/10 rounded-full transition-colors" onClick={() => play("click")}>
-                <ArrowLeft className="w-5 h-5 text-gray-400" />
-            </Link>
-            <h1 className="font-bold font-orbitron text-lg tracking-widest">BLACK MARKET</h1>
-         </div>
-
-         <div className="flex items-center gap-6 font-mono text-xs">
-            <div className="flex items-center gap-2 text-cyan-400">
-               <Zap className="w-3 h-3 fill-cyan-400" />
-               {/* ⚡ SAFE CHECK: Prevents crash if user is null */}
-               <span className="font-bold">{(user?.bubblePoints || 0).toLocaleString()} BP</span>
-            </div>
-            <div className="flex items-center gap-2 text-yellow-500/80">
-               <Trophy className="w-3 h-3" />
-               <span className="font-bold">{(user?.popCoins || 0).toLocaleString()} PC</span>
+      {/* 🧪 SYSTEM STATUS BAR */}
+      <footer className="fixed bottom-0 left-0 right-0 z-[100] px-6 py-5 flex items-center justify-between border-t border-white/5 bg-black/80 backdrop-blur-2xl">
+         <div className="flex items-center gap-4 opacity-50 text-cyan-500">
+            <ShoppingBag size={14} className="animate-pulse" />
+            <div className="flex flex-col gap-0.5">
+                <div className="h-0.5 w-16 bg-white/10 overflow-hidden">
+                    <div className="h-full bg-cyan-400 w-full animate-[progress_3s_infinite_linear]" />
+                </div>
+                <span className="text-[7px] font-mono uppercase tracking-[0.2em] font-bold">Armory_Sync: Stable</span>
             </div>
          </div>
-      </header>
+         <div className="text-[9px] font-bold text-white/20 uppercase tracking-[0.3em]">BPOP_V3.1</div>
+      </footer>
 
-      <main className="relative z-10 max-w-6xl mx-auto p-4 md:p-8">
-         
-         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {STORE_ITEMS.map((item) => {
-                const Icon = item.icon;
-                const canAfford = user ? (item.currency === "BP" ? user.bubblePoints : user.popCoins) >= item.price : false;
+      <style jsx global>{`
+        @keyframes progress {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+      `}</style>
+    </main>
+  );
+}
 
-                return (
-                    <div 
-                        key={item.id}
-                        className={`group relative bg-black/40 border border-white/10 rounded-xl overflow-hidden transition-all hover:bg-white/5 ${item.border}`}
-                        onMouseEnter={() => play("hover")}
-                    >
-                        <div className="p-6 space-y-4">
-                            <div className="flex justify-between items-start">
-                                <div className={`p-3 rounded-lg bg-white/5 ${item.color}`}>
-                                    <Icon className="w-6 h-6" />
-                                </div>
-                                {item.locked && (
-                                    <div className="flex items-center gap-1 text-[10px] bg-red-900/30 text-red-500 px-2 py-1 rounded border border-red-500/30">
-                                        <Lock className="w-3 h-3" /> LOCKED
-                                    </div>
-                                )}
-                            </div>
+function StoreItem({ name, cost, tier, icon, glowColor = "text-cyan-400", border = "border-white/10", userBalance }: any) {
+  const { play } = useSfx();
+  const canAfford = userBalance >= cost;
 
-                            <div>
-                                <h3 className={`font-bold font-orbitron text-lg ${item.locked ? 'text-gray-500' : 'text-white'}`}>
-                                    {item.name}
-                                </h3>
-                                <p className="text-xs text-gray-400 mt-2 h-8 leading-relaxed">
-                                    {item.desc}
-                                </p>
-                            </div>
+  return (
+    <div className={cn(
+      "p-4 bg-black/60 border-r-2 backdrop-blur-xl space-y-3 transition-all group",
+      border
+    )}>
+      <div className="flex justify-between items-start">
+        <div className={cn("p-2 bg-black/40 rounded-xs border border-white/5", glowColor)}>
+          {icon}
+        </div>
+        <Badge variant="outline" className="text-[6px] opacity-30 font-mono italic tracking-widest">{tier}</Badge>
+      </div>
 
-                            <div className="pt-4 border-t border-white/5 flex items-center justify-between">
-                                <span className={`font-mono font-bold ${item.currency === "BP" ? "text-cyan-400" : "text-yellow-500"}`}>
-                                    {item.price.toLocaleString()} {item.currency}
-                                </span>
-                                
-                                <Button 
-                                    size="sm"
-                                    disabled={purchasing !== null || item.locked || !canAfford}
-                                    onClick={() => handlePurchase(item)}
-                                    className={`
-                                        ${!canAfford && !item.locked ? "opacity-50 cursor-not-allowed" : ""}
-                                        bg-white/10 hover:bg-white/20 text-white font-mono text-xs
-                                    `}
-                                >
-                                    {purchasing === item.id ? (
-                                        <span className="animate-pulse">PROCESSING...</span>
-                                    ) : item.locked ? (
-                                        "LOCKED"
-                                    ) : canAfford ? (
-                                        "ACQUIRE"
-                                    ) : (
-                                        "INSUFFICIENT FUNDS"
-                                    )}
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                )
-            })}
-         </div>
+      <div className="space-y-1">
+        <h3 className="font-orbitron font-black text-[10px] tracking-tight uppercase italic truncate">{name}</h3>
+        <p className={cn("text-[9px] font-mono font-black", canAfford ? "text-white/60" : "text-red-500/60")}>
+          {cost.toLocaleString()} BP
+        </p>
+      </div>
 
-      </main>
+      <button 
+        onClick={() => play(canAfford ? "success" : "off")}
+        className={cn(
+          "w-full py-2 text-[8px] font-black tracking-[0.2em] uppercase transition-all",
+          canAfford ? "bg-white text-black hover:bg-cyan-400" : "bg-white/5 text-white/20 cursor-not-allowed"
+        )}
+      >
+        {canAfford ? "ACQUIRE" : "LOCKED"}
+      </button>
     </div>
   );
 }

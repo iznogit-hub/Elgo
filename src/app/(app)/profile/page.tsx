@@ -1,98 +1,86 @@
 "use client";
 
-import { useState } from "react";
-import { useAuth } from "@/lib/context/auth-context";
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/context/auth-context";
 import { 
   Zap, Radio, Share2, Terminal, AlertTriangle, 
-  X, Check, RotateCcw, Loader2, User, Trophy, Crown, Pencil
+  X, Check, Loader2, Trophy, Crown, 
+  Pencil, ArrowLeft, Database, Activity, Fingerprint, Cpu
 } from "lucide-react";
 import { toast } from "sonner";
 
-// --- ZAIBATSU UI ---
+// 🧪 ZAIBATSU SYSTEM UI
 import { HackerText } from "@/components/ui/hacker-text";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input"; // Added Input
+import { Input } from "@/components/ui/input";
 import { Background } from "@/components/ui/background";
 import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
-import OperativeViewer from "@/components/canvas/video-stage";
+import { TransitionLink } from "@/components/ui/transition-link";
+import { SoundPrompter } from "@/components/ui/sound-prompter";
+import VideoStage from "@/components/canvas/video-stage";
 import { useSfx } from "@/hooks/use-sfx";
+import { cn } from "@/lib/utils";
 
 const NICHES = [
-  { id: "fitness", label: "FITNESS" },
-  { id: "fashion", label: "FASHION" },
-  { id: "tech", label: "TECH" },
-  { id: "business", label: "BUSINESS" },
-  { id: "food", label: "FOOD" },
-  { id: "gaming", label: "GAMING" },
-  { id: "travel", label: "TRAVEL" },
-  { id: "music", label: "MUSIC" },
-  { id: "beauty", label: "BEAUTY" },
+  { id: "fitness", label: "FITNESS" }, { id: "fashion", label: "FASHION" },
+  { id: "tech", label: "TECH" }, { id: "business", label: "BUSINESS" },
+  { id: "gaming", label: "GAMING" }, { id: "music", label: "MUSIC" },
   { id: "art", label: "ART" }
 ];
 
 export default function ProfilePage() {
   const { userData, user } = useAuth();
   const { play } = useSfx();
-  const router = useRouter();
   
-  // MODAL STATES
   const [showSwitcher, setShowSwitcher] = useState(false);
-  const [showNameEdit, setShowNameEdit] = useState(false); // ⚡ NEW STATE
+  const [showNameEdit, setShowNameEdit] = useState(false);
   const [selectedNiche, setSelectedNiche] = useState("");
-  const [newUsername, setNewUsername] = useState(""); // ⚡ NEW STATE
+  const [newUsername, setNewUsername] = useState("");
   const [isSwitching, setIsSwitching] = useState(false);
 
-  // META CONNECT HANDLER
   const handleConnectInstagram = () => {
     play("click");
     if (!userData) return;
     toast.loading("INITIATING META HANDSHAKE...");
-    // ⚡ FIX: Use the correct API route
     window.location.href = `/api/auth/instagram/login?uid=${userData.uid}`;
   };
 
-  // ⚡ NEW: USERNAME UPDATE HANDLER
   const handleNameUpdate = async () => {
      if (!newUsername.trim() || !user) return;
-     setIsSwitching(true); // Reuse loading state
+     setIsSwitching(true);
      play("click");
-
      try {
         await updateDoc(doc(db, "users", user.uid), {
             username: newUsername.trim().toUpperCase()
         });
-        toast.success("CODENAME UPDATED");
+        toast.success("CODENAME_UPDATED");
         setShowNameEdit(false);
         window.location.reload(); 
      } catch (e) {
-        toast.error("UPDATE FAILED");
+        toast.error("UPDATE_FAILED");
         play("error");
      } finally {
         setIsSwitching(false);
      }
   };
 
-  // NICHE SWITCH HANDLER
   const handleNicheSwitch = async () => {
     if (!selectedNiche || !user) return;
     play("error"); 
     setIsSwitching(true);
-    
     try {
       await updateDoc(doc(db, "users", user.uid), {
         niche: selectedNiche,
         velocity: 0, 
-        avatarId: `${selectedNiche}_default` 
       });
-
-      toast.success(`IDENTITY REFORMATTED: ${selectedNiche.toUpperCase()}`);
+      toast.success(`IDENTITY_REFORMATTED: ${selectedNiche.toUpperCase()}`);
       setShowSwitcher(false);
       window.location.reload(); 
     } catch (err) {
-      toast.error("SYSTEM ERROR. REFORMAT FAILED.");
+      toast.error("SYSTEM_ERROR: REFORMAT_FAILED");
     } finally {
       setIsSwitching(false);
     }
@@ -101,289 +89,172 @@ export default function ProfilePage() {
   if (!userData) return null;
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white pb-24 relative overflow-x-hidden">
+    <main className="relative min-h-screen bg-black text-white font-sans overflow-hidden flex flex-col items-center">
       
-      {/* 1. BACKGROUND LAYERS */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <Background />
-      </div>
+      {/* 📽️ THE THEATER: Central Identity Focus */}
+      <VideoStage src="/video/main.mp4" overlayOpacity={0.4} />
+      <Background /> 
+      <SoundPrompter />
 
-      {/* --- 2. THE CHARACTER STAGE --- */}
-      <div className="relative z-10 h-[55vh] w-full border-b border-white/10 overflow-hidden group">
-        
-        {/* Dynamic Grid Floor */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/90 z-20 pointer-events-none" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(6,182,212,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(6,182,212,0.1)_1px,transparent_1px)] bg-[size:40px_40px] [perspective:1000px] [transform:rotateX(60deg)scale(1.5)] origin-top opacity-50" />
-        
-        {/* 3D VIEWER */}
-        <div className="absolute inset-0 z-10 flex items-center justify-center pt-10">
-          <OperativeViewer 
-            url={userData.avatarId ? `/models/${userData.avatarId}.glb` : undefined} 
-            velocity={userData.velocity}
-            tier={userData.tier}
-          />
-        </div>
-
-        {/* OVERLAY STATS (Bottom Left) */}
-        <div className="absolute bottom-8 left-6 md:left-12 z-30 space-y-2">
-          <div className="flex items-center gap-2 mb-1">
-             <span className="px-2 py-0.5 rounded bg-cyan-950/50 border border-cyan-500/30 text-[10px] text-cyan-400 font-bold uppercase tracking-widest backdrop-blur-md">
-               {userData.niche} UNIT
-             </span>
-             {userData.tier === "inner_circle" ? (
-               <span className="px-2 py-0.5 rounded bg-red-950/50 border border-red-500/30 text-[10px] text-red-500 font-bold uppercase tracking-widest animate-pulse backdrop-blur-md flex items-center gap-1">
-                 <Crown className="w-3 h-3" /> PURGE IMMUNE
-               </span>
-             ) : (
-                <span className="px-2 py-0.5 rounded bg-gray-900/50 border border-white/10 text-[10px] text-gray-400 font-bold uppercase tracking-widest backdrop-blur-md">
-                    EXPENDABLE
-                </span>
-             )}
-          </div>
-          
-          <div className="flex items-center gap-3 group/name">
-              <h1 className="text-5xl md:text-7xl font-black font-orbitron text-white leading-none tracking-tighter drop-shadow-2xl">
-                <HackerText text={userData.username} speed={50} />
-              </h1>
-              {/* ⚡ NEW: EDIT BUTTON */}
-              <button 
-                onClick={() => { setNewUsername(userData.username); setShowNameEdit(true); play("click"); }}
-                className="opacity-0 group-hover/name:opacity-100 transition-opacity p-2 hover:bg-white/10 rounded-full text-gray-400 hover:text-cyan-400"
-              >
-                  <Pencil className="w-5 h-5" />
-              </button>
-          </div>
-          
-          <p className="text-xs font-mono text-gray-400 tracking-[0.2em] uppercase">
-            UID: {userData.uid.slice(0, 8)}...
-          </p>
-        </div>
-      </div>
-
-      {/* --- 3. STATS & CONFIG --- */}
-      <main className="relative z-10 max-w-5xl mx-auto p-4 md:p-8 space-y-8 -mt-8">
-        
-        {/* VITALS GRID */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <MagneticWrapper>
-            <div className="bg-[#0A0A0A]/80 backdrop-blur-md border border-white/10 p-6 rounded-xl text-center group hover:border-cyan-500/50 transition-colors shadow-lg">
-                <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
-                    <Radio className="w-3 h-3" /> Velocity
-                </p>
-                <p className="text-3xl font-bold text-cyan-400 font-orbitron group-hover:scale-110 transition-transform">
-                    {userData.velocity}
-                </p>
-            </div>
-          </MagneticWrapper>
-
-          <MagneticWrapper>
-            <div className="bg-[#0A0A0A]/80 backdrop-blur-md border border-white/10 p-6 rounded-xl text-center group hover:border-yellow-500/50 transition-colors shadow-lg">
-                <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
-                    <Zap className="w-3 h-3" /> BP (Premium)
-                </p>
-                <p className="text-3xl font-bold text-yellow-400 font-orbitron group-hover:scale-110 transition-transform">
-                    {userData.bubblePoints}
-                </p>
-            </div>
-          </MagneticWrapper>
-
-          <MagneticWrapper>
-            <div className="bg-[#0A0A0A]/80 backdrop-blur-md border border-white/10 p-6 rounded-xl text-center group hover:border-white/30 transition-colors shadow-lg">
-                <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
-                    <Trophy className="w-3 h-3" /> PC (Free)
-                </p>
-                <p className="text-3xl font-bold text-white font-orbitron group-hover:scale-110 transition-transform">
-                    {userData.popCoins}
-                </p>
-            </div>
-          </MagneticWrapper>
-
-          <MagneticWrapper>
-            <div className="bg-[#0A0A0A]/80 backdrop-blur-md border border-white/10 p-6 rounded-xl text-center group hover:border-green-500/50 transition-colors shadow-lg">
-                <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1 flex items-center justify-center gap-1">
-                    <Check className="w-3 h-3" /> Streak
-                </p>
-                <p className="text-3xl font-bold text-green-500 font-orbitron group-hover:scale-110 transition-transform">
-                    3 DAYS
-                </p>
-            </div>
-          </MagneticWrapper>
-        </div>
-
-        {/* SETTINGS LIST */}
-        <section className="space-y-4">
-          <div className="flex items-center gap-2 text-white font-bold font-orbitron border-b border-white/10 pb-2 pl-2">
-            <Terminal className="w-5 h-5 text-cyan-500" /> 
-            OPERATIVE SETTINGS
-          </div>
-
-          <div className="bg-[#0A0A0A]/50 border border-white/5 rounded-xl overflow-hidden divide-y divide-white/5 backdrop-blur-sm">
-            
-            {/* ITEM 1: INSTAGRAM */}
-            <div className="p-6 flex items-center justify-between group hover:bg-white/5 transition-colors">
-              <div className="flex items-center gap-5">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center border ${userData.instagramConnected ? 'bg-green-900/10 border-green-500/30 text-green-500' : 'bg-pink-900/10 border-pink-500/30 text-pink-500'}`}>
-                  <Share2 className="w-6 h-6" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-base text-white font-orbitron mb-1">Instagram Uplink</h4>
-                  <p className="text-xs text-gray-500 font-mono tracking-wide">
-                    {userData.instagramConnected ? "[STATUS: SECURE_LINK_ESTABLISHED]" : "[STATUS: NO_SIGNAL_DETECTED]"}
-                  </p>
-                </div>
-              </div>
-              <Button 
-                variant="outline" 
-                onClick={handleConnectInstagram}
-                onMouseEnter={() => play("hover")}
-                disabled={!!userData.instagramConnected}
-                className={`border-white/10 text-xs font-mono h-10 px-6 tracking-widest ${userData.instagramConnected ? "text-green-500 cursor-default" : "hover:text-pink-500 hover:border-pink-500 hover:bg-pink-950/20"}`}
-              >
-                {userData.instagramConnected ? "LINKED" : "CONNECT"}
-              </Button>
-            </div>
-
-            {/* ITEM 2: NICHE SWITCHER */}
-            <div className="p-6 flex items-center justify-between group hover:bg-red-950/10 transition-colors">
-              <div className="flex items-center gap-5">
-                <div className="w-12 h-12 rounded-full bg-cyan-900/10 border border-cyan-500/30 flex items-center justify-center text-cyan-500">
-                  <Radio className="w-6 h-6" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-base text-white font-orbitron mb-1">Identity Reformat (Niche)</h4>
-                  <p className="text-xs text-gray-500 font-mono tracking-wide">Current Protocol: <span className="text-cyan-400 font-bold uppercase">{userData.niche}</span></p>
-                </div>
-              </div>
-              
-              <MagneticWrapper>
-                <Button 
-                    variant="outline" 
-                    onClick={() => { setShowSwitcher(true); play("click"); }}
-                    onMouseEnter={() => play("hover")}
-                    className="border-white/10 text-xs font-mono h-10 px-6 tracking-widest hover:border-red-500 hover:text-red-500 hover:bg-red-950/20 transition-all"
-                >
-                    <RotateCcw className="w-3 h-3 mr-2" /> SWITCH_NICHE
-                </Button>
-              </MagneticWrapper>
-            </div>
-
-          </div>
-        </section>
-
-        {/* SESSION INFO */}
-        <div className="pt-8 text-center opacity-30 hover:opacity-100 transition-opacity">
-          <p className="text-[10px] text-gray-500 font-mono flex items-center justify-center gap-2">
-            <User className="w-3 h-3" /> SESSION ID: {userData.uid}
-          </p>
-        </div>
-
-      </main>
-
-      {/* --- MODAL 1: NICHE SWITCHER --- */}
-      {showSwitcher && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-lg bg-black border-2 border-red-600 rounded-2xl p-8 shadow-[0_0_100px_rgba(220,38,38,0.3)] relative overflow-hidden">
-            <div className="absolute inset-0 pointer-events-none opacity-20 bg-[linear-gradient(rgba(220,38,38,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(220,38,38,0.1)_1px,transparent_1px)] bg-[size:20px_20px]" />
-            <button 
-                onClick={() => { setShowSwitcher(false); play("click"); }} 
-                className="absolute top-4 right-4 text-red-900 hover:text-red-500 transition-colors"
+      {/* 📱 TOP HUD NAVIGATION */}
+      <nav className="fixed top-0 left-0 right-0 z-[100] p-6 flex items-center justify-between pointer-events-none">
+        <div className="pointer-events-auto">
+            <TransitionLink 
+              href="/dashboard"
+              className="w-12 h-12 border border-white/10 bg-black/40 backdrop-blur-md flex items-center justify-center group hover:border-cyan-500 transition-all"
             >
-              <X className="w-6 h-6" />
-            </button>
-            <div className="text-center mb-8 relative z-10">
-              <div className="w-20 h-20 bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-600 animate-pulse">
-                 <AlertTriangle className="w-10 h-10 text-red-600" />
-              </div>
-              <h3 className="text-3xl font-black font-orbitron text-red-500 tracking-wider">SYSTEM WARNING</h3>
-              <div className="mt-4 p-4 border border-red-900/50 bg-red-950/20 rounded-lg text-left">
-                <p className="text-red-400 text-sm font-mono leading-relaxed">
-                  <span className="font-bold">[ALERT]</span> Initiating Identity Reformat will trigger a partial system wipe.
-                </p>
-                <ul className="list-disc list-inside text-xs text-gray-400 mt-2 font-mono space-y-1">
-                    <li>Your 3D Avatar will be reset.</li>
-                    <li><span className="text-white font-bold underline decoration-red-500">VELOCITY WILL DROP TO 0.</span></li>
-                    <li>Current missions will be aborted.</li>
-                </ul>
-              </div>
+              <ArrowLeft size={20} className="text-gray-400 group-hover:text-cyan-400" />
+            </TransitionLink>
+        </div>
+        
+        <div className="pointer-events-auto flex flex-col items-end gap-1">
+            <div className="px-3 py-1 bg-cyan-500/10 border border-cyan-500/20 backdrop-blur-md rounded-full flex items-center gap-2">
+                <Fingerprint size={10} className="text-cyan-500" />
+                <span className="text-[8px] font-mono font-black tracking-widest text-cyan-500 uppercase">Auth_Session: Active</span>
             </div>
-            <div className="relative z-10 mb-8">
-                <p className="text-xs text-center text-gray-500 uppercase tracking-widest mb-4">Select New Frequency</p>
-                <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                {NICHES.filter(n => n.id !== userData.niche).map((niche) => (
-                    <button
-                    key={niche.id}
-                    onClick={() => { setSelectedNiche(niche.id); play("click"); }}
-                    onMouseEnter={() => play("hover")}
-                    className={`
-                        p-4 rounded border text-xs font-bold uppercase tracking-widest transition-all font-mono
-                        ${selectedNiche === niche.id 
-                        ? "bg-red-600 text-black border-red-600 shadow-[0_0_15px_rgba(220,38,38,0.5)]" 
-                        : "bg-black border-white/10 text-gray-500 hover:border-white/30 hover:text-white"}
-                    `}
-                    >
-                    {niche.label}
-                    </button>
-                ))}
+        </div>
+      </nav>
+
+      {/* 👤 IDENTITY INTERFACE: Floating Side Elements */}
+      <div className="relative z-50 w-full h-screen pointer-events-none">
+        
+        {/* LEFT FLANK: Core Identity & Vitals */}
+        <div className="absolute left-6 top-32 w-44 space-y-6 pointer-events-auto">
+            <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                    <span className={cn(
+                        "px-2 py-0.5 border text-[7px] font-black uppercase tracking-tighter backdrop-blur-md",
+                        userData.tier === "inner_circle" ? "bg-red-500/20 border-red-500 text-red-500 animate-pulse" : "bg-cyan-500/10 border-cyan-500/30 text-cyan-400"
+                    )}>
+                        {userData.tier === "inner_circle" ? "PURGE_IMMUNE" : "EXPENDABLE_GRADE"}
+                    </span>
+                </div>
+                <div className="group cursor-pointer" onClick={() => { setNewUsername(userData.username); setShowNameEdit(true); play("click"); }}>
+                    <h1 className="text-2xl font-black font-orbitron italic uppercase leading-none tracking-tighter text-white group-hover:text-cyan-400 transition-colors">
+                        {userData.username} <Pencil size={10} className="inline ml-1 opacity-30 group-hover:opacity-100" />
+                    </h1>
+                    <p className="text-[7px] font-mono text-white/30 uppercase mt-1">Niche: {userData.niche}</p>
                 </div>
             </div>
-            <div className="flex gap-4 relative z-10">
-              <Button 
-                onClick={() => { setShowSwitcher(false); play("click"); }} 
-                variant="outline" 
-                className="flex-1 border-white/10 text-gray-400 h-14 font-bold tracking-widest hover:bg-white/5"
-              >
-                ABORT
-              </Button>
-              <Button 
-                onClick={handleNicheSwitch} 
-                disabled={!selectedNiche || isSwitching}
-                className="flex-[2] bg-red-600 hover:bg-red-500 text-black font-bold h-14 tracking-widest font-orbitron shadow-[0_0_30px_rgba(220,38,38,0.4)] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSwitching ? (
-                  <span className="flex items-center gap-2"><Loader2 className="animate-spin" /> PURGING...</span>
-                ) : (
-                  "CONFIRM REFORMAT"
-                )}
-              </Button>
+
+            <div className="grid grid-cols-2 gap-2">
+                <MiniVital label="VELOCITY" value={userData.velocity} color="text-cyan-400" />
+                <MiniVital label="STREAK" value="3_DAYS" color="text-green-500" />
+                <MiniVital label="BP" value={userData.bubblePoints} color="text-yellow-400" />
+                <MiniVital label="PC" value={userData.popCoins} color="text-white" />
             </div>
-          </div>
+        </div>
+
+        {/* RIGHT FLANK: System Configuration */}
+        <div className="absolute right-6 top-32 w-48 space-y-4 pointer-events-auto">
+            <h3 className="text-[9px] font-black font-orbitron tracking-widest text-gray-400 uppercase flex items-center justify-end gap-2 text-right">
+                Config_Control <Terminal size={10} className="text-cyan-500" />
+            </h3>
+
+            {/* Instagram Uplink Card */}
+            <div className={cn(
+                "p-4 bg-black/40 border-r-2 backdrop-blur-xl space-y-3",
+                userData.instagramConnected ? "border-green-500/50" : "border-pink-500/50"
+            )}>
+                <div className="flex items-center justify-between text-[8px] font-black uppercase">
+                    <span className={userData.instagramConnected ? "text-green-400" : "text-pink-400"}>Meta_Uplink</span>
+                    <Share2 size={10} />
+                </div>
+                <button 
+                    onClick={handleConnectInstagram}
+                    disabled={!!userData.instagramConnected}
+                    className={cn(
+                        "w-full py-2 border text-[8px] font-black tracking-widest uppercase transition-all",
+                        userData.instagramConnected 
+                            ? "border-green-500/30 bg-green-500/10 text-green-500 cursor-default" 
+                            : "border-pink-500/30 bg-pink-500/10 text-pink-400 hover:bg-pink-500 hover:text-white"
+                    )}
+                >
+                    {userData.instagramConnected ? "Linked" : "Connect"}
+                </button>
+            </div>
+
+            {/* Reformat Card */}
+            <div className="p-4 bg-black/40 border-r-2 border-red-500/50 backdrop-blur-xl space-y-3">
+                <div className="flex items-center justify-between text-[8px] font-black uppercase text-red-500">
+                    <span>Identity_Reformat</span>
+                    <Radio size={10} />
+                </div>
+                <button 
+                    onClick={() => { setShowSwitcher(true); play("click"); }}
+                    className="w-full py-2 bg-red-900/20 border border-red-500/30 text-red-500 font-black italic tracking-widest text-[8px] hover:bg-red-600 hover:text-black transition-all uppercase"
+                >
+                    Initialize_Wipe
+                </button>
+            </div>
+        </div>
+      </div>
+
+      {/* 🧪 SYSTEM FOOTER */}
+      <footer className="fixed bottom-0 left-0 right-0 z-[100] px-6 py-5 flex items-center justify-between border-t border-white/5 bg-black/80 backdrop-blur-2xl">
+         <div className="flex items-center gap-4 opacity-50 text-cyan-500">
+            <Cpu size={14} className="animate-pulse" />
+            <span className="text-[7px] font-mono uppercase tracking-[0.2em] font-bold">Secure_ID // 0x{userData.uid.slice(0, 4)}</span>
+         </div>
+         <div className="text-[9px] font-bold text-white/10 uppercase tracking-[0.5em] font-mono italic">
+            OPERATIVE_PROFILE // SYNC_ACTIVE
+         </div>
+      </footer>
+
+      {/* --- MODALS --- */}
+      {showSwitcher && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-md p-6 animate-in zoom-in duration-200">
+            <div className="w-full max-w-xs bg-black border border-red-600 p-6 space-y-6 shadow-[0_0_50px_rgba(220,38,38,0.2)]">
+                <div className="text-center space-y-2">
+                    <AlertTriangle size={24} className="text-red-600 mx-auto animate-pulse" />
+                    <h3 className="text-sm font-black font-orbitron text-red-500 uppercase">System_Purge_Warning</h3>
+                    <p className="text-[8px] font-mono text-red-400/50 uppercase leading-relaxed">Identity reformat will reset velocity to zero. Proceed?</p>
+                </div>
+                <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto no-scrollbar">
+                    {NICHES.filter(n => n.id !== userData.niche).map(n => (
+                        <button key={n.id} onClick={() => { setSelectedNiche(n.id); play("click"); }} className={cn("py-2 text-[8px] font-black uppercase border", selectedNiche === n.id ? "bg-red-600 border-red-600 text-black" : "border-white/10 text-white/40")}>
+                            {n.label}
+                        </button>
+                    ))}
+                </div>
+                <div className="flex gap-2">
+                    <Button onClick={handleNicheSwitch} disabled={!selectedNiche || isSwitching} className="flex-1 bg-red-600 text-black font-black text-[9px] h-10 uppercase italic">Confirm</Button>
+                    <Button onClick={() => setShowSwitcher(false)} variant="ghost" className="text-[9px] uppercase font-bold text-white/20">Abort</Button>
+                </div>
+            </div>
         </div>
       )}
 
-      {/* --- MODAL 2: USERNAME EDIT (NEW) --- */}
       {showNameEdit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-200">
-           <div className="w-full max-w-md bg-black border border-cyan-500/50 rounded-2xl p-8 relative shadow-[0_0_50px_rgba(6,182,212,0.2)]">
-              <button onClick={() => setShowNameEdit(false)} className="absolute top-4 right-4 text-gray-500 hover:text-white"><X className="w-6 h-6"/></button>
-              
-              <h3 className="text-2xl font-bold font-orbitron text-white mb-6 flex items-center gap-2">
-                 <Terminal className="w-6 h-6 text-cyan-400" /> EDIT CODENAME
-              </h3>
-              
-              <div className="space-y-4">
-                 <div>
-                    <label className="text-[10px] text-gray-500 uppercase tracking-widest font-mono mb-2 block">New Identity</label>
-                    <Input 
-                        value={newUsername} 
-                        onChange={(e) => setNewUsername(e.target.value.toUpperCase())}
-                        className="bg-black/50 border-white/20 text-xl font-bold font-orbitron text-white h-14"
-                        placeholder="ENTER_NEW_ALIAS"
-                    />
-                    <p className="text-[10px] text-gray-600 mt-2 font-mono">* Special characters may be sanitized.</p>
-                 </div>
-                 
-                 <Button 
-                    onClick={handleNameUpdate}
-                    disabled={isSwitching || !newUsername}
-                    className="w-full h-12 bg-cyan-600 hover:bg-cyan-500 text-black font-bold tracking-widest"
-                 >
-                    {isSwitching ? "UPDATING DATABASE..." : "CONFIRM UPDATE"}
-                 </Button>
-              </div>
-           </div>
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-md p-6 animate-in zoom-in duration-200">
+            <div className="w-full max-w-xs bg-black border border-cyan-500/30 p-6 space-y-6">
+                <h3 className="text-sm font-black font-orbitron text-white uppercase flex items-center gap-2 italic">
+                    <Terminal size={14} className="text-cyan-500" /> Rename_Alias
+                </h3>
+                <Input value={newUsername} onChange={(e) => setNewUsername(e.target.value.toUpperCase())} className="bg-black/50 border-white/10 text-cyan-400 font-orbitron font-black text-lg h-12" placeholder="NEW_ALIAS..." />
+                <div className="flex gap-2">
+                    <Button onClick={handleNameUpdate} disabled={isSwitching || !newUsername} className="flex-1 bg-cyan-500 text-black font-black text-[9px] h-10 uppercase italic">Update</Button>
+                    <Button onClick={() => setShowNameEdit(false)} variant="ghost" className="text-[9px] uppercase font-bold text-white/20">Cancel</Button>
+                </div>
+            </div>
         </div>
       )}
 
-    </div>
+      <style jsx global>{`
+        @keyframes progress {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+      `}</style>
+    </main>
   );
+}
+
+function MiniVital({ label, value, color }: any) {
+    return (
+        <div className="p-2 bg-black/60 border border-white/5 backdrop-blur-sm space-y-0.5">
+            <span className="text-[6px] font-mono text-white/20 uppercase tracking-widest block">{label}</span>
+            <span className={cn("text-xs font-black font-orbitron tracking-tighter truncate block", color)}>{value}</span>
+        </div>
+    );
 }

@@ -1,147 +1,133 @@
 "use client";
 
-import Link from "next/link";
-import { 
-  Instagram, Crown, Sparkles, ArrowRight, 
-  ShieldCheck, Zap 
-} from "lucide-react";
-
-// --- ZAIBATSU UI ---
-import { Button } from "@/components/ui/button";
+import React from "react";
+import { Instagram, Crown, Sparkles, ArrowRight, ShieldCheck, Zap, Cpu } from "lucide-react";
 import { Background } from "@/components/ui/background";
+import { buttonVariants } from "@/components/ui/button";
 import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
+import { TransitionLink } from "@/components/ui/transition-link";
+import { SoundPrompter } from "@/components/ui/sound-prompter";
+import VideoStage from "@/components/canvas/video-stage";
 import { useSfx } from "@/hooks/use-sfx";
+import { cn } from "@/lib/utils";
 
 export default function NainaLandingPage() {
   const { play } = useSfx();
 
   return (
-    <main className="min-h-screen bg-black text-white selection:bg-pink-500/30 overflow-x-hidden font-sans relative">
+    <main className="relative min-h-screen bg-black text-white selection:bg-pink-500/30 font-sans overflow-hidden flex flex-col items-center">
       
-      {/* 1. GLOBAL FX */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <Background />
-        {/* Pink Tint Override */}
-        <div className="absolute inset-0 bg-pink-900/10 mix-blend-screen" />
-      </div>
+      {/* 📽️ THE THEATER: Using Naina's specific video or a high-fashion backdrop */}
+      <VideoStage src="/video/naina.mp4" overlayOpacity={0.6} />
+      
+      {/* Pink Tint Overlays for the "Sisterhood" vibe */}
+      <div className="absolute inset-0 bg-pink-900/5 mix-blend-screen pointer-events-none z-10" />
+      
+      <Background /> 
+      <SoundPrompter />
 
-      {/* --- 2. THE HERO (FULL SCREEN) --- */}
-      <section className="relative h-screen w-full flex flex-col justify-end pb-12 md:pb-24 px-6 md:px-12 overflow-hidden">
-        
-        {/* BACKGROUND IMAGE */}
-        <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/40 z-10" />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-transparent to-black/40 z-10" />
-          {/* High-fashion placeholder image */}
-          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=2864&auto=format&fit=crop')] bg-cover bg-center grayscale contrast-125 opacity-60" />
-        </div>
-
-        <div className="relative z-20 max-w-4xl animate-in fade-in slide-in-from-bottom-10 duration-1000">
-          <div className="flex items-center gap-3 mb-6">
-            <span className="px-3 py-1 rounded-full border border-pink-500/50 bg-pink-500/10 text-pink-400 text-xs font-bold tracking-widest uppercase backdrop-blur-md">
-              Sister Protocol Active
+      {/* 📱 NAVIGATION HUD */}
+      <nav className="fixed top-0 left-0 right-0 z-[100] p-6 flex items-center justify-between pointer-events-none">
+        <TransitionLink href="/" className="pointer-events-auto flex items-center gap-3">
+          <div className="w-10 h-10 bg-pink-500 flex items-center justify-center rounded-xs shadow-[0_0_20px_rgba(236,72,153,0.4)]">
+             <Crown size={18} className="text-white animate-pulse" />
+          </div>
+          <div className="flex flex-col">
+            <span className="font-orbitron font-black tracking-[0.2em] text-xs uppercase">
+                BPOP<span className="text-pink-500">_AMBASSADOR</span>
             </span>
-            <div className="flex items-center gap-1 text-white text-xs font-mono">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              ONLINE
+            <span className="text-[7px] font-mono text-pink-500/60 tracking-widest uppercase">NODE: NAINA_SINGH_800K</span>
+          </div>
+        </TransitionLink>
+
+        <div className="pointer-events-auto flex items-center gap-4">
+          <a 
+            href="https://instagram.com/naina_singh" 
+            target="_blank" 
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }), 
+              "font-mono text-[10px] border-pink-500/30 bg-black/40 backdrop-blur-md px-4 text-pink-400"
+            )}
+            onMouseEnter={() => play("hover")}
+          >
+            <Instagram size={12} className="mr-2" /> VERIFY_STATUS
+          </a>
+        </div>
+      </nav>
+
+      {/* 🧪 PRIMARY INTERFACE: Restricted to Max-Width to feel like a Mobile HUD */}
+      <section className="relative z-50 flex-1 w-full max-w-md flex flex-col justify-end px-8 pb-32 space-y-8">
+        
+        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-12 duration-1000">
+          <div className="flex items-center gap-2">
+            <div className="h-[1px] w-8 bg-pink-500/50" />
+            <div className="px-2 py-0.5 border border-pink-500/30 bg-pink-950/40 text-pink-400 font-mono text-[8px] tracking-[0.3em] uppercase backdrop-blur-xl">
+               SISTER_PROTOCOL: ACTIVE
             </div>
           </div>
-
-          <h1 className="text-6xl md:text-9xl font-black font-orbitron text-white leading-[0.9] mb-6">
-            NAINA <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600">SINGH</span>
+          
+          <h1 className="text-5xl md:text-6xl font-black font-orbitron tracking-tighter leading-[0.9] uppercase">
+            NAINA <br/>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-white to-purple-500 brightness-125">
+              SINGH
+            </span>
           </h1>
 
-          <p className="text-lg md:text-2xl text-gray-300 max-w-2xl mb-10 font-light leading-relaxed">
-            The era of "pick me" is over. We are building the <strong className="text-white">Apex Female Network</strong>. 
+          <p className="text-[10px] text-white/60 font-bold tracking-[0.15em] leading-relaxed uppercase">
+            The era of "pick me" is over. Join the <span className="text-white">Apex Female Network</span>. 
             800k Reach. Zero Apologies.
           </p>
+        </div>
 
-          <div className="flex flex-col sm:flex-row gap-6">
-             <MagneticWrapper>
-                <Link href="/auth/signup?ref=naina_queen">
-                  <Button 
-                    onMouseEnter={() => play("hover")}
-                    onClick={() => play("click")}
-                    className="h-16 px-10 bg-pink-600 hover:bg-pink-500 text-white font-bold text-xl tracking-widest shadow-[0_0_40px_rgba(236,72,153,0.4)] transition-all hover:scale-105"
-                  >
-                    JOIN THE SISTERHOOD <ArrowRight className="ml-3 w-6 h-6" />
-                  </Button>
-                </Link>
-             </MagneticWrapper>
-             
-             <MagneticWrapper>
-                <a href="https://instagram.com/naina_singh" target="_blank" rel="noopener noreferrer">
-                  <Button 
-                    variant="outline" 
-                    className="h-16 px-8 border-white/20 hover:bg-white/10 text-white font-mono uppercase tracking-widest backdrop-blur-md"
-                    onMouseEnter={() => play("hover")}
-                  >
-                    <Instagram className="mr-3 w-5 h-5" /> Verify Status
-                  </Button>
-                </a>
-             </MagneticWrapper>
-          </div>
+        {/* FEATURE TILES: Mini HUDs */}
+        <div className="grid grid-cols-1 gap-3">
+            {[
+                { icon: Crown, title: "QUEEN'S GAMBIT", desc: "Direct access to the Sister Protocol boost." },
+                { icon: Zap, title: "VELOCITY INJECTION", desc: "+500 Bonus Points on uplink." }
+            ].map((feature, i) => (
+                <div key={i} className="p-4 bg-white/5 border border-white/10 backdrop-blur-xl flex items-start gap-4 transition-all hover:border-pink-500/40">
+                    <feature.icon size={18} className="text-pink-500 mt-1" />
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-black tracking-widest uppercase">{feature.title}</span>
+                        <span className="text-[9px] text-white/40 font-medium uppercase tracking-tighter">{feature.desc}</span>
+                    </div>
+                </div>
+            ))}
+        </div>
+
+        <div className="flex flex-col gap-4">
+           <MagneticWrapper strength={0.1}>
+              <TransitionLink 
+                href="/auth/signup?ref=naina_queen"
+                onClick={() => play("click")}
+                onMouseEnter={() => play("hover")}
+                className={cn(
+                  buttonVariants({ size: "lg" }), 
+                  "w-full h-20 text-lg font-black font-orbitron shadow-[0_0_50px_rgba(236,72,153,0.2)] border-pink-500 bg-pink-600 text-white flex items-center justify-between px-10 hover:bg-pink-500"
+                )}
+              >
+                CLAIM THRONE <ArrowRight className="w-6 h-6" />
+              </TransitionLink>
+           </MagneticWrapper>
         </div>
       </section>
 
-      {/* --- 3. THE SOCIAL PROOF (Ticker) --- */}
-      <div className="py-4 bg-pink-600 text-black font-black text-xl overflow-hidden whitespace-nowrap border-y border-white/10 relative z-20">
-        <div className="animate-marquee inline-block">
-          NAINA SINGH APPROVED /// 800K REACH VALIDATION /// JOIN THE INNER CIRCLE /// SISTER PROTOCOL ACTIVE /// NAINA SINGH APPROVED /// WE CONTROL THE SIGNAL ///
-        </div>
-      </div>
-
-      {/* --- 4. FEATURES GRID --- */}
-      <section className="py-24 px-6 md:px-12 bg-black relative z-10">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-8">
-            
-            <div className="p-8 border border-white/10 rounded-2xl bg-white/5 hover:border-pink-500/50 transition-colors group">
-               <Crown className="w-12 h-12 text-pink-500 mb-6 group-hover:scale-110 transition-transform" />
-               <h3 className="text-2xl font-bold font-orbitron text-white mb-2">QUEEN'S GAMBIT</h3>
-               <p className="text-gray-400 leading-relaxed">
-                 Direct access to my personal network. When you post, the <span className="text-pink-400">Sister Protocol</span> engages to boost your signal instantly.
-               </p>
+      {/* 🧪 SYSTEM STATUS BAR */}
+      <footer className="fixed bottom-0 left-0 right-0 z-[100] px-6 py-6 flex items-center justify-between border-t border-white/5 bg-black/60 backdrop-blur-3xl">
+         <div className="flex items-center gap-4">
+            <ShieldCheck size={14} className="text-pink-500 animate-pulse" />
+            <div className="flex flex-col gap-1">
+              <div className="h-0.5 w-24 bg-white/10 rounded-full overflow-hidden">
+                 <div className="h-full bg-pink-500 w-full animate-pulse" />
+              </div>
+              <span className="text-[7px] font-mono uppercase tracking-[0.3em] font-bold opacity-40">ENCRYPTION: LEVEL_9</span>
             </div>
-
-            <div className="p-8 border border-white/10 rounded-2xl bg-white/5 hover:border-purple-500/50 transition-colors group">
-               <Sparkles className="w-12 h-12 text-purple-500 mb-6 group-hover:scale-110 transition-transform" />
-               <h3 className="text-2xl font-bold font-orbitron text-white mb-2">AESTHETIC DOMINANCE</h3>
-               <p className="text-gray-400 leading-relaxed">
-                 Unlock exclusive <span className="text-purple-400">"Cyber Vixen"</span> avatars and UI themes unavailable to the general public.
-               </p>
-            </div>
-
-            <div className="p-8 border border-white/10 rounded-2xl bg-white/5 hover:border-cyan-500/50 transition-colors group">
-               <Zap className="w-12 h-12 text-cyan-500 mb-6 group-hover:scale-110 transition-transform" />
-               <h3 className="text-2xl font-bold font-orbitron text-white mb-2">VELOCITY INJECTION</h3>
-               <p className="text-gray-400 leading-relaxed">
-                 New members get a <span className="text-cyan-400 font-bold">+500 Velocity Bonus</span> just for using my invite link. Skip the grind.
-               </p>
-            </div>
-
-        </div>
-      </section>
-
-      {/* --- 5. FINAL CTA --- */}
-      <section className="py-32 flex flex-col items-center justify-center text-center px-6 relative overflow-hidden">
-        {/* Grid Background */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(236,72,153,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(236,72,153,0.1)_1px,transparent_1px)] bg-[size:40px_40px] opacity-20 pointer-events-none" />
-        
-        <div className="relative z-10 max-w-3xl">
-            <ShieldCheck className="w-20 h-20 text-pink-500 mx-auto mb-8 animate-bounce" />
-            <h2 className="text-4xl md:text-7xl font-black font-orbitron mb-8 leading-tight">
-              DON'T BE A FOLLOWER.<br/>BE A <span className="text-pink-500">LEADER.</span>
-            </h2>
-            <MagneticWrapper>
-                <Link href="/auth/signup?ref=naina_queen">
-                <Button className="h-20 px-12 bg-white text-black hover:bg-pink-500 hover:text-white font-black text-2xl tracking-widest transition-all">
-                    CLAIM YOUR THRONE
-                </Button>
-                </Link>
-            </MagneticWrapper>
-        </div>
-      </section>
-
+         </div>
+         <div className="flex flex-col items-end">
+            <span className="text-[8px] font-bold text-white/30 uppercase tracking-[0.4em]">AMBASSADOR_UPLINK</span>
+            <span className="text-[7px] font-mono text-cyan-400 uppercase">SIGNAL_STRENGTH: MAX</span>
+         </div>
+      </footer>
     </main>
   );
 }
