@@ -1,6 +1,6 @@
 {
-  "name": "portfolio",
-  "version": "0.1.0",
+  "name": "bpop-os",
+  "version": "3.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -32,9 +32,9 @@
     "@react-email/components": "^1.0.2",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
+    "@react-three/postprocessing": "^2.16.0",
     "@sentry/nextjs": "^10.32.1",
     "@types/canvas-confetti": "^1.9.0",
-    "@react-three/postprocessing": "^2.16.0",
     "@types/three": "^0.182.0",
     "@upstash/ratelimit": "^2.0.7",
     "@upstash/redis": "^1.36.0",
@@ -95,6 +95,15 @@
     "typescript": "^5",
     "vite-tsconfig-paths": "^6.0.3",
     "vitest": "^4.0.16"
+  },
+  "overrides": {
+    "@react-three/postprocessing": {
+      "@react-three/fiber": "$@react-three/fiber"
+    },
+    "@react-three/drei": {
+      "@react-three/fiber": "$@react-three/fiber",
+      "three": "$three"
+    }
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
