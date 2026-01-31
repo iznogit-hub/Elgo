@@ -49,7 +49,6 @@ export default function VideoStage({
         src={src}
         poster={poster}
         autoPlay
-        muted
         loop
         playsInline
         onLoadedData={() => setIsLoaded(true)}

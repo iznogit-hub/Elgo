@@ -18,7 +18,7 @@ export default function NainaLandingPage() {
     <main className="relative min-h-screen bg-black text-white selection:bg-pink-500/30 font-sans overflow-hidden flex flex-col items-center">
       
       {/* 📽️ THE THEATER: Using Naina's specific video or a high-fashion backdrop */}
-      <VideoStage src="/video/naina.mp4" overlayOpacity={0.6} />
+      <VideoStage src="/video/naina.mp4" overlayOpacity={0.9} />
       
       {/* Pink Tint Overlays for the "Sisterhood" vibe */}
       <div className="absolute inset-0 bg-pink-900/5 mix-blend-screen pointer-events-none z-10" />

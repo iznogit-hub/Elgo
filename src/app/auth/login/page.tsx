@@ -87,7 +87,7 @@ export default function LoginPage() {
     <main className="relative min-h-screen bg-black text-white font-sans overflow-hidden flex flex-col items-center">
       
       {/* 📽️ THE THEATER: MP4 Backdrop for Login */}
-      <VideoStage src="/video/intro.mp4" overlayOpacity={0.6} />
+      <VideoStage src="/video/auth.mp4" overlayOpacity={0.6} />
       <Background /> 
       <SoundPrompter />
 
