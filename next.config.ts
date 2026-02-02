@@ -7,18 +7,16 @@ const bundleAnalyzer = withBundleAnalyzer({
 });
 
 const nextConfig: NextConfig = {
-  // 1. Disable Strict Mode (Reduces double-firing in auth)
-  reactStrictMode: false,
+  reactStrictMode: false, // Keeps auth logic simple
 
-  // 2. Allow all standard image domains (Fixes your 400 Image Error)
   images: {
     domains: [
-      "lh3.googleusercontent.com", 
+      "lh3.googleusercontent.com",
       "avatars.githubusercontent.com",
-      "bee-popper.vercel.app" // Allow your own domain
+      "bee-popper.vercel.app",
     ],
     remotePatterns: [
-      { protocol: "https", hostname: "**" }, // Allow ALL external images for now
+      { protocol: "https", hostname: "**" },
     ],
   },
 
@@ -27,15 +25,22 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*",
         headers: [
-          // ⚡ THE FIX: Force the browser to allow the Google Popup to communicate
+          // 1. Unblock the Google Popup
           { key: "Cross-Origin-Opener-Policy", value: "unsafe-none" },
           { key: "Cross-Origin-Embedder-Policy", value: "unsafe-none" },
-          { key: "Cross-Origin-Resource-Policy", value: "cross-origin" },
           
-          // ⚡ OPEN CSP: We are removing restrictions to fix the "Offline" error
+          // 2. Unblock the Database (The "Offline" Fix)
+          // We explicitly allow the Google API domains Firestore uses.
           { 
             key: "Content-Security-Policy", 
-            value: "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;" 
+            value: `
+              default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;
+              script-src * 'unsafe-inline' 'unsafe-eval' blob:;
+              connect-src * 'unsafe-inline' https://*.googleapis.com https://*.firebase.com https://*.firebaseio.com wss://*.firebaseio.com;
+              img-src * 'unsafe-inline' data: blob:;
+              frame-src * 'unsafe-inline' data: blob:;
+              style-src * 'unsafe-inline';
+            `.replace(/\s{2,}/g, " ").trim() 
           },
         ],
       },
