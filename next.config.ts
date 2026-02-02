@@ -6,10 +6,12 @@ const bundleAnalyzer = withBundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
 });
 
-// ⚡ SYSTEM OVERRIDE: Expanded CSP to allow direct GitHub asset fetching
+// ⚡ SYSTEM REPAIR:
+// 1. Added 'blob:' to script-src and worker-src (Fixes localhost worker error)
+// 2. Kept comments OUT of the string (Fixes "invalid character" error)
 const cspHeader = `
     default-src 'self';
-    script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com https://va.vercel-scripts.com https://www.google-analytics.com;
+    script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: https://apis.google.com https://accounts.google.com https://www.googletagmanager.com https://va.vercel-scripts.com https://www.google-analytics.com;
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     img-src 'self' blob: data: https://*.googleusercontent.com https://*.githubusercontent.com https://images.unsplash.com https://cdn.discordapp.com https://cdn.simpleicons.org https://media.giphy.com https://raw.githack.com https://raw.githubusercontent.com;
     font-src 'self' data: https://fonts.gstatic.com;
@@ -17,9 +19,10 @@ const cspHeader = `
     base-uri 'self';
     form-action 'self';
     frame-ancestors 'none';
+    frame-src 'self' https://accounts.google.com https://*.firebaseapp.com https://content.googleapis.com;
     upgrade-insecure-requests;
     worker-src 'self' blob:;
-    connect-src 'self' https://*.sentry.io https://firebase.googleapis.com https://firebaseinstallations.googleapis.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.google-analytics.com https://*.google-analytics.com https://api.lanyard.rest wss://api.lanyard.rest https://raw.githack.com https://raw.githubusercontent.com;
+    connect-src 'self' https://*.googleapis.com https://*.firebase.com https://*.firebaseio.com https://*.sentry.io https://accounts.google.com https://www.google-analytics.com https://*.google-analytics.com https://api.lanyard.rest wss://api.lanyard.rest https://raw.githack.com https://raw.githubusercontent.com;
 `;
 
 const nextConfig: NextConfig = {
@@ -55,8 +58,9 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "Content-Security-Policy", value: cspHeader.replace(/\s{2,}/g, " ").trim() },
           { key: "Permissions-Policy", value: "camera=(), microphone=(self), geolocation=(), browsing-topics=()" },
+          { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+          { key: "Content-Security-Policy", value: cspHeader.replace(/\s{2,}/g, " ").trim() },
         ],
       },
     ];
