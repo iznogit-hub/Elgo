@@ -5,15 +5,13 @@ import { isSupported } from "firebase/analytics";
 
 // YOUR CONFIGURATION
 const firebaseConfig = {
-  apiKey: "AIzaSyAzY0zF_vwg6F5FfPxopE5yh_2gzIOVJPA",
-  authDomain: "kaesar-gaesang.firebaseapp.com",
-  projectId: "kaesar-gaesang",
-  storageBucket: "kaesar-gaesang.firebasestorage.app",
-  messagingSenderId: "374663048554",
-  appId: "1:374663048554:web:011d18882497c12e5f0913",
-  measurementId: "G-7TX1X0HXD1"
+  apiKey: "AIzaSyBnBntRTxKDssUGDJC33EzqGflb2MD7xzM",
+  authDomain: "bubblepops-39e96.firebaseapp.com",
+  projectId: "bubblepops-39e96",
+  storageBucket: "bubblepops-39e96.firebasestorage.app",
+  messagingSenderId: "992553228672",
+  appId: "1:992553228672:web:729f4ffd7e30fe4ca74965"
 };
-
 // 1. INITIALIZE APP (SINGLETON PATTERN)
 // This prevents "Firebase App already initialized" errors during hot reloads
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();

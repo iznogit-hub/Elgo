@@ -4,23 +4,13 @@ import { useState } from "react";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import Link from "next/link";
-import { 
-  ShieldAlert, 
-  Terminal, 
-  ArrowLeft, 
-  CheckCircle2, 
-  LockKeyhole,
-  Cpu,
-  Activity
-} from "lucide-react";
+import { ShieldAlert, Terminal, ArrowLeft, LockKeyhole } from "lucide-react";
 import { toast } from "sonner";
 
-// --- ZAIBATSU SYSTEM UI ---
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { HackerText } from "@/components/ui/hacker-text";
 import { Background } from "@/components/ui/background";
-import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
 import { SoundPrompter } from "@/components/ui/sound-prompter";
 import VideoStage from "@/components/canvas/video-stage";
 import { useSfx } from "@/hooks/use-sfx";
@@ -43,18 +33,14 @@ export default function ResetPassword() {
     }
 
     setLoading(true);
-    toast.loading("SEARCHING_DATABASE...");
-
     try {
       await sendPasswordResetEmail(auth, email);
       play("success");
       setSent(true);
-      toast.dismiss();
       toast.success("RECOVERY SIGNAL TRANSMITTED");
     } catch (error: any) {
       play("error");
-      toast.dismiss();
-      toast.error(error.code === 'auth/too-many-requests' ? "SYSTEM_COOLING_DOWN" : "TRANSMISSION_FAILED");
+      toast.error("TRANSMISSION_FAILED");
     } finally {
       setLoading(false);
     }
@@ -63,12 +49,10 @@ export default function ResetPassword() {
   return (
     <main className="relative min-h-screen bg-black text-white font-sans overflow-hidden flex flex-col items-center">
       
-      {/* 📽️ THE THEATER: Central Focus for Recovery Briefing */}
-      <VideoStage src="/video/intro.mp4" overlayOpacity={0.6} />
+      <VideoStage src="/video/auth.mp4" overlayOpacity={0.6} />
       <Background /> 
       <SoundPrompter />
 
-      {/* 📱 TOP HUD NAVIGATION */}
       <nav className="fixed top-0 left-0 right-0 z-[100] p-6 flex items-center justify-between pointer-events-none">
         <div className="pointer-events-auto">
             <Link href="/auth/login" className="w-12 h-12 border border-white/10 bg-black/40 backdrop-blur-md flex items-center justify-center group hover:border-cyan-500 transition-all">
@@ -78,47 +62,46 @@ export default function ResetPassword() {
         <div className="pointer-events-auto flex flex-col items-end gap-1">
             <div className="px-3 py-1 bg-red-500/10 border border-red-500/20 backdrop-blur-md rounded-full flex items-center gap-2">
                 <ShieldAlert size={10} className="text-red-500" />
-                <span className="text-[8px] font-mono font-black tracking-widest text-red-500 uppercase">Recovery_Protocol: Active</span>
+                <span className="text-[8px] font-mono font-black tracking-widest text-red-500 uppercase">Recovery_Protocol</span>
             </div>
         </div>
       </nav>
 
-      {/* 🔐 RECOVERY INTERFACE: Flanked Logic */}
-      <div className="relative z-50 w-full h-screen pointer-events-none">
+      <div className="relative z-50 w-full h-screen pointer-events-none flex flex-col md:flex-row items-center justify-center gap-12 px-6">
         
         {/* LEFT FLANK: Status Briefing */}
-        <div className="absolute left-6 top-32 w-48 space-y-6 pointer-events-auto">
+        <div className="pointer-events-auto text-center md:text-left">
             <div className="space-y-4">
                 <div className="relative inline-block">
                     <LockKeyhole className={cn(
-                        "w-12 h-12 transition-colors duration-500",
+                        "w-16 h-16 transition-colors duration-500",
                         sent ? "text-green-500" : "text-cyan-500"
                     )} />
                 </div>
-                <h1 className="text-xl font-black font-orbitron italic uppercase leading-none tracking-tighter text-white">
+                <h1 className="text-3xl font-black font-orbitron italic uppercase leading-none tracking-tighter text-white">
                     <HackerText text={sent ? "SIGNAL_LOCKED" : "ACCESS_RECOVERY"} speed={40} />
                 </h1>
                 <p className="text-[8px] font-mono text-cyan-700 tracking-[0.3em] uppercase italic">System_Override_V2</p>
             </div>
 
             {sent && (
-                <div className="p-4 bg-green-500/5 border-l-2 border-green-500/50 backdrop-blur-xl animate-in slide-in-from-left-4 duration-500">
+                <div className="mt-6 p-4 bg-green-500/5 border-l-2 border-green-500/50 backdrop-blur-xl animate-in slide-in-from-left-4 duration-500">
                     <p className="text-[9px] font-bold text-green-400 uppercase leading-relaxed tracking-widest">
-                        Check secure comms. Link dispatched.
+                        Check secure comms.<br/>Link dispatched.
                     </p>
                 </div>
             )}
         </div>
 
         {/* RIGHT FLANK: Input Matrix */}
-        <div className="absolute right-6 top-32 w-52 space-y-4 pointer-events-auto">
+        <div className="pointer-events-auto w-full max-w-sm">
             {!sent ? (
                 <>
-                    <h3 className="text-[9px] font-black font-orbitron tracking-widest text-gray-400 uppercase flex items-center justify-end gap-2 text-right">
+                    <h3 className="text-[9px] font-black font-orbitron tracking-widest text-gray-400 uppercase flex items-center justify-end gap-2 text-right mb-4">
                         Target_Identification <Terminal size={10} className="text-cyan-500" />
                     </h3>
 
-                    <form onSubmit={handleReset} className="p-4 bg-black/40 border-r-2 border-cyan-500/50 backdrop-blur-xl space-y-4">
+                    <form onSubmit={handleReset} className="p-6 bg-black/40 border-r-2 border-cyan-500/50 backdrop-blur-xl space-y-4">
                         <div className="space-y-1">
                             <label className="text-[7px] font-mono text-cyan-600 uppercase">Neural_Address (Email)</label>
                             <Input 
@@ -150,23 +133,6 @@ export default function ResetPassword() {
             )}
         </div>
       </div>
-
-      {/* 🧪 SYSTEM FOOTER */}
-      <footer className="fixed bottom-0 left-0 right-0 z-[100] px-6 py-5 flex items-center justify-between border-t border-white/5 bg-black/80 backdrop-blur-2xl">
-         <div className="flex items-center gap-4 opacity-50 text-cyan-500">
-            <Cpu size={14} className="animate-pulse" />
-            <div className="flex flex-col gap-0.5">
-                <div className="h-0.5 w-16 bg-white/10 overflow-hidden">
-                    <div className="h-full bg-cyan-400 w-1/3 animate-[progress_3s_infinite_linear]" />
-                </div>
-                <span className="text-[7px] font-mono uppercase tracking-[0.2em] font-bold">Secure_Core // Override_Ready</span>
-            </div>
-         </div>
-         <div className="flex items-center gap-2">
-             <Activity size={12} className="text-white/20" />
-             <span className="text-[8px] font-bold text-white/20 uppercase tracking-[0.3em]">Protocol_2.0.4</span>
-         </div>
-      </footer>
     </main>
   );
 }
