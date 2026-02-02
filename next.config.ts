@@ -6,9 +6,9 @@ const bundleAnalyzer = withBundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
 });
 
-// ⚡ SYSTEM REPAIR:
-// 1. Added 'blob:' to script-src and worker-src (Fixes localhost worker error)
-// 2. Kept comments OUT of the string (Fixes "invalid character" error)
+// ⚡ PRODUCTION CSP:
+// 1. Removed strict blob restrictions
+// 2. Added explicit 'unsafe-none' for opener policy
 const cspHeader = `
     default-src 'self';
     script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: https://apis.google.com https://accounts.google.com https://www.googletagmanager.com https://va.vercel-scripts.com https://www.google-analytics.com;
@@ -59,7 +59,11 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(self), geolocation=(), browsing-topics=()" },
-          { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+          
+          // ⚡ CRITICAL FIX FOR LIVE DEPLOYMENT ⚡
+          // We set this to 'unsafe-none' to stop the browser from blocking the Google Popup interaction.
+          { key: "Cross-Origin-Opener-Policy", value: "unsafe-none" },
+          
           { key: "Content-Security-Policy", value: cspHeader.replace(/\s{2,}/g, " ").trim() },
         ],
       },
