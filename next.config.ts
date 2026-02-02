@@ -7,40 +7,31 @@ const bundleAnalyzer = withBundleAnalyzer({
 });
 
 const nextConfig: NextConfig = {
-  reactStrictMode: false, // Keeps auth logic simple
+  // 1. Disable Strict Mode to prevent double-firing auth in dev
+  reactStrictMode: false,
 
+  // 2. Allow ALL image domains (Fixes image loading errors)
   images: {
-    domains: [
-      "lh3.googleusercontent.com",
-      "avatars.githubusercontent.com",
-      "bee-popper.vercel.app",
-    ],
     remotePatterns: [
       { protocol: "https", hostname: "**" },
     ],
   },
 
+  // 3. NUCLEAR SECURITY HEADERS
   async headers() {
     return [
       {
         source: "/:path*",
         headers: [
-          // 1. Unblock the Google Popup
+          // A. Fixes "window.closed" error by disabling isolation
           { key: "Cross-Origin-Opener-Policy", value: "unsafe-none" },
           { key: "Cross-Origin-Embedder-Policy", value: "unsafe-none" },
           
-          // 2. Unblock the Database (The "Offline" Fix)
-          // We explicitly allow the Google API domains Firestore uses.
+          // B. Fixes "Client is offline" by allowing ALL connections
+          // We set default-src to * (wildcard) to allow everything.
           { 
             key: "Content-Security-Policy", 
-            value: `
-              default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;
-              script-src * 'unsafe-inline' 'unsafe-eval' blob:;
-              connect-src * 'unsafe-inline' https://*.googleapis.com https://*.firebase.com https://*.firebaseio.com wss://*.firebaseio.com;
-              img-src * 'unsafe-inline' data: blob:;
-              frame-src * 'unsafe-inline' data: blob:;
-              style-src * 'unsafe-inline';
-            `.replace(/\s{2,}/g, " ").trim() 
+            value: "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;" 
           },
         ],
       },
