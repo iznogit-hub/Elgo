@@ -5,7 +5,7 @@ import {
   CreditCard, Lock, Key, 
   Zap, ArrowLeft, Gem,
   Database, ShieldAlert,
-  ShoppingCart, Globe, Smartphone
+  ShoppingCart, Globe, Smartphone, X, ScanLine
 } from "lucide-react";
 
 // 🔥 FIREBASE IMPORTS
@@ -23,83 +23,27 @@ import { useSfx } from "@/hooks/use-sfx";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/context/auth-context";
 import { toast } from "sonner";
+import Image from "next/image";
 
 // --- ⚡ UPI CONFIGURATION ---
 const MERCHANT = {
-  vpa: "iznoatwork@okicici", // ⚠️ REPLACE WITH YOUR ACTUAL UPI ID
+  vpa: "iznoatwork@okicici", // YOUR VPA
   name: "Pop_Store"
 };
 
 // --- DATA STRUCTURES ---
-
 const SUPPLY_DROPS = [
-  { 
-    id: "drop_s", 
-    name: "Ration Pack", 
-    amount: 500, 
-    bonus: 0, 
-    price: 299, 
-    tag: "STARTER" 
-  },
-  { 
-    id: "drop_m", 
-    name: "Smuggler's Crate", 
-    amount: 1200, 
-    bonus: 200, 
-    price: 899, 
-    tag: "POPULAR" 
-  },
-  { 
-    id: "drop_l", 
-    name: "Cartel Shipment", 
-    amount: 3000, 
-    bonus: 600, 
-    price: 2499, 
-    tag: "VALUE" 
-  },
-  { 
-    id: "drop_xl", 
-    name: "The Vault", 
-    amount: 8000, 
-    bonus: 2000, 
-    price: 4999, 
-    tag: "WHALE" 
-  },
+  { id: "drop_s", name: "Ration Pack", amount: 500, bonus: 0, price: 299, tag: "STARTER" },
+  { id: "drop_m", name: "Smuggler's Crate", amount: 1200, bonus: 200, price: 899, tag: "POPULAR" },
+  { id: "drop_l", name: "Cartel Shipment", amount: 3000, bonus: 600, price: 2499, tag: "VALUE" },
+  { id: "drop_xl", name: "The Vault", amount: 8000, bonus: 2000, price: 4999, tag: "WHALE" },
 ];
 
 const BLACK_MARKET = [
-  {
-    id: "key_niche",
-    name: "Sector Key",
-    description: "Universal unlock key for any standard sector.",
-    icon: <Key className="text-yellow-400" />,
-    cost: 100, 
-    type: "ACCESS"
-  },
-  {
-    id: "boost_genkit",
-    name: "Genkit Overclock",
-    description: "24h Priority queue for AI generation.",
-    icon: <Zap className="text-cyan-400" />,
-    cost: 50, 
-    type: "BOOST"
-  },
-  {
-    id: "contract_followers",
-    name: "Mercenary Contract",
-    description: "Bounty placement for 50 followers.",
-    icon: <Database className="text-pink-500" />,
-    cost: 500, 
-    type: "GROWTH"
-  },
-  {
-    id: "intel_leak",
-    name: "Insider Leak",
-    description: "Unlocks 'Trending Audio' list for 7 days.",
-    icon: <Globe className="text-green-500" />,
-    cost: 25, 
-    type: "INTEL"
-  }
+  { id: "key_niche", name: "Sector Key", description: "Universal unlock key.", icon: <Key className="text-yellow-400" />, cost: 100, type: "ACCESS" },
+  { id: "boost_genkit", name: "Genkit Overclock", description: "24h Priority queue.", icon: <Zap className="text-cyan-400" />, cost: 50, type: "BOOST" },
+  { id: "contract_followers", name: "Mercenary Contract", description: "Bounty for 50 followers.", icon: <Database className="text-pink-500" />, cost: 500, type: "GROWTH" },
+  { id: "intel_leak", name: "Insider Leak", description: "Unlocks Trending list.", icon: <Globe className="text-green-500" />, cost: 25, type: "INTEL" }
 ];
 
 export default function StorePage() {
@@ -107,6 +51,10 @@ export default function StorePage() {
   const { user, userData, loading } = useAuth();
   const [activeTab, setActiveTab] = useState<"MINT" | "MARKET">("MINT");
   const [processing, setProcessing] = useState<string | null>(null);
+  
+  // QR MODAL STATE
+  const [showQR, setShowQR] = useState(false);
+  const [currentOrder, setCurrentOrder] = useState<any>(null);
 
   const popCoins = userData?.wallet?.popCoins || 0;
 
@@ -114,35 +62,32 @@ export default function StorePage() {
   const handlePurchase = async (item: any) => {
     if (!user) return;
 
-    // A. REAL MONEY (THE MINT - UPI INTENT)
+    // A. REAL MONEY (UPI QR & INTENT)
     if (activeTab === "MINT") {
         play("click");
         
-        // 1. Construct UPI Link
-        const upiUrl = `upi://pay?pa=${MERCHANT.vpa}&pn=${MERCHANT.name}&am=${item.price}&cu=INR&tn=${item.name}_${user.uid.substring(0,4)}`;
+        // 1. Generate UPI Link
+        // Using a random transaction ref (tr) to avoid caching issues
+        const txnRef = `${user.uid.substring(0,4)}_${Date.now().toString().slice(-4)}`;
+        const upiUrl = `upi://pay?pa=${MERCHANT.vpa}&pn=${MERCHANT.name}&am=${item.price}&cu=INR&tn=${item.name}`;
         
-        // 2. Log Attempt to Firestore (So Admin knows they tried to pay)
+        // 2. Set State for Modal
+        setCurrentOrder({ ...item, upiUrl });
+        setShowQR(true);
+
+        // 3. Log Attempt
         try {
             await addDoc(collection(db, "payment_attempts"), {
                 uid: user.uid,
                 username: userData?.username || "Unknown",
                 item: item.name,
                 amount: item.price,
-                status: "initiated",
+                status: "QR_Generated",
+                txnRef,
                 timestamp: new Date().toISOString()
             });
         } catch(e) { console.error("Log failed", e); }
-
-        // 3. Trigger Mobile Intent
-        // We use window.location for mobile deep linking
-        window.location.href = upiUrl;
         
-        // 4. Feedback
-        toast.info("OPENING PAYMENT APP...", {
-            description: "After payment, please send screenshot to Admin.",
-            duration: 6000,
-            icon: <Smartphone size={16} />
-        });
         return;
     }
 
@@ -207,7 +152,6 @@ export default function StorePage() {
             </div>
         </div>
         
-        {/* WALLET */}
         <div className="flex items-center gap-4">
             <div className="text-right">
                 <span className="block text-[8px] font-mono text-yellow-500/60 uppercase tracking-widest">Pop_Coins</span>
@@ -217,9 +161,9 @@ export default function StorePage() {
             </div>
             <div className="w-[1px] h-8 bg-white/10" />
             <div className="text-right opacity-50">
-                <span className="block text-[8px] font-mono text-white/40 uppercase tracking-widest">UPI_Link</span>
+                <span className="block text-[8px] font-mono text-white/40 uppercase tracking-widest">Gateway</span>
                 <span className="text-sm font-bold font-mono text-white tracking-widest flex items-center justify-end gap-2">
-                    ACTIVE <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                    ONLINE <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                 </span>
             </div>
         </div>
@@ -273,7 +217,6 @@ export default function StorePage() {
                             )}
                         </div>
 
-                        {/* UPI PAYMENT BUTTON */}
                         <Button 
                             onClick={() => handlePurchase(item)}
                             className="w-full bg-white/5 border border-white/10 hover:bg-green-600 hover:text-white hover:border-green-400 transition-all text-[10px] font-black tracking-[0.2em] uppercase h-10 mt-4 group/btn"
@@ -296,29 +239,19 @@ export default function StorePage() {
                         <div className="w-16 h-16 bg-black/50 border border-white/5 flex items-center justify-center rounded-sm group-hover:scale-110 transition-transform duration-500">
                             {item.icon}
                         </div>
-                        
                         <div className="flex-1 space-y-1">
                             <Badge variant="secondary" className="bg-white/5 text-white/40 text-[7px] tracking-widest mb-1">{item.type}</Badge>
                             <h3 className="text-sm font-black font-orbitron uppercase text-white">{item.name}</h3>
                             <p className="text-[9px] font-mono text-white/50 leading-relaxed">{item.description}</p>
-                            
                             <div className="pt-3 flex items-center justify-between">
-                                <span className={cn(
-                                    "text-sm font-black font-mono",
-                                    popCoins >= item.cost ? "text-yellow-400" : "text-red-500"
-                                )}>
+                                <span className={cn("text-sm font-black font-mono", popCoins >= item.cost ? "text-yellow-400" : "text-red-500")}>
                                     {item.cost} PC
                                 </span>
                                 <Button 
                                     size="sm"
                                     onClick={() => handlePurchase(item)}
                                     disabled={processing === item.id || popCoins < item.cost}
-                                    className={cn(
-                                        "h-7 text-[8px] font-bold tracking-widest uppercase",
-                                        popCoins >= item.cost 
-                                            ? "bg-cyan-600 hover:bg-cyan-500 text-white" 
-                                            : "bg-white/5 text-white/20 cursor-not-allowed hover:bg-white/5"
-                                    )}
+                                    className={cn("h-7 text-[8px] font-bold tracking-widest uppercase", popCoins >= item.cost ? "bg-cyan-600 hover:bg-cyan-500 text-white" : "bg-white/5 text-white/20 cursor-not-allowed hover:bg-white/5")}
                                 >
                                     {processing === item.id ? "SYNC..." : "ACQUIRE"}
                                 </Button>
@@ -328,9 +261,60 @@ export default function StorePage() {
                 ))}
             </div>
         )}
-
       </div>
-      
+
+      {/* 🚀 UPI QR CODE MODAL */}
+      {showQR && currentOrder && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+              {/* Backdrop */}
+              <div 
+                  className="absolute inset-0 bg-black/80 backdrop-blur-md" 
+                  onClick={() => setShowQR(false)} 
+              />
+              
+              <div className="relative bg-black border border-white/20 p-6 rounded-lg w-full max-w-sm shadow-[0_0_50px_rgba(255,255,255,0.1)] animate-in zoom-in-95 duration-200">
+                  <button onClick={() => setShowQR(false)} className="absolute top-4 right-4 text-gray-500 hover:text-white">
+                      <X size={20} />
+                  </button>
+
+                  <div className="flex flex-col items-center space-y-4">
+                      <div className="flex items-center gap-2 text-yellow-500 mb-2">
+                          <ScanLine className="animate-pulse" />
+                          <span className="font-black font-orbitron text-lg tracking-widest">PAYMENT_GATE</span>
+                      </div>
+
+                      {/* QR Code (Generated via Public API) */}
+                      <div className="p-4 bg-white rounded-lg">
+                          {/* We use a simple QR API here for zero-dependency generation */}
+                          <img 
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentOrder.upiUrl)}`}
+                            alt="Scan to Pay"
+                            className="w-48 h-48 mix-blend-multiply"
+                          />
+                      </div>
+
+                      <div className="text-center space-y-1">
+                          <p className="text-white font-bold text-lg">₹{currentOrder.price}</p>
+                          <p className="text-gray-400 text-xs font-mono">{currentOrder.name}</p>
+                      </div>
+
+                      <div className="w-full h-px bg-white/10" />
+
+                      <Button 
+                          onClick={() => window.location.href = currentOrder.upiUrl}
+                          className="w-full bg-green-600 hover:bg-green-500 text-white font-bold h-12 uppercase tracking-widest"
+                      >
+                          OPEN UPI APP <Smartphone size={16} className="ml-2" />
+                      </Button>
+
+                      <p className="text-[9px] text-gray-500 font-mono text-center">
+                          SCAN ON DESKTOP • TAP ON MOBILE
+                      </p>
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* 🧪 FOOTER */}
       <footer className="fixed bottom-0 left-0 right-0 z-[100] px-6 py-4 flex items-center justify-between border-t border-white/5 bg-black/90 backdrop-blur-xl">
          <div className="flex items-center gap-2 text-[8px] font-mono text-white/30">

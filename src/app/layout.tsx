@@ -10,6 +10,9 @@ import { SoundProvider } from "@/components/sound-provider";
 import { RealtimeProvider } from "@/providers/realtime-provider"; 
 import { GlobalAppWrapper } from "@/components/global-app-wrapper"; 
 
+// --- GLOBAL UI ---
+import { Cursor } from "@/components/ui/cursor"; // 👈 The Tactical HUD Cursor
+
 // --- FONTS ---
 const inter = Inter({ 
   subsets: ["latin"], 
@@ -60,7 +63,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${orbitron.variable} ${mono.variable} font-sans bg-black text-white antialiased selection:bg-cyan-500/30 selection:text-cyan-100 overflow-x-hidden min-h-screen`}
+        className={`${inter.variable} ${orbitron.variable} ${mono.variable} font-sans bg-black text-white antialiased selection:bg-cyan-500/30 selection:text-cyan-100 overflow-x-hidden min-h-screen cursor-none`}
       >
         {/* 1. THEME ENGINE */}
         <ThemeProvider
@@ -72,18 +75,21 @@ export default function RootLayout({
           {/* 2. AUDIO ENGINE */}
           <SoundProvider>
             
-            {/* 3. IDENTITY LAYER (This enables the iznoatwork check) */}
+            {/* 3. IDENTITY LAYER */}
             <AuthProvider>
               
-              {/* 4. REALTIME SOCKETS (Ghost Mode) */}
+              {/* 4. REALTIME SOCKETS */}
               <RealtimeProvider>
                 
-                {/* 5. VISUAL FX WRAPPER (Scanlines, CRT, etc) */}
+                {/* 5. TACTICAL CURSOR (Global Overlay) */}
+                <Cursor />
+
+                {/* 6. VISUAL FX WRAPPER */}
                 <GlobalAppWrapper>
                   {children}
                 </GlobalAppWrapper>
 
-                {/* 6. SYSTEM NOTIFICATIONS */}
+                {/* 7. SYSTEM NOTIFICATIONS */}
                 <Toaster 
                   position="bottom-right" 
                   toastOptions={{
