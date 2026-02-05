@@ -9,14 +9,14 @@ import { auth } from "@/lib/firebase";
 import { 
   Home, Radar, Users, ShoppingBag, 
   Crown, ShieldAlert, LogOut, Menu, X, 
-  Terminal, ChevronRight, Zap, MessageSquare, UserCircle
+  Terminal, ChevronRight, MessageSquare, UserCircle
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 import { useSfx } from "@/hooks/use-sfx";
 import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
-import ChatWindow from "@/components/chat-window"; // IMPORT THE NEW CHAT
+import ChatWindow from "@/components/chat-window"; // The Chat Component
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -25,12 +25,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { play } = useSfx();
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(false); // CHAT STATE
+  const [isChatOpen, setIsChatOpen] = useState(false); 
 
   const isAdmin = userData?.email === "iznoatwork@gmail.com";
   const username = userData?.username || "Operative";
-  const tier = userData?.membership?.tier || (userData as any)?.tier || "Recruit";
 
+  // 1. PROTECTED ROUTE CHECK
   useEffect(() => {
     if (!loading && !userData) {
       router.push("/auth/login");
@@ -42,7 +42,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { label: "Scout Mission", href: "/hunter", icon: Radar },
     { label: "My Gang", href: "/referrals", icon: Users },
     { label: "Bazaar", href: "/store", icon: ShoppingBag },
-    { label: "Profile", href: "/profile", icon: UserCircle },
+    { label: "Profile", href: "/profile", icon: UserCircle }, // New Profile Link
     { label: "VIP Lounge", href: "/council", icon: Crown, vip: true },
   ];
 
@@ -61,7 +61,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen bg-black font-sans selection:bg-cyan-500/30">
       
-      {/* ⚡ THE CYBER CHAT COMPONENT */}
+      {/* ⚡ GLOBAL SUPPORT CHAT (Hidden until triggered) */}
       <ChatWindow isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
 
       {/* --- SIDEBAR (DESKTOP) --- */}
@@ -123,10 +123,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
            )}
         </nav>
 
-        {/* USER FOOTER (Avatar -> Chat) */}
+        {/* USER FOOTER (CLEANED) */}
         <div className="p-4 border-t border-white/5 bg-black">
+            
+            {/* 1. SUPPORT CHAT BUTTON (Replaces Report Anomaly) */}
             <button 
-                onClick={() => { play("success"); setIsChatOpen(true); }}
+                onClick={() => { play("open"); setIsChatOpen(true); }}
                 className="w-full flex items-center gap-3 mb-4 hover:bg-white/5 p-2 rounded-sm transition-colors group text-left"
             >
                 <div className="relative">
@@ -146,6 +148,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </div>
             </button>
 
+            {/* 2. LOGOUT */}
             <button onClick={handleLogout} className="w-full flex items-center gap-2 px-2 py-1 text-red-900 hover:text-red-500 hover:bg-red-950/10 transition-all text-[9px] font-mono tracking-widest">
                 <LogOut className="w-3 h-3" /> Logout
             </button>
@@ -179,6 +182,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     ))}
                 </div>
                 <div className="space-y-4">
+                    {/* MOBILE SUPPORT BUTTON */}
                     <button onClick={() => { setIsMobileMenuOpen(false); setIsChatOpen(true); }} className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10 w-full">
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-sm bg-gray-900 border border-cyan-500/30 flex items-center justify-center text-cyan-500"><MessageSquare size={14} /></div>

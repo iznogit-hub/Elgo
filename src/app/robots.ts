@@ -8,6 +8,6 @@ export default function robots(): MetadataRoute.Robots {
       disallow: ["/admin/", "/api/"], // Protect admin and API routes
     },
     // TODO: Replace with your actual deployed domain
-    sitemap: "https://bubblepops.com/sitemap.xml", 
+    sitemap: "https://bee-popper.vercel.app/sitemap.xml", 
   };
 }

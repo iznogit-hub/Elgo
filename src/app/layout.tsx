@@ -34,18 +34,18 @@ const mono = JetBrains_Mono({
 
 // --- METADATA ---
 export const metadata: Metadata = {
-  metadataBase: new URL("https://bubblepops.com"),
+  metadataBase: new URL("https://bee-popper.vercel.app"), // TODO: Replace with your actual deployed domain
   title: {
     default: "BubblePops // High-Frequency Growth",
     template: "%s | BubblePops",
   },
   description: "The algorithmic growth cartel. Join the inner circle.",
   keywords: ["Instagram Growth", "Zaibatsu", "Cyberpunk", "Marketing", "BubblePops"],
-  authors: [{ name: "High Command", url: "https://bubblepops.com" }],
+  authors: [{ name: "High Command", url: "https://bee-popper.vercel.app" }],
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://bubblepops.com",
+    url: "https://bee-popper.vercel.app",
     title: "BubblePops Zaibatsu",
     description: "Join the Inner Circle. Control the Signal.",
     siteName: "BubblePops",

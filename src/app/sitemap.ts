@@ -2,7 +2,7 @@ import { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   // TODO: Replace with your actual deployed domain when ready
-  const baseUrl = "https://bubblepops.com"; 
+  const baseUrl = "https://bee-popper.vercel.app"; 
 
   return [
     {

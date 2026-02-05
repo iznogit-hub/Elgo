@@ -1,23 +1,37 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useSfx } from "@/hooks/use-sfx";
 import { gsap } from "gsap";
 
-import { Cursor } from "@/components/ui/cursor";
+// UI Components
 import { Preloader } from "@/components/ui/preloader";
 import { CommandMenu } from "@/components/command-menu";
 import { Background } from "@/components/ui/background";
-import { AvatarImage } from "@/components/ui/avatar-image";
-import { Navbar } from "@/components/navbar";
-import { LoadingContext } from "@/components/loading-context";
+import { AvatarImage } from "@/components/ui/avatar-image"; // The 3D Avatar
+import { Navbar } from "@/components/navbar"; 
+import { Footer } from "@/components/footer"; 
 import { TabManager } from "@/components/ui/tab-manager";
 import { SoundPrompter } from "@/components/ui/sound-prompter";
-import { Footer } from "@/components/footer";
+
+// Context & Features
+import { LoadingContext } from "@/components/loading-context";
+import ChatWindow from "@/components/chat-window"; // Global Chat Access
 
 export function GlobalAppWrapper({ children }: { children: React.ReactNode }) {
   const [assetsLoaded, setAssetsLoaded] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  
+  const pathname = usePathname();
   const { play } = useSfx();
+
+  // 🕵️ HIDE ON DASHBOARD (The App has its own layout/avatar)
+  const isDashboard = pathname.startsWith("/dashboard") || 
+                      pathname.startsWith("/hunter") || 
+                      pathname.startsWith("/store") || 
+                      pathname.startsWith("/niche") ||
+                      pathname.startsWith("/admin");
 
   // --- 1. HANDLE REDUCED MOTION ---
   useEffect(() => {
@@ -38,45 +52,61 @@ export function GlobalAppWrapper({ children }: { children: React.ReactNode }) {
 
   // --- 2. ASSET LOADING LOGIC ---
   useEffect(() => {
-    // Standard Load Time
-    const timer = setTimeout(() => {
-      setAssetsLoaded(true);
-    }, 2500);
-
-    // ⚡ SAFETY FALLBACK: If anything crashes/hangs, force load after 4s
-    const safetyTimer = setTimeout(() => {
-      setAssetsLoaded(true);
-    }, 4000);
-
+    const timer = setTimeout(() => setAssetsLoaded(true), 2500);
+    const safetyTimer = setTimeout(() => setAssetsLoaded(true), 4000);
     return () => {
       clearTimeout(timer);
       clearTimeout(safetyTimer);
     };
   }, []);
 
+  // --- 3. EVENT LISTENER: OPEN CHAT FROM COMMAND MENU ---
+  useEffect(() => {
+    const handleOpenChat = () => setIsChatOpen(true);
+    window.addEventListener("open-support-chat", handleOpenChat);
+    return () => window.removeEventListener("open-support-chat", handleOpenChat);
+  }, []);
+
   return (
     <LoadingContext.Provider value={{ assetsLoaded }}>
-      {/* System Overlay Elements */}
-      <Cursor />
+      
+      {/* 1. VISUAL LAYER */}
       <Background />
       <Preloader contentLoaded={assetsLoaded} />
-      
-      {/* Only show Prompter after load to prevent audio race conditions */}
       {assetsLoaded && <SoundPrompter />}
       
+      {/* 2. NAVIGATION LAYER */}
       <CommandMenu />
       <Navbar />
       <TabManager />
 
-      {/* 3D Avatar (Bottom Left) */}
-      <AvatarImage startAnimation={assetsLoaded} />
+      {/* 3. 3D AVATAR (LANDING PAGE ONLY) */}
+      {/* Clicking this now opens the Support Chat */}
+      {!isDashboard && (
+        <>
+          <div 
+            onClick={() => {
+                play("click");
+                setIsChatOpen(true);
+            }}
+            className="fixed bottom-0 left-0 z-40 cursor-pointer hover:scale-105 transition-transform active:scale-95"
+            title="Open Support Uplink"
+          >
+             <AvatarImage startAnimation={assetsLoaded} />
+          </div>
 
-      {/* Main Page Content (Fade In) */}
+          {/* Global Chat Instance for Landing Page */}
+          <ChatWindow isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+        </>
+      )}
+
+      {/* 4. CONTENT LAYER */}
       <div className={assetsLoaded ? "opacity-100 transition-opacity duration-1000" : "opacity-0"}>
           {children}
       </div>
 
       <Footer />
+      
     </LoadingContext.Provider>
   );
 }
