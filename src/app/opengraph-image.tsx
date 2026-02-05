@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 
 export const alt = "BUBBLEPOPS ZAIBATSU | JOIN THE GUILD";
 export const size = { width: 1200, height: 630 };
-export const contentType = "image/png";
+export const contentType = "image/Avatar_waving.png";
 
 export default async function Image() {
   // We use standard fonts available in Edge Runtime for OG generation

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 
 // --- 1. DEFINING THE OPERATIVE PROFILE ---
@@ -11,30 +11,44 @@ export interface UserProfile {
   email: string | null;
   username: string;
   
-  // Game Stats
-  niche: string;
-  tier: "recruit" | "soldier" | "captain" | "inner_circle";
-  bubblePoints: number; // Premium Currency
-  popCoins: number;     // Free Currency
-  velocity: number;     // XP / Score
+  // 📸 IDENTITY BINDING (Added)
+  instagramHandle?: string;
+
+  // 💰 THE WALLET (Economy)
+  wallet: {
+    popCoins: number;       // The "Grind" Currency
+    bubblePoints: number;   // The "Fiat" Currency
+  };
+
+  // 🔐 ACCESS & PROGRESSION
+  unlockedNiches: string[]; // Array of Niche IDs (e.g. ["general", "tech"])
+  membership: {
+    tier: "recruit" | "operative" | "council" | "inner_circle";
+    validUntil?: string; // ISO Date
+  };
+
+  // 🔋 DAILY RATION TRACKER
+  dailyTracker: {
+    date: string;           // "2026-02-05"
+    audiosViewed: number;
+    imagesGenerated: number;
+    bountiesClaimed: number;
+  };
   
-  // Assets
-  avatarId: string;
-  unlockedSkins: string[]; // Array of skin IDs
-  
-  // Network
-  invitedBy?: string;      // UID of the referrer
-  instagramConnected: boolean;
-  instagramToken?: string; // Stored securely (ideally)
+  // ⚔️ MERCENARY STATS
+  reputation: {
+    intelSubmitted: number;
+    trustScore: number;
+  };
   
   // System Status
-  status: "active" | "banned" | "purged" | "pending_whitelist";
+  status: "active" | "banned" | "purged";
   createdAt: string;
 }
 
 interface AuthContextType {
-  user: User | null;            // Raw Firebase User
-  userData: UserProfile | null; // Database Game Data
+  user: User | null;              // Raw Firebase User
+  userData: UserProfile | null;   // Database Game Data
   loading: boolean;
   isAdmin: boolean;
 }
@@ -53,37 +67,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     // REAL-TIME LISTENER FOR AUTH STATE
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       
       if (currentUser) {
-        // FETCH GAME DATA FROM FIRESTORE
-        try {
-          const docRef = doc(db, "users", currentUser.uid);
-          const docSnap = await getDoc(docRef);
-          
+        // ⚡ REAL-TIME DB LISTENER (Updates Wallet Instantly)
+        const docRef = doc(db, "users", currentUser.uid);
+        
+        const unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
           if (docSnap.exists()) {
             setUserData(docSnap.data() as UserProfile);
           } else {
-            console.warn("⚠️ User authenticated but no game profile found.");
-            // Optional: You could trigger a redirect to a "Finish Setup" page here
+            console.warn("⚠️ User authenticated but no DB profile found.");
+            setUserData(null);
           }
-        } catch (err) {
-          console.error("❌ Error fetching user profile:", err);
-        }
+          setLoading(false);
+        }, (err) => {
+          console.error("❌ Error fetching live profile:", err);
+          setLoading(false);
+        });
+
+        // Cleanup the snapshot listener when auth state changes
+        return () => unsubscribeSnapshot();
       } else {
         setUserData(null);
+        setLoading(false);
       }
-      
-      setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => unsubscribeAuth();
   }, []);
 
   // --- ADMIN GATEKEEPER ---
-  // Replace this with your actual admin email(s)
-  const ADMIN_EMAILS = ["amber@bubblepops.com", "admin@zaibatsu.com"];
+  const ADMIN_EMAILS = ["iznoatwork@gmail.com", "admin@zaibatsu.com"];
   
   const isAdmin = !!(
     userData && 

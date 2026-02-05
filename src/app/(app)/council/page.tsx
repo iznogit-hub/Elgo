@@ -1,86 +1,108 @@
 "use client";
 
-import React, { useEffect, useState, Suspense } from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/lib/context/auth-context";
-import { useSearchParams, useRouter } from "next/navigation";
-import { doc, updateDoc } from "firebase/firestore";
+import { useRouter } from "next/navigation";
+import { doc, updateDoc, increment, addDoc, collection } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { 
-  Crown, Lock, CheckCircle2, AlertTriangle, 
-  BarChart3, Instagram, Megaphone, ArrowUpRight, 
-  ShieldCheck, Terminal, Activity, Loader2,
-  ArrowLeft, Zap, Cpu, Wifi, Crosshair
+  Crown, Lock, Megaphone, ArrowLeft, 
+  Zap, Send, ShieldCheck, Globe, Loader2
 } from "lucide-react";
 import { toast } from "sonner";
 
 // 🧪 ZAIBATSU SYSTEM UI
 import { HackerText } from "@/components/ui/hacker-text";
+import { Button } from "@/components/ui/button";
 import { Background } from "@/components/ui/background";
 import { SoundPrompter } from "@/components/ui/sound-prompter";
 import VideoStage from "@/components/canvas/video-stage";
+import { TransitionLink } from "@/components/ui/transition-link";
 import { useSfx } from "@/hooks/use-sfx";
 import { cn } from "@/lib/utils";
-import { TransitionLink } from "@/components/ui/transition-link";
 
-function CouncilContent() {
+export default function InnerCirclePage() {
   const { userData, loading } = useAuth();
-  const searchParams = useSearchParams();
   const router = useRouter();
   const { play } = useSfx();
-  const [isSyncing, setIsSyncing] = useState(false);
+  
+  const [prPitch, setPrPitch] = useState("");
+  const [submittingPr, setSubmittingPr] = useState(false);
+  const [claimingStipend, setClaimingStipend] = useState(false);
 
-  // 🛰️ META CONNECTION LOGIC (Preserved)
-  useEffect(() => {
-    const token = searchParams.get("token");
-    const action = searchParams.get("action");
+  // 🛡️ SAFE ACCESSORS (Prevents Crash)
+  const tier = userData?.membership?.tier || (userData as any)?.tier || "recruit";
+  const isVIP = tier === "council" || tier === "inner_circle";
+
+  // 🔒 RESTRICTED ACTION HANDLER
+  const handleRestrictedAction = () => {
+      play("error");
+      toast.error("CLEARANCE_LEVEL_TOO_LOW");
+      setTimeout(() => router.push("/store"), 1000); // Send to store to upgrade
+  };
+
+  // 📝 SUBMIT PR REQUEST
+  const handlePrSubmit = async () => {
+    if (!isVIP) return handleRestrictedAction();
+    if (!prPitch.trim()) return toast.error("TRANSMISSION EMPTY");
     
-    if (token && action === "save_token" && userData && !isSyncing) {
-      const saveToken = async () => {
-        setIsSyncing(true);
-        try {
-          await updateDoc(doc(db, "users", userData.uid), {
-            instagramToken: token,
-            instagramConnected: true,
-            lastSync: new Date().toISOString()
-          });
-          play("success");
-          toast.success("ACCESS GRANTED. PROTOCOL OMEGA ACTIVE.");
-          router.replace("/council"); 
-        } catch (e) {
-          play("error");
-          toast.error("DATABASE WRITE FAILED.");
-          setIsSyncing(false);
-        }
-      };
-      saveToken();
-    }
-  }, [searchParams, userData, router, play, isSyncing]);
-
-  const handleConnect = () => {
-    if (!userData) return;
+    setSubmittingPr(true);
     play("click");
-    toast.loading("ESTABLISHING SECURE HANDSHAKE...");
-    setTimeout(() => {
-        window.location.href = `/api/auth/instagram/login?uid=${userData.uid}`;
-    }, 1000);
+
+    try {
+      await addDoc(collection(db, "pr_requests"), {
+        uid: userData?.uid,
+        username: userData?.username,
+        pitch: prPitch,
+        tier: tier,
+        status: "pending",
+        timestamp: new Date().toISOString()
+      });
+      play("success");
+      toast.success("PRESS_RELEASE_QUEUED");
+      setPrPitch("");
+    } catch (e) {
+      play("error");
+      toast.error("UPLINK_FAILED");
+    } finally {
+      setSubmittingPr(false);
+    }
+  };
+
+  // 💰 CLAIM MONTHLY COINS
+  const handleClaimStipend = async () => {
+    if (!isVIP) return handleRestrictedAction();
+    if (!userData) return;
+    
+    setClaimingStipend(true);
+    play("click");
+
+    try {
+      await updateDoc(doc(db, "users", userData.uid), {
+        "wallet.popCoins": increment(500),
+        "dailyTracker.bountiesClaimed": increment(1)
+      });
+      play("success");
+      toast.success("STIPEND_TRANSFERRED: +500 PC");
+    } catch (e) {
+      play("error");
+      toast.error("TRANSACTION_ERROR");
+    } finally {
+      setClaimingStipend(false);
+    }
   };
 
   if (loading) return <LoadingState />;
 
-  // 🔐 ACCESS DENIED (LOCKOUT)
-  if (userData && userData.tier !== "inner_circle") {
-    return <AccessDeniedState tier={userData.tier} />;
-  }
-
   return (
     <main className="relative min-h-screen bg-black text-white font-sans overflow-hidden flex flex-col items-center">
       
-      {/* 📽️ THE THEATER: Avatar stays centered for the Briefing */}
-      <VideoStage src="/video/main.mp4" overlayOpacity={0.4} />
+      {/* 📽️ BACKGROUND */}
+      <VideoStage src="/video/main.mp4" overlayOpacity={0.5} />
       <Background /> 
       <SoundPrompter />
 
-      {/* 📱 TOP HUD: Navigation pushed to edges */}
+      {/* 📱 TOP HUD */}
       <nav className="fixed top-0 left-0 right-0 z-[100] p-6 flex items-center justify-between pointer-events-none">
         <div className="pointer-events-auto">
             <TransitionLink 
@@ -91,123 +113,141 @@ function CouncilContent() {
             </TransitionLink>
         </div>
         
-        <div className="pointer-events-auto flex flex-col items-end gap-1">
-            <div className="px-3 py-1 bg-yellow-500/10 border border-yellow-500/20 backdrop-blur-md rounded-full flex items-center gap-2">
-                <Crown size={10} className="text-yellow-500" />
-                <span className="text-[8px] font-mono font-black tracking-widest text-yellow-500 uppercase">Council_Clearance_L5</span>
-            </div>
+        <div className="pointer-events-auto flex items-center gap-2 px-3 py-1 bg-yellow-500/10 border border-yellow-500/20 backdrop-blur-md rounded-full">
+            <Crown size={12} className="text-yellow-500" />
+            <span className="text-[8px] font-mono font-black tracking-widest text-yellow-500 uppercase">
+                {isVIP ? "Command_Node" : "Restricted_Area"}
+            </span>
         </div>
       </nav>
 
-      {/* 👑 COUNCIL INTERFACE: Floating Flanks */}
-      <div className="relative z-50 w-full h-screen pointer-events-none">
+      {/* 🚀 CENTRAL FEED (Mobile First) */}
+      <div className="relative z-40 w-full max-w-md h-screen pt-24 px-6 pb-32 flex flex-col gap-6 overflow-y-auto no-scrollbar">
         
-        {/* LEFT FLANK: Uplink & Meta Status */}
-        <div className="absolute left-6 top-32 w-44 space-y-4 pointer-events-auto">
-            <div className="space-y-1 mb-6">
-                <div className="flex items-center gap-2 text-yellow-500">
-                    <Wifi size={12} className="animate-pulse" />
-                    <span className="text-[8px] font-mono font-black uppercase tracking-[0.2em]">Immortal_Uplink</span>
-                </div>
-                <h1 className="text-xl font-black font-orbitron italic uppercase text-white leading-tight">High_Council</h1>
+        {/* 1. VIP STATUS CARD */}
+        <div className={cn(
+            "w-full border backdrop-blur-xl p-6 relative overflow-hidden group transition-all",
+            isVIP ? "bg-gradient-to-br from-yellow-900/20 to-black/80 border-yellow-500/30" : "bg-black/60 border-white/10 grayscale opacity-80"
+        )}>
+            <div className="absolute top-0 right-0 p-3 opacity-20">
+                <Globe size={80} className={isVIP ? "text-yellow-500" : "text-white"} />
             </div>
 
-            <section className="p-4 bg-black/40 border-l-2 border-yellow-500/50 backdrop-blur-xl space-y-4">
-                <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-pink-500">
-                   <Instagram size={12} /> IG_Node
+            <div className="relative z-10 space-y-2">
+                <div className="flex items-center gap-2 mb-2">
+                    <div className={cn("w-2 h-2 rounded-full animate-pulse", isVIP ? "bg-yellow-500" : "bg-red-500")} />
+                    <span className={cn("text-[8px] font-mono uppercase tracking-widest", isVIP ? "text-yellow-400" : "text-red-500")}>
+                        {isVIP ? "Global_Influence_Active" : "Clearance_Required"}
+                    </span>
                 </div>
-
-                {userData?.instagramConnected ? (
-                    <div className="space-y-1">
-                        <span className="text-[10px] font-black font-orbitron text-green-400 uppercase tracking-tighter italic flex items-center gap-2">
-                           <CheckCircle2 size={10} /> Secure_Linked
-                        </span>
-                        <p className="text-[7px] font-mono text-white/30 uppercase">Protocol: Hitman</p>
-                    </div>
-                ) : (
-                    <button 
-                        onClick={handleConnect}
-                        className="w-full py-2 bg-pink-600/20 border border-pink-500/30 text-pink-500 font-black italic tracking-widest text-[8px] hover:bg-pink-600 hover:text-white transition-all uppercase"
-                    >
-                        Authorize_Uplink
-                    </button>
-                )}
-            </section>
+                
+                <h1 className="text-2xl font-black font-orbitron text-white italic uppercase tracking-tighter">
+                    Inner_Circle
+                </h1>
+                <p className="text-[9px] font-mono text-white/50 leading-relaxed max-w-[200px]">
+                    {isVIP 
+                        ? "You control the narrative. Broadcast signals and command the grid."
+                        : "Upgrade to Council Tier to access PR uplinks and monthly stipends."}
+                </p>
+            </div>
         </div>
 
-        {/* RIGHT FLANK: Active Directives & Metrics */}
-        <div className="absolute right-6 top-32 w-48 space-y-6 pointer-events-auto">
-            <div className="space-y-3 text-right">
-                <h3 className="text-[9px] font-black font-orbitron tracking-widest text-yellow-500 uppercase flex items-center justify-end gap-2">
-                    Priority_Alpha <Terminal size={10} />
+        {/* 2. PR UPLINK (The Pitch Form) */}
+        <div className="w-full bg-black/60 border border-white/10 backdrop-blur-md p-5 space-y-4 relative">
+            {!isVIP && (
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-20 flex flex-col items-center justify-center text-center p-4 border border-white/5">
+                    <Lock size={24} className="text-white/30 mb-2" />
+                    <p className="text-[9px] font-mono text-white/50 uppercase">Upgrade to Access PR Uplink</p>
+                </div>
+            )}
+
+            <div className="flex items-center justify-between">
+                 <h3 className="text-sm font-black font-orbitron uppercase italic text-white flex items-center gap-2">
+                    <Megaphone size={14} className="text-cyan-400" /> PR_Broadcast
+                 </h3>
+                 <span className="text-[8px] font-mono text-gray-500 bg-white/5 px-2 py-1 rounded-sm">1 Slot / Month</span>
+            </div>
+            
+            <p className="text-[8px] font-mono text-gray-400 leading-relaxed">
+                Submit your update for the Monthly Zaibatsu Press Release.
+            </p>
+
+            <textarea 
+                value={prPitch}
+                onChange={(e) => setPrPitch(e.target.value)}
+                placeholder="TYPE_YOUR_HEADLINE_HERE..."
+                disabled={!isVIP}
+                className="w-full h-24 bg-black/40 border border-white/10 text-[10px] font-mono text-white p-3 focus:border-cyan-500 outline-none resize-none uppercase disabled:opacity-50"
+            />
+
+            <Button 
+                onClick={handlePrSubmit}
+                disabled={submittingPr || (!prPitch && isVIP)}
+                className="w-full h-10 bg-cyan-600 hover:bg-cyan-500 text-white font-black italic tracking-widest text-[9px] uppercase flex items-center justify-center gap-2"
+            >
+                {submittingPr ? <Loader2 className="animate-spin" size={12} /> : <><Send size={12} /> TRANSMIT_TO_PRESS</>}
+            </Button>
+        </div>
+
+        {/* 3. STIPEND CLAIM (The "Salary") */}
+        <div className={cn(
+            "w-full border backdrop-blur-md p-5 flex items-center justify-between transition-all",
+            isVIP ? "bg-yellow-500/5 border-yellow-500/20" : "bg-white/5 border-white/10"
+        )}>
+            <div className="space-y-1">
+                <h3 className={cn("text-xs font-black font-orbitron uppercase", isVIP ? "text-yellow-500" : "text-gray-500")}>
+                    Command_Stipend
                 </h3>
-                <div className="p-4 bg-black/40 border-r-2 border-cyan-500/50 backdrop-blur-xl space-y-3">
-                    <div className="flex items-center justify-end gap-2 text-[8px] text-cyan-400 font-black uppercase">
-                        Deploy_Ready <Activity size={10} />
-                    </div>
-                    <p className="text-[9px] font-bold text-white/60 leading-relaxed uppercase">Asset_884: Midnight_City boost protocol.</p>
-                    <button 
-                        onClick={() => { play("success"); toast.success("VERIFYING_EXECUTION..."); }}
-                        className="w-full py-2 bg-white text-black font-black italic text-[8px] uppercase tracking-widest"
-                    >
-                        Confirm_Execution
-                    </button>
-                </div>
+                <p className="text-[8px] font-mono text-white/30">Monthly Allowance: 500 PC</p>
             </div>
-
-            {/* Metric Cubes */}
-            <div className="grid grid-cols-2 gap-2">
-                <div className="bg-black/60 border border-white/5 p-2 text-right">
-                    <span className="text-[7px] font-mono text-yellow-500 block">REACH</span>
-                    <span className="text-xs font-black">+145%</span>
-                </div>
-                <div className="bg-black/60 border border-white/5 p-2 text-right">
-                    <span className="text-[7px] font-mono text-cyan-400 block">PR_SYNC</span>
-                    <span className="text-xs font-black">2_PEND</span>
-                </div>
-            </div>
+            
+            <Button 
+                onClick={handleClaimStipend}
+                disabled={claimingStipend}
+                className={cn(
+                    "h-10 px-6 font-black italic tracking-widest text-[9px] uppercase shadow-lg",
+                    isVIP 
+                        ? "bg-yellow-500 text-black hover:bg-yellow-400 shadow-[0_0_20px_rgba(234,179,8,0.3)]" 
+                        : "bg-white/10 text-white/40 cursor-not-allowed"
+                )}
+            >
+                {claimingStipend ? "Verifying..." : isVIP ? "CLAIM" : "LOCKED"}
+            </Button>
         </div>
 
-        {/* BOTTOM HUD: Heavy Artillery / Armory Link */}
-        <div className="absolute bottom-28 left-6 right-6 pointer-events-auto">
+        {/* 4. UPGRADE CTA (Only visible to non-VIPs) */}
+        {!isVIP && (
             <TransitionLink 
                 href="/store"
-                className="w-full p-4 bg-gradient-to-r from-red-900/40 via-black/80 to-transparent border border-red-500/30 backdrop-blur-xl flex items-center justify-between group hover:border-red-500 transition-all"
+                className="w-full h-14 bg-yellow-600/20 border border-yellow-500 text-yellow-500 font-black font-orbitron tracking-widest uppercase flex items-center justify-center gap-2 hover:bg-yellow-600 hover:text-white transition-all"
             >
-                <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 flex items-center justify-center bg-red-900/30 rounded-xs text-red-500">
-                        <ArrowUpRight size={20} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                    </div>
-                    <div>
-                        <h4 className="text-[10px] font-black font-orbitron uppercase italic">Deploy_Heavy_Artillery?</h4>
-                        <p className="text-[8px] font-mono text-red-200/40 uppercase tracking-tighter">Mothership_Summon_Protocol</p>
-                    </div>
-                </div>
-                <Megaphone size={14} className="text-red-500/40" />
+                <Zap size={16} /> Upgrade_To_Inner_Circle
             </TransitionLink>
+        )}
+
+        {/* 5. BOUNTY OVERRIDE (Set aggressive growth) */}
+        <div className="space-y-2 opacity-50 hover:opacity-100 transition-opacity">
+            <div className="flex items-center justify-between px-1">
+                 <span className="text-[9px] font-mono font-bold text-gray-500 uppercase tracking-widest">Self_Bounty_Protocol</span>
+                 <ShieldCheck size={12} className="text-gray-600" />
+            </div>
+            <div className="p-4 border border-dashed border-white/10 flex items-center justify-center gap-2 text-[8px] font-mono text-gray-500">
+                <Lock size={10} /> AUTOMATED_GROWTH_ENGINE_ACTIVE
+            </div>
         </div>
+
       </div>
 
-      {/* 🧪 SYSTEM FOOTER */}
-      <footer className="fixed bottom-0 left-0 right-0 z-[100] px-6 py-5 flex items-center justify-between border-t border-white/5 bg-black/80 backdrop-blur-2xl">
+      {/* 🧪 FOOTER */}
+      <footer className="fixed bottom-0 left-0 right-0 z-[100] px-6 py-5 flex items-center justify-between border-t border-white/5 bg-black/90 backdrop-blur-2xl">
          <div className="flex items-center gap-4 opacity-50 text-yellow-500">
-            <Cpu size={14} className="animate-pulse" />
-            <div className="flex flex-col gap-0.5">
-                <div className="h-0.5 w-16 bg-white/10 overflow-hidden">
-                    <div className="h-full bg-yellow-500 w-3/4 animate-[progress_3s_infinite_linear]" />
-                </div>
-                <span className="text-[7px] font-mono uppercase tracking-[0.2em] font-bold">Node: Council_L5</span>
-            </div>
+            {isVIP && <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" />}
+            <span className="text-[7px] font-mono uppercase tracking-[0.2em] font-bold">
+                {isVIP ? "Secure_Line // VIP" : "Public_Access // Limited"}
+            </span>
          </div>
-         <div className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] italic">Immortal_Protocol_v3</div>
       </footer>
 
-      <style jsx global>{`
-        @keyframes progress {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-      `}</style>
     </main>
   );
 }
@@ -218,35 +258,5 @@ function LoadingState() {
       <Loader2 className="w-12 h-12 animate-spin" />
       <HackerText text="VERIFYING_CLEARANCE..." />
     </div>
-  );
-}
-
-function AccessDeniedState({ tier }: { tier: string }) {
-    return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center relative">
-        <VideoStage src="/video/main.mp4" overlayOpacity={0.7} />
-        <div className="z-10 border border-red-500/30 bg-black/80 backdrop-blur-3xl p-10 rounded-xs max-w-md shadow-[0_0_50px_rgba(220,38,38,0.2)]">
-          <Lock className="w-12 h-12 text-red-600 mx-auto mb-6 animate-pulse" />
-          <h1 className="text-3xl font-black text-red-600 font-orbitron mb-4 tracking-tighter italic uppercase">ACCESS_DENIED</h1>
-          <p className="text-gray-500 mb-8 font-mono text-xs leading-relaxed uppercase tracking-widest">
-            Clearance Required: <span className="text-white">INNER_CIRCLE</span><br/>
-            Current: <span className="text-red-500">[{tier}]</span>
-          </p>
-          <TransitionLink 
-            href="/store"
-            className="w-full inline-block py-4 border border-red-600 bg-red-600/10 text-red-500 hover:bg-red-600 hover:text-black font-black tracking-widest font-orbitron text-[10px]"
-          >
-            ACQUIRE_CLEARANCE
-          </TransitionLink>
-        </div>
-      </div>
-    );
-}
-
-export default function CouncilPage() {
-  return (
-    <Suspense fallback={<LoadingState />}>
-      <CouncilContent />
-    </Suspense>
   );
 }

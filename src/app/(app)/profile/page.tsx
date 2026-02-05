@@ -1,102 +1,98 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/context/auth-context";
 import { 
-  Zap, Radio, Share2, Terminal, AlertTriangle, 
-  X, Check, Loader2, Trophy, Crown, 
-  Pencil, ArrowLeft, Database, Activity, Fingerprint, Cpu
+  Terminal, Crown, Pencil, ArrowLeft, 
+  LogOut, Cpu, Activity, CreditCard, Lock,
+  Instagram, Save, CheckCircle2
 } from "lucide-react";
 import { toast } from "sonner";
-
-// 🧪 ZAIBATSU SYSTEM UI
-import { HackerText } from "@/components/ui/hacker-text";
+import { useRouter } from "next/navigation";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Background } from "@/components/ui/background";
-import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
 import { TransitionLink } from "@/components/ui/transition-link";
 import { SoundPrompter } from "@/components/ui/sound-prompter";
 import VideoStage from "@/components/canvas/video-stage";
 import { useSfx } from "@/hooks/use-sfx";
 import { cn } from "@/lib/utils";
 
-const NICHES = [
-  { id: "fitness", label: "FITNESS" }, { id: "fashion", label: "FASHION" },
-  { id: "tech", label: "TECH" }, { id: "business", label: "BUSINESS" },
-  { id: "gaming", label: "GAMING" }, { id: "music", label: "MUSIC" },
-  { id: "art", label: "ART" }
-];
-
 export default function ProfilePage() {
   const { userData, user } = useAuth();
   const { play } = useSfx();
+  const router = useRouter();
   
-  const [showSwitcher, setShowSwitcher] = useState(false);
   const [showNameEdit, setShowNameEdit] = useState(false);
-  const [selectedNiche, setSelectedNiche] = useState("");
   const [newUsername, setNewUsername] = useState("");
-  const [isSwitching, setIsSwitching] = useState(false);
+  
+  // INSTAGRAM BINDING STATE
+  const [igHandle, setIgHandle] = useState(userData?.instagramHandle || "");
+  const [isBinding, setIsBinding] = useState(false);
 
-  const handleConnectInstagram = () => {
-    play("click");
-    if (!userData) return;
-    toast.loading("INITIATING META HANDSHAKE...");
-    window.location.href = `/api/auth/instagram/login?uid=${userData.uid}`;
+  // SAFE ACCESSORS
+  const tier = userData?.membership?.tier || (userData as any)?.tier || "recruit";
+  const popCoins = userData?.wallet?.popCoins || (userData as any)?.popCoins || 0;
+  const username = userData?.username || "OPERATIVE";
+  const connectedHandle = userData?.instagramHandle || null;
+
+  const handleLogout = async () => {
+      play("off");
+      await signOut(auth);
+      router.push("/");
+  };
+
+  const handleBindInstagram = async () => {
+      if (!igHandle.startsWith("@")) {
+          return toast.error("HANDLE MUST START WITH @");
+      }
+      if (!user) return;
+      
+      setIsBinding(true);
+      play("click");
+      
+      try {
+          await updateDoc(doc(db, "users", user.uid), {
+              instagramHandle: igHandle
+          });
+          toast.success("IDENTITY BOUND SUCCESSFULLY");
+          play("success");
+      } catch (e) {
+          toast.error("BINDING FAILED");
+          play("error");
+      } finally {
+          setIsBinding(false);
+      }
   };
 
   const handleNameUpdate = async () => {
      if (!newUsername.trim() || !user) return;
-     setIsSwitching(true);
      play("click");
      try {
         await updateDoc(doc(db, "users", user.uid), {
             username: newUsername.trim().toUpperCase()
         });
-        toast.success("CODENAME_UPDATED");
+        toast.success("ALIAS UPDATED");
         setShowNameEdit(false);
         window.location.reload(); 
      } catch (e) {
-        toast.error("UPDATE_FAILED");
-        play("error");
-     } finally {
-        setIsSwitching(false);
+        toast.error("UPDATE FAILED");
      }
-  };
-
-  const handleNicheSwitch = async () => {
-    if (!selectedNiche || !user) return;
-    play("error"); 
-    setIsSwitching(true);
-    try {
-      await updateDoc(doc(db, "users", user.uid), {
-        niche: selectedNiche,
-        velocity: 0, 
-      });
-      toast.success(`IDENTITY_REFORMATTED: ${selectedNiche.toUpperCase()}`);
-      setShowSwitcher(false);
-      window.location.reload(); 
-    } catch (err) {
-      toast.error("SYSTEM_ERROR: REFORMAT_FAILED");
-    } finally {
-      setIsSwitching(false);
-    }
   };
 
   if (!userData) return null;
 
   return (
     <main className="relative min-h-screen bg-black text-white font-sans overflow-hidden flex flex-col items-center">
-      
-      {/* 📽️ THE THEATER: Central Identity Focus */}
-      <VideoStage src="/video/main.mp4" overlayOpacity={0.4} />
+      <VideoStage src="/video/main.mp4" overlayOpacity={0.6} />
       <Background /> 
       <SoundPrompter />
 
-      {/* 📱 TOP HUD NAVIGATION */}
+      {/* TOP HUD */}
       <nav className="fixed top-0 left-0 right-0 z-[100] p-6 flex items-center justify-between pointer-events-none">
         <div className="pointer-events-auto">
             <TransitionLink 
@@ -106,155 +102,116 @@ export default function ProfilePage() {
               <ArrowLeft size={20} className="text-gray-400 group-hover:text-cyan-400" />
             </TransitionLink>
         </div>
-        
-        <div className="pointer-events-auto flex flex-col items-end gap-1">
-            <div className="px-3 py-1 bg-cyan-500/10 border border-cyan-500/20 backdrop-blur-md rounded-full flex items-center gap-2">
-                <Fingerprint size={10} className="text-cyan-500" />
-                <span className="text-[8px] font-mono font-black tracking-widest text-cyan-500 uppercase">Auth_Session: Active</span>
-            </div>
-        </div>
       </nav>
 
-      {/* 👤 IDENTITY INTERFACE: Floating Side Elements */}
-      <div className="relative z-50 w-full h-screen pointer-events-none">
+      {/* CENTRAL FEED */}
+      <div className="relative z-40 w-full max-w-md h-screen pt-24 px-6 pb-32 flex flex-col gap-6 overflow-y-auto no-scrollbar">
         
-        {/* LEFT FLANK: Core Identity & Vitals */}
-        <div className="absolute left-6 top-32 w-44 space-y-6 pointer-events-auto">
-            <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                    <span className={cn(
-                        "px-2 py-0.5 border text-[7px] font-black uppercase tracking-tighter backdrop-blur-md",
-                        userData.tier === "inner_circle" ? "bg-red-500/20 border-red-500 text-red-500 animate-pulse" : "bg-cyan-500/10 border-cyan-500/30 text-cyan-400"
-                    )}>
-                        {userData.tier === "inner_circle" ? "PURGE_IMMUNE" : "EXPENDABLE_GRADE"}
-                    </span>
-                </div>
-                <div className="group cursor-pointer" onClick={() => { setNewUsername(userData.username); setShowNameEdit(true); play("click"); }}>
-                    <h1 className="text-2xl font-black font-orbitron italic uppercase leading-none tracking-tighter text-white group-hover:text-cyan-400 transition-colors">
-                        {userData.username} <Pencil size={10} className="inline ml-1 opacity-30 group-hover:opacity-100" />
-                    </h1>
-                    <p className="text-[7px] font-mono text-white/30 uppercase mt-1">Niche: {userData.niche}</p>
-                </div>
+        {/* 1. IDENTITY CARD */}
+        <div className="w-full bg-gradient-to-br from-black/80 to-gray-900/80 border border-white/10 backdrop-blur-xl p-6 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-4 opacity-10">
+                <Crown size={60} className={tier === "council" ? "text-yellow-500" : "text-white"} />
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-                <MiniVital label="VELOCITY" value={userData.velocity} color="text-cyan-400" />
-                <MiniVital label="STREAK" value="3_DAYS" color="text-green-500" />
-                <MiniVital label="BP" value={userData.bubblePoints} color="text-yellow-400" />
-                <MiniVital label="PC" value={userData.popCoins} color="text-white" />
-            </div>
-        </div>
-
-        {/* RIGHT FLANK: System Configuration */}
-        <div className="absolute right-6 top-32 w-48 space-y-4 pointer-events-auto">
-            <h3 className="text-[9px] font-black font-orbitron tracking-widest text-gray-400 uppercase flex items-center justify-end gap-2 text-right">
-                Config_Control <Terminal size={10} className="text-cyan-500" />
-            </h3>
-
-            {/* Instagram Uplink Card */}
-            <div className={cn(
-                "p-4 bg-black/40 border-r-2 backdrop-blur-xl space-y-3",
-                userData.instagramConnected ? "border-green-500/50" : "border-pink-500/50"
-            )}>
-                <div className="flex items-center justify-between text-[8px] font-black uppercase">
-                    <span className={userData.instagramConnected ? "text-green-400" : "text-pink-400"}>Meta_Uplink</span>
-                    <Share2 size={10} />
+            <div className="relative z-10 space-y-4">
+                <div>
+                    <span className="text-[8px] font-mono text-gray-500 uppercase tracking-widest block mb-1">Operative_Alias</span>
+                    <div 
+                        onClick={() => { setNewUsername(username); setShowNameEdit(true); play("click"); }}
+                        className="flex items-center gap-2 cursor-pointer group/edit"
+                    >
+                        <h1 className="text-2xl font-black font-orbitron italic uppercase text-white tracking-tighter">
+                            {username}
+                        </h1>
+                        <Pencil size={12} className="text-gray-600 group-hover/edit:text-cyan-500 transition-colors" />
+                    </div>
                 </div>
-                <button 
-                    onClick={handleConnectInstagram}
-                    disabled={!!userData.instagramConnected}
-                    className={cn(
-                        "w-full py-2 border text-[8px] font-black tracking-widest uppercase transition-all",
-                        userData.instagramConnected 
-                            ? "border-green-500/30 bg-green-500/10 text-green-500 cursor-default" 
-                            : "border-pink-500/30 bg-pink-500/10 text-pink-400 hover:bg-pink-500 hover:text-white"
-                    )}
-                >
-                    {userData.instagramConnected ? "Linked" : "Connect"}
-                </button>
-            </div>
 
-            {/* Reformat Card */}
-            <div className="p-4 bg-black/40 border-r-2 border-red-500/50 backdrop-blur-xl space-y-3">
-                <div className="flex items-center justify-between text-[8px] font-black uppercase text-red-500">
-                    <span>Identity_Reformat</span>
-                    <Radio size={10} />
+                <div className="flex gap-4">
+                    <div className="p-2 bg-black/40 border border-white/5 w-28">
+                        <span className="block text-[7px] font-mono text-gray-500 uppercase">Clearance</span>
+                        <span className="text-xs font-black uppercase tracking-wide text-cyan-500">{tier}</span>
+                    </div>
+                    <div className="p-2 bg-black/40 border border-white/5 w-24">
+                        <span className="block text-[7px] font-mono text-gray-500 uppercase">Wealth</span>
+                        <span className="text-xs font-black text-white uppercase tracking-wide">{popCoins} PC</span>
+                    </div>
                 </div>
-                <button 
-                    onClick={() => { setShowSwitcher(true); play("click"); }}
-                    className="w-full py-2 bg-red-900/20 border border-red-500/30 text-red-500 font-black italic tracking-widest text-[8px] hover:bg-red-600 hover:text-black transition-all uppercase"
-                >
-                    Initialize_Wipe
-                </button>
             </div>
         </div>
+
+        {/* 2. SOCIAL BINDING (New Feature) */}
+        <div className="w-full bg-black/60 border border-white/10 backdrop-blur-md p-5 space-y-4">
+            <div className="flex items-center justify-between">
+                <h3 className="text-sm font-black font-orbitron uppercase text-white flex items-center gap-2">
+                    <Instagram size={14} className="text-pink-500" /> Identity_Link
+                </h3>
+                {connectedHandle && <CheckCircle2 size={14} className="text-green-500" />}
+            </div>
+            
+            <p className="text-[9px] font-mono text-gray-400 leading-relaxed">
+                Bind your primary handle to receive bounties and payouts.
+            </p>
+
+            <div className="flex gap-2">
+                <Input 
+                    value={igHandle}
+                    onChange={(e) => setIgHandle(e.target.value)}
+                    placeholder="@YOUR_HANDLE"
+                    disabled={!!connectedHandle} // Lock if already set (Optional, can remove if you want editable)
+                    className="bg-black/40 border-white/10 text-[10px] h-10 font-mono text-white focus:border-pink-500 uppercase"
+                />
+                {!connectedHandle && (
+                    <Button 
+                        onClick={handleBindInstagram}
+                        disabled={isBinding || !igHandle}
+                        className="h-10 bg-pink-600 hover:bg-pink-500 text-white font-black text-[9px] uppercase w-24"
+                    >
+                        {isBinding ? "Saving..." : "Save"}
+                    </Button>
+                )}
+            </div>
+            {connectedHandle && (
+                <p className="text-[8px] font-mono text-green-500 uppercase tracking-widest text-right">
+                    Verified: {connectedHandle}
+                </p>
+            )}
+        </div>
+
+        {/* 3. SETTINGS */}
+        <div className="space-y-3 pt-4">
+            <button 
+                onClick={handleLogout}
+                className="w-full h-12 border border-white/10 bg-black/40 text-gray-500 hover:text-red-500 hover:border-red-500/30 hover:bg-red-500/5 transition-all uppercase tracking-widest text-[9px] font-black flex items-center justify-center gap-2"
+            >
+                <LogOut size={14} /> Terminate_Session
+            </button>
+        </div>
+
       </div>
 
-      {/* 🧪 SYSTEM FOOTER */}
-      <footer className="fixed bottom-0 left-0 right-0 z-[100] px-6 py-5 flex items-center justify-between border-t border-white/5 bg-black/80 backdrop-blur-2xl">
-         <div className="flex items-center gap-4 opacity-50 text-cyan-500">
-            <Cpu size={14} className="animate-pulse" />
-            <span className="text-[7px] font-mono uppercase tracking-[0.2em] font-bold">Secure_ID // 0x{userData.uid.slice(0, 4)}</span>
-         </div>
-         <div className="text-[9px] font-bold text-white/10 uppercase tracking-[0.5em] font-mono italic">
-            OPERATIVE_PROFILE // SYNC_ACTIVE
-         </div>
-      </footer>
-
-      {/* --- MODALS --- */}
-      {showSwitcher && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-md p-6 animate-in zoom-in duration-200">
-            <div className="w-full max-w-xs bg-black border border-red-600 p-6 space-y-6 shadow-[0_0_50px_rgba(220,38,38,0.2)]">
-                <div className="text-center space-y-2">
-                    <AlertTriangle size={24} className="text-red-600 mx-auto animate-pulse" />
-                    <h3 className="text-sm font-black font-orbitron text-red-500 uppercase">System_Purge_Warning</h3>
-                    <p className="text-[8px] font-mono text-red-400/50 uppercase leading-relaxed">Identity reformat will reset velocity to zero. Proceed?</p>
-                </div>
-                <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto no-scrollbar">
-                    {NICHES.filter(n => n.id !== userData.niche).map(n => (
-                        <button key={n.id} onClick={() => { setSelectedNiche(n.id); play("click"); }} className={cn("py-2 text-[8px] font-black uppercase border", selectedNiche === n.id ? "bg-red-600 border-red-600 text-black" : "border-white/10 text-white/40")}>
-                            {n.label}
-                        </button>
-                    ))}
-                </div>
-                <div className="flex gap-2">
-                    <Button onClick={handleNicheSwitch} disabled={!selectedNiche || isSwitching} className="flex-1 bg-red-600 text-black font-black text-[9px] h-10 uppercase italic">Confirm</Button>
-                    <Button onClick={() => setShowSwitcher(false)} variant="ghost" className="text-[9px] uppercase font-bold text-white/20">Abort</Button>
-                </div>
-            </div>
-        </div>
-      )}
-
+      {/* EDIT NAME MODAL */}
       {showNameEdit && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-md p-6 animate-in zoom-in duration-200">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md p-6 animate-in zoom-in duration-200">
             <div className="w-full max-w-xs bg-black border border-cyan-500/30 p-6 space-y-6">
                 <h3 className="text-sm font-black font-orbitron text-white uppercase flex items-center gap-2 italic">
-                    <Terminal size={14} className="text-cyan-500" /> Rename_Alias
+                    <Terminal size={14} className="text-cyan-500" /> Rewrite_Alias
                 </h3>
-                <Input value={newUsername} onChange={(e) => setNewUsername(e.target.value.toUpperCase())} className="bg-black/50 border-white/10 text-cyan-400 font-orbitron font-black text-lg h-12" placeholder="NEW_ALIAS..." />
+                <Input 
+                    value={newUsername} 
+                    onChange={(e) => setNewUsername(e.target.value.toUpperCase())} 
+                    className="bg-black/50 border-white/10 text-cyan-400 font-orbitron font-black text-lg h-12 text-center uppercase" 
+                    placeholder="NEW_CODENAME" 
+                />
                 <div className="flex gap-2">
-                    <Button onClick={handleNameUpdate} disabled={isSwitching || !newUsername} className="flex-1 bg-cyan-500 text-black font-black text-[9px] h-10 uppercase italic">Update</Button>
+                    <Button onClick={handleNameUpdate} className="flex-1 bg-cyan-500 text-black font-black text-[9px] h-10 uppercase italic">
+                        Confirm
+                    </Button>
                     <Button onClick={() => setShowNameEdit(false)} variant="ghost" className="text-[9px] uppercase font-bold text-white/20">Cancel</Button>
                 </div>
             </div>
         </div>
       )}
-
-      <style jsx global>{`
-        @keyframes progress {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-      `}</style>
     </main>
   );
-}
-
-function MiniVital({ label, value, color }: any) {
-    return (
-        <div className="p-2 bg-black/60 border border-white/5 backdrop-blur-sm space-y-0.5">
-            <span className="text-[6px] font-mono text-white/20 uppercase tracking-widest block">{label}</span>
-            <span className={cn("text-xs font-black font-orbitron tracking-tighter truncate block", color)}>{value}</span>
-        </div>
-    );
 }

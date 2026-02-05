@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useRef, useEffect, useState } from "react";
-// ⚡ Using absolute alias as per system standard
 import { cn } from "@/lib/utils";
 
 interface VideoStageProps {
@@ -12,62 +11,82 @@ interface VideoStageProps {
 }
 
 /**
- * ⚡ VIDEO STAGE (V3.5 - High-Visibility Update)
- * Replaces GLTF with high-fidelity 9:16 MP4 playback.
- * Optimized with initialization guards and corrected layering.
+ * ⚡ VIDEO STAGE V4.0 (Morph Engine)
+ * Supports smooth cross-fading between video sources.
+ * Essential for the "Playable World" feel when switching Niches.
  */
 export default function VideoStage({ 
   src, 
   poster, 
   className,
-  overlayOpacity = 0.35 // Slightly lowered for better video visibility
+  overlayOpacity = 0.35 
 }: VideoStageProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
+  
+  // We keep track of two video sources to cross-fade them
+  const [activeSrc, setActiveSrc] = useState(src);
+  const [prevSrc, setPrevSrc] = useState<string | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
+  // Trigger transition when prop changes
   useEffect(() => {
-    // 🧪 SYSTEM TRIGGER: Force play on mount to bypass browser auto-play throttles
-    if (videoRef.current) {
-      videoRef.current.defaultMuted = true;
-      videoRef.current.muted = true;
+    if (src !== activeSrc) {
+      setPrevSrc(activeSrc); // Move current to background
+      setActiveSrc(src);     // Set new to foreground
+      setIsTransitioning(true); // Start fade
       
-      const playPromise = videoRef.current.play();
-      if (playPromise !== undefined) {
-        playPromise.catch((error) => {
-          console.warn("Video auto-play interrupted:", error);
-        });
-      }
+      // Cleanup transition state after fade completes
+      const timer = setTimeout(() => {
+        setIsTransitioning(false);
+        setPrevSrc(null); // Kill the old video to save RAM
+      }, 1000); // 1s cross-fade duration matching CSS
+      
+      return () => clearTimeout(timer);
     }
-  }, [src]);
+  }, [src, activeSrc]);
 
   return (
     <div className={cn("fixed inset-0 z-0 overflow-hidden bg-black flex items-center justify-center", className)}>
       
-      {/* 📽️ THE CORE SIGNAL (Moved to relative z-0 to ensure it's at the base) */}
+      {/* 📽️ LAYER A (Previous Video - Fades Out) */}
+      {prevSrc && (
+        <video
+          key={prevSrc}
+          src={prevSrc}
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-1000 ease-in-out"
+          style={{ opacity: isTransitioning ? 0 : 1 }} // Force fade out
+        />
+      )}
+
+      {/* 📽️ LAYER B (Active Video - Fades In) */}
       <video
-        ref={videoRef}
-        src={src}
+        key={activeSrc}
+        src={activeSrc}
         poster={poster}
         autoPlay
         loop
+        muted
         playsInline
-        onLoadedData={() => setIsLoaded(true)}
         className={cn(
-          "h-full w-full object-cover transition-opacity duration-1000",
-          "contrast-[1.1] brightness-[1.1]", // Boosted brightness to fight the overlays
-          isLoaded ? "opacity-100" : "opacity-0"
+          "absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ease-in-out",
+          "contrast-[1.1] brightness-[1.1]",
+          // If transitioning, start at 0 and fade to 1. If static, stay at 1.
+          isTransitioning ? "animate-in fade-in duration-1000" : "opacity-100"
         )}
       />
 
       {/* 🧪 POST-PROCESSING LAYER 1: Hard Light Cyan/Pink Glow */}
       <div 
-        className="absolute inset-0 z-10 pointer-events-none mix-blend-hard-light animate-pulse"
+        className="absolute inset-0 z-10 pointer-events-none mix-blend-hard-light"
         style={{
           background: `linear-gradient(135deg, rgba(6,182,212,${overlayOpacity}) 0%, rgba(236,72,153,${overlayOpacity}) 100%)`,
         }}
       />
       
-      {/* 🧪 LAYER 2: Depth Gradients (Lowered Opacity from 80% to 40% for visibility) */}
+      {/* 🧪 LAYER 2: Depth Gradients */}
       <div className="absolute inset-0 z-20 pointer-events-none bg-gradient-to-b from-black via-transparent to-black opacity-40" />
       <div className="absolute inset-0 z-20 pointer-events-none bg-[radial-gradient(circle_at_50%_50%,transparent_30%,black_100%)] opacity-30" />
 
@@ -85,8 +104,6 @@ export default function VideoStage({
       {/* 🧪 LAYER 4: Scanline Hardware Texture */}
       <div className="absolute inset-0 z-40 pointer-events-none opacity-[0.08] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.03),rgba(0,255,0,0.01),rgba(0,0,255,0.03))] bg-[size:100%_3px,3px_100%]" />
       
-      {/* 🛡️ BLACKOUT CURTAIN: Prevents flash-of-white before video load */}
-      {!isLoaded && <div className="absolute inset-0 z-[50] bg-black" />}
     </div>
   );
-} 
+}

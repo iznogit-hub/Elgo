@@ -1,212 +1,220 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { doc, updateDoc, arrayUnion, increment } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { 
-  Zap, Shield, Lock, Radio, 
-  Terminal, Crosshair, User as UserIcon, 
-  Cpu, ArrowRight, Activity, Network, Globe,
-  Users, Music, ShoppingCart
+  Terminal, Crosshair, Wallet, Lock, Radio, Activity
 } from "lucide-react";
 import { toast } from "sonner";
-
-// 🧪 ZAIBATSU SYSTEM UI
-import { HackerText } from "@/components/ui/hacker-text";
 import { Button } from "@/components/ui/button";
 import { Background } from "@/components/ui/background";
-import { Globe as Globe3D } from "@/components/ui/globe"; 
 import { SoundPrompter } from "@/components/ui/sound-prompter";
 import VideoStage from "@/components/canvas/video-stage";
-import { Progress } from "@/components/ui/progress";
 import { TransitionLink } from "@/components/ui/transition-link";
 import { useSfx } from "@/hooks/use-sfx";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/context/auth-context";
+import { HackerText } from "@/components/ui/hacker-text";
+import { ALL_SECTORS, NICHE_DATA } from "@/lib/niche-data"; // IMPORT DATA
+
+const NICHE_COST = 100; 
 
 export default function Dashboard() {
   const router = useRouter();
   const { play } = useSfx(); 
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const { user, userData, loading } = useAuth();
+  
+  const [processing, setProcessing] = useState(false);
+  const [selectedNicheId, setSelectedNicheId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (currentUser) => {
-      if (!currentUser) {
-        router.push("/auth/login");
-        return;
+  // 🛡️ SAFE DATA
+  const popCoins = userData?.wallet?.popCoins || (userData as any)?.popCoins || 0;
+  const unlockedNiches = userData?.unlockedNiches || ["general"];
+  const username = userData?.username || "OPERATIVE";
+
+  // 3. PURCHASE & NAVIGATION LOGIC
+  const handleNicheInteraction = async (nicheId: string) => {
+      const isOwned = unlockedNiches.includes(nicheId);
+
+      // ✅ IF OWNED: WARP TO WORLD
+      if (isOwned) {
+          play("success");
+          router.push(`/niche/${nicheId}`);
+          return;
       }
+
+      // 🔒 IF LOCKED: BUY LOGIC
+      if (popCoins < NICHE_COST) {
+          play("error");
+          return toast.error(`NEED ${NICHE_COST} PC TO UNLOCK.`);
+      }
+
+      if (!user) return;
+
+      if (selectedNicheId !== nicheId) {
+          play("hover");
+          setSelectedNicheId(nicheId);
+          return;
+      }
+
+      setProcessing(true);
+      play("success");
+
       try {
-        const docRef = doc(db, "users", currentUser.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setUser(docSnap.data());
-          play("success"); 
-        } else {
-          setUser({ username: "OPERATIVE", tier: "RECRUIT", niche: "ANIME", velocity: 450 });
-        }
+          const userRef = doc(db, "users", user.uid);
+          await updateDoc(userRef, {
+              "wallet.popCoins": increment(-NICHE_COST),
+              unlockedNiches: arrayUnion(nicheId)
+          });
+          toast.success(`SECTOR UNLOCKED: ${nicheId.toUpperCase()}`);
+          setSelectedNicheId(null);
+          // Auto-redirect after buy
+          setTimeout(() => router.push(`/niche/${nicheId}`), 1000);
       } catch (e) {
-        toast.error("CONNECTION_INTERRUPTED");
+          play("error");
+          toast.error("TRANSACTION FAILED");
       } finally {
-        setLoading(false);
+          setProcessing(false);
       }
-    });
-    return () => unsub();
-  }, [router, play]);
+  };
 
   if (loading) return <LoadingState />;
 
   return (
-    <main className="relative min-h-screen bg-black text-white font-sans overflow-hidden flex flex-col items-center">
-      
-      {/* 📽️ THE THEATER: MP4 stays centered and visible */}
-      <VideoStage src="/video/main.mp4" overlayOpacity={0.3} />
-      <Background /> 
-      <SoundPrompter />
+    <main className="relative h-screen w-full bg-black text-white font-sans overflow-hidden flex flex-col">
+      <div className="absolute inset-0 pointer-events-none">
+        <VideoStage src="/video/main.mp4" overlayOpacity={0.6} />
+        <Background /> 
+        <SoundPrompter />
+      </div>
 
-      {/* 📱 TOP HUD: Pushed to Edges */}
-      <nav className="fixed top-0 left-0 right-0 z-[100] p-6 flex items-center justify-between pointer-events-none">
-        <div className="pointer-events-auto">
-            <TransitionLink 
-                href="/profile"
-                className="w-12 h-12 border border-white/10 bg-black/40 backdrop-blur-md flex items-center justify-center group hover:border-cyan-500 transition-all"
-            >
-                <UserIcon size={20} className="text-gray-400 group-hover:text-cyan-400" />
-            </TransitionLink>
-        </div>
-        
-        <div className="pointer-events-auto flex flex-col items-end gap-1">
-            <div className="px-3 py-1 bg-cyan-500/10 border border-cyan-500/20 backdrop-blur-md rounded-full flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                <span className="text-[8px] font-mono font-black tracking-widest text-cyan-400 uppercase">Neural_Link_Stable</span>
+      {/* TOP HUD */}
+      <header className="flex-none h-16 px-6 flex items-center justify-between border-b border-white/5 bg-black/20 backdrop-blur-md z-50">
+        <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-cyan-900/40 backdrop-blur-md border border-cyan-500/30 flex items-center justify-center rounded-sm">
+                <span className="text-sm">🇮🇳</span>
             </div>
-            <span className="text-[10px] font-orbitron font-black text-white/40 italic uppercase tracking-tighter">
-                {user?.username} // {user?.tier}
+            <div>
+                <div className="text-[7px] font-mono text-cyan-500 uppercase tracking-widest">Operator</div>
+                <div className="text-[10px] font-black font-orbitron uppercase text-white tracking-widest truncate max-w-[100px]">
+                    {username}
+                </div>
+            </div>
+        </div>
+        <div className="flex items-center gap-2 px-3 py-1 bg-yellow-500/10 border border-yellow-500/20 backdrop-blur-md rounded-sm">
+            <Wallet size={12} className="text-yellow-500" />
+            <span className="text-[9px] font-mono font-black tracking-widest text-yellow-500 uppercase">
+                {popCoins.toLocaleString()} PC
             </span>
         </div>
-      </nav>
+      </header>
 
-      {/* 🚀 OPERATIVE HUD: Floating Side Elements */}
-      <div className="relative z-50 w-full h-screen pointer-events-none">
+      {/* CENTRAL COCKPIT */}
+      <div className="flex-1 flex flex-col p-4 gap-3 overflow-hidden z-40">
         
-        {/* LEFT FLANK: Intelligence & Progress */}
-        <div className="absolute left-6 top-32 w-40 space-y-6 pointer-events-auto">
-            <div className="space-y-1">
-                <span className="text-[8px] font-mono text-cyan-500/60 uppercase tracking-widest">Velocity_Index</span>
-                <Progress value={(user?.velocity || 0) / 10} className="h-1 bg-white/5 border border-white/10" />
-                <span className="text-[10px] font-black font-mono text-white/40">{user?.velocity || 0} XP</span>
-            </div>
-
-            <div className="p-4 bg-black/40 border border-white/10 backdrop-blur-xl rounded-xs space-y-3">
-                <div className="flex items-center gap-2 text-[8px] text-cyan-500 font-black uppercase">
-                   <Network size={10} /> Sector
-                </div>
-                <h2 className="text-lg font-black font-orbitron italic uppercase leading-none tracking-tighter text-white">
-                    {user?.niche}
-                </h2>
-                <div className="h-20 w-full grayscale opacity-50 group-hover:opacity-100 transition-all">
-                    <Globe3D />
-                </div>
+        {/* 1. ACTIVE SECTORS (Quick Launch) */}
+        <div className="flex-none">
+            <h2 className="text-[8px] font-mono text-gray-500 uppercase tracking-widest mb-2">Active_Missions</h2>
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                {unlockedNiches.map((nicheId: string) => {
+                    const data = NICHE_DATA[nicheId] || { label: nicheId, icon: <Terminal size={14}/>, color: "gray" };
+                    return (
+                        <button 
+                            key={nicheId}
+                            onClick={() => { play("click"); router.push(`/niche/${nicheId}`); }}
+                            className={cn(
+                                "flex-none flex items-center gap-2 px-3 py-2 bg-white/5 border border-white/10 rounded-sm hover:bg-white/10 transition-all active:scale-95",
+                                `hover:border-${data.color}-500/50`
+                            )}
+                        >
+                            <span className={cn(`text-${data.color}-400`)}>{data.icon}</span>
+                            <span className="text-[9px] font-black font-orbitron uppercase whitespace-nowrap">{data.label}</span>
+                        </button>
+                    );
+                })}
             </div>
         </div>
 
-        {/* RIGHT FLANK: Daily Briefing & Mission */}
-        <div className="absolute right-6 top-32 w-48 space-y-4 pointer-events-auto text-right">
-            <div className="flex flex-col items-end gap-1">
-                <h3 className="text-[9px] font-black font-orbitron tracking-widest text-gray-400 uppercase flex items-center gap-2">
-                    Briefing <Crosshair size={10} className="text-green-500" />
-                </h3>
-                <div className="p-3 bg-black/40 border-r-2 border-green-500/50 backdrop-blur-xl space-y-2">
-                    <p className="text-[9px] font-mono text-white/60 leading-tight">NEXT_SIGNAL: 14:20:59</p>
-                    <div className="h-[1px] w-full bg-white/5" />
-                    <p className="text-[10px] font-black italic text-green-400 truncate">REEL_5s_LOOP</p>
-                </div>
+        {/* 2. THE MARKETPLACE */}
+        <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex items-center justify-between mb-2 flex-none">
+                <h2 className="text-[8px] font-mono text-gray-500 uppercase tracking-widest">Global_Marketplace</h2>
+                <span className="text-[7px] text-yellow-500 bg-yellow-500/10 px-2 rounded-sm border border-yellow-500/20">PRICE: {NICHE_COST} PC</span>
             </div>
+            
+            <div className="grid grid-cols-2 gap-2 overflow-y-auto pr-1 pb-4 no-scrollbar">
+                {ALL_SECTORS.map((sector) => {
+                    const isOwned = unlockedNiches.includes(sector.id);
+                    const isSelected = selectedNicheId === sector.id;
 
-            <button 
-                onClick={() => { play("success"); toast.success("SIGNAL_LOCKED: +50 XP"); }}
-                className="w-full py-3 bg-green-600/10 border border-green-500/30 text-green-500 font-black italic tracking-widest text-[8px] hover:bg-green-500 hover:text-black transition-all uppercase"
-            >
-                Verify Execution
-            </button>
+                    return (
+                        <div 
+                            key={sector.id}
+                            onClick={() => handleNicheInteraction(sector.id)}
+                            className={cn(
+                                "relative h-14 flex items-center justify-between px-3 border transition-all cursor-pointer overflow-hidden group rounded-sm",
+                                isOwned 
+                                    ? `bg-black/40 border-${sector.color}-500/30 opacity-60 grayscale hover:grayscale-0 hover:opacity-100` 
+                                    : "bg-black/60 border-white/10 hover:border-white/30 hover:bg-white/5"
+                            )}
+                        >
+                            <div className="flex items-center gap-3 z-10">
+                                <div className={cn(
+                                    "transition-all duration-300",
+                                    isOwned ? `text-${sector.color}-400` : "text-gray-500",
+                                )}>
+                                    {sector.icon}
+                                </div>
+                                <span className={cn(
+                                    "text-[9px] font-black font-orbitron uppercase",
+                                    isOwned ? "text-white" : "text-gray-400"
+                                )}>
+                                    {sector.label}
+                                </span>
+                            </div>
+
+                            <div className="z-10">
+                                {isOwned ? (
+                                    <span className="text-[7px] font-mono text-green-500 bg-green-500/10 px-1.5 py-0.5 rounded-sm">OPEN</span>
+                                ) : (
+                                    <Lock size={12} className="text-white/20" />
+                                )}
+                            </div>
+
+                            {!isOwned && isSelected && (
+                                <div className="absolute inset-0 bg-yellow-500 flex items-center justify-between px-4 animate-in fade-in slide-in-from-right-10 duration-200 z-20">
+                                    <span className="text-[9px] font-black text-black font-mono">CONFIRM?</span>
+                                    <span className="text-[10px] font-black text-black">PAY {NICHE_COST}</span>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
         </div>
 
-        {/* BOTTOM HUD: Services / Armory */}
-        <div className="absolute bottom-28 left-6 right-6 pointer-events-auto">
-            <div className="flex items-center justify-between mb-3 px-2">
-                <span className="text-[9px] font-black font-orbitron tracking-[0.2em] text-cyan-500 uppercase flex items-center gap-2">
-                    <Terminal size={12} /> Armory_Cartridges
-                </span>
-                <TransitionLink href="/store" className="text-[8px] font-mono text-white/20 hover:text-cyan-400 uppercase tracking-widest">Access_Full_Vault &rarr;</TransitionLink>
+        {/* 3. BOUNTY TICKER */}
+        <div className="flex-none p-2 border-t border-white/10 bg-black/80 backdrop-blur-md flex items-center justify-between mt-auto">
+            <div className="flex items-center gap-2">
+                <Crosshair size={12} className="text-yellow-500 animate-pulse" />
+                <span className="text-[8px] font-black uppercase tracking-widest text-white/60">Bounty_Board_Active</span>
             </div>
-            <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4">
-                <Cartridge icon={<Music size={16} />} name="AUDIO" cost="500 PC" color="border-cyan-500/30" />
-                <Cartridge icon={<Users size={16} />} name="LINK" cost="1000 BP" color="border-pink-500/30" />
-                <Cartridge icon={<ShoppingCart size={16} />} name="STORE" cost="FREE" color="border-white/10" />
-                <Cartridge icon={<Lock size={16} />} name="TITAN" cost="10k BP" color="border-red-500/30" locked />
-            </div>
+            <TransitionLink href="/hunter" className="text-[8px] font-bold text-black bg-yellow-500 px-3 py-1 rounded-sm hover:bg-white transition-colors uppercase">
+                View Missions
+            </TransitionLink>
         </div>
       </div>
-
-      {/* 🧪 SYSTEM STATUS BAR */}
-      <footer className="fixed bottom-0 left-0 right-0 z-[100] px-6 py-5 flex items-center justify-between border-t border-white/5 bg-black/80 backdrop-blur-2xl">
-         <div className="flex items-center gap-4 opacity-50 text-cyan-500">
-            <Cpu size={14} className="animate-pulse" />
-            <div className="flex flex-col gap-0.5">
-                <div className="h-0.5 w-16 bg-white/10 overflow-hidden">
-                    <div className="h-full bg-cyan-400 w-1/2 animate-[progress_3s_infinite_linear]" />
-                </div>
-                <span className="text-[7px] font-mono uppercase tracking-[0.2em] font-bold">Node: 0x88_Syn</span>
-            </div>
-         </div>
-         <div className="flex gap-6">
-            <div className="flex flex-col items-end">
-                <span className="text-[7px] font-mono text-white/20 uppercase">BubblePoints</span>
-                <span className="text-xs font-black text-yellow-400">{(user?.bubblePoints || 0).toLocaleString()}</span>
-            </div>
-            <div className="flex flex-col items-end">
-                <span className="text-[7px] font-mono text-white/20 uppercase">PopCoins</span>
-                <span className="text-xs font-black text-white">{(user?.popCoins || 0).toLocaleString()}</span>
-            </div>
-         </div>
-      </footer>
-
-      <style jsx global>{`
-        @keyframes progress {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-      `}</style>
     </main>
   );
-}
-
-function Cartridge({ icon, name, cost, color, locked }: any) {
-    const { play } = useSfx();
-    return (
-      <div 
-        onClick={() => play(locked ? "off" : "click")}
-        className={cn(
-          "min-w-[120px] bg-black/60 border p-3 rounded-xs space-y-2 cursor-pointer hover:bg-white/5 transition-all relative flex-shrink-0",
-          color, locked && "opacity-40"
-        )}
-      >
-        <div className="flex justify-between items-center">
-            <div className="text-cyan-500">{icon}</div>
-            <span className="text-[8px] font-black text-yellow-400 italic">{cost}</span>
-        </div>
-        <p className="text-[9px] font-black font-orbitron uppercase italic truncate">{name}</p>
-        {locked && <Lock size={10} className="absolute top-2 right-2 text-white/20" />}
-      </div>
-    );
 }
 
 function LoadingState() {
     return (
         <div className="min-h-screen bg-black flex flex-col items-center justify-center text-cyan-500 font-mono gap-4">
             <Activity className="animate-spin" />
-            <HackerText text="UPLINKING_TO_BPOP_OS..." speed={30} />
+            <HackerText text="LOADING_MARKETPLACE..." speed={30} />
         </div>
     );
 }

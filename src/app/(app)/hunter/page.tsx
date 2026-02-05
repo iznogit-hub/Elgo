@@ -3,10 +3,10 @@
 import React, { useState } from "react";
 import { 
   Radar, Search, Loader2, Users, 
-  Zap, Heart, ExternalLink, Target, Wifi, ArrowLeft,
-  Database, Activity, Radio, Cpu
+  Zap, ExternalLink, Target, Wifi, ArrowLeft,
+  Database, Activity, Radio, CheckCircle2, AlertTriangle
 } from "lucide-react";
-import { collection, addDoc, doc, updateDoc, increment } from "firebase/firestore";
+import { collection, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/context/auth-context";
 import { toast } from "sonner";
@@ -16,64 +16,91 @@ import { HackerText } from "@/components/ui/hacker-text";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Background } from "@/components/ui/background";
-import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
 import { TransitionLink } from "@/components/ui/transition-link";
 import { SoundPrompter } from "@/components/ui/sound-prompter";
 import VideoStage from "@/components/canvas/video-stage";
 import { useSfx } from "@/hooks/use-sfx";
 import { cn } from "@/lib/utils";
 
-const OPERATIVES = [
-  { id: "op_1", username: "AMBER_CEO", tier: "inner_circle", niche: "business", instagram: "https://instagram.com/amber_ceo", reward: 100, isBoosted: true },
-  { id: "op_2", username: "FIT_WARLORD_99", tier: "captain", niche: "fitness", instagram: "https://instagram.com/fit_warlord", reward: 20, isBoosted: false },
-  { id: "op_3", username: "CYBER_VIXEN", tier: "soldier", niche: "fashion", instagram: "https://instagram.com/cyber_vixen", reward: 30, isSisterProtocol: true },
+// 📡 MOCK BOUNTY DATA (Eventually this comes from 'bounties' collection)
+const TARGETS = [
+  { id: "op_1", username: "AMBER_CEO", tier: "inner_circle", url: "https://instagram.com", reward: 100, type: "BOOST" },
+  { id: "op_2", username: "FIT_WARLORD", tier: "captain", url: "https://instagram.com", reward: 20, type: "STANDARD" },
+  { id: "op_3", username: "CYBER_VIXEN", tier: "soldier", url: "https://instagram.com", reward: 30, type: "SISTER_PROTOCOL" },
+  { id: "op_4", username: "NEO_TOKYO", tier: "recruit", url: "https://instagram.com", reward: 15, type: "STANDARD" },
 ];
 
 export default function SignalHunterPage() {
-  const { userData, user } = useAuth();
+  const { userData } = useAuth();
   const { play } = useSfx(); 
-  const [activeTab, setActiveTab] = useState<"scout" | "operatives">("scout");
+  
+  const [activeTab, setActiveTab] = useState<"SCOUT" | "HUNT">("SCOUT");
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
-  const [claimedOps, setClaimedOps] = useState<string[]>([]);
+  
+  // Local state to track which bounties are "Clicked" vs "Claimed"
+  const [clickedTargets, setClickedTargets] = useState<string[]>([]);
+  const [claimedTargets, setClaimedTargets] = useState<string[]>([]);
+
+  // --- 📡 HANDLERS ---
 
   const handleSubmitScout = async (e: React.FormEvent) => {
     e.preventDefault();
     play("click");
+    
     if (!url.includes("instagram.com")) {
         play("error");
         return toast.error("INVALID_FREQUENCY: SECURE INSTAGRAM LINKS ONLY");
     }
+
     setLoading(true);
-    const toastId = toast.loading("ENCRYPTING PACKET...");
-    try {
-      await addDoc(collection(db, "scouting_reports"), {
-        submittedBy: userData?.uid,
-        username: userData?.username,
-        url: url,
-        status: "pending",
-        timestamp: new Date().toISOString()
-      });
+    // Simulating a "Scan" effect
+    setTimeout(async () => {
+        try {
+            await addDoc(collection(db, "scouting_reports"), {
+                submittedBy: userData?.uid,
+                username: userData?.username,
+                url: url,
+                status: "pending",
+                timestamp: new Date().toISOString()
+            });
+            play("success");
+            toast.success("SIGNAL UPLOADED // PENDING ANALYSIS");
+            setUrl("");
+        } catch (err) {
+            play("error");
+            toast.error("TRANSMISSION FAILED");
+        } finally {
+            setLoading(false);
+        }
+    }, 1500);
+  };
+
+  const handleTargetClick = (id: string, link: string) => {
+      play("click");
+      window.open(link, '_blank');
+      // Mark as clicked so "Verify" button appears
+      if (!clickedTargets.includes(id)) {
+          setClickedTargets(prev => [...prev, id]);
+      }
+  };
+
+  const handleClaimReward = (id: string, reward: number) => {
       play("success");
-      toast.success("SIGNAL LOGGED. PENDING VERIFICATION.", { id: toastId });
-      setUrl("");
-    } catch (err) {
-      play("error");
-      toast.error("TRANSMISSION FAILED.", { id: toastId });
-    } finally {
-      setLoading(false);
-    }
+      setClaimedTargets(prev => [...prev, id]);
+      toast.success(`BOUNTY CLAIMED: +${reward} PC`);
+      // TODO: In production, this calls an API to actually add coins
   };
 
   return (
     <main className="relative min-h-screen bg-black text-white selection:bg-green-500/30 font-sans overflow-hidden flex flex-col items-center">
       
-      {/* 📽️ THE THEATER: Central Visual Focus */}
-      <VideoStage src="/video/main.mp4" overlayOpacity={0.5} />
+      {/* 📽️ BACKGROUND */}
+      <VideoStage src="/video/main.mp4" overlayOpacity={0.6} />
       <Background /> 
       <SoundPrompter />
 
-      {/* 📱 TOP HUD NAVIGATION */}
+      {/* 📱 TOP HUD */}
       <nav className="fixed top-0 left-0 right-0 z-[100] p-6 flex items-center justify-between pointer-events-none">
         <div className="pointer-events-auto">
             <TransitionLink 
@@ -84,138 +111,179 @@ export default function SignalHunterPage() {
             </TransitionLink>
         </div>
         
+        {/* WALLET DISPLAY */}
         <div className="pointer-events-auto flex gap-2">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/20 backdrop-blur-md rounded-xs">
-                <Zap size={10} className="text-cyan-400 fill-cyan-400" />
-                <span className="text-[10px] font-mono font-black tracking-tighter text-cyan-400">
-                    {userData?.bubblePoints ?? 0} <span className="opacity-40">BP</span>
-                </span>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-pink-500/10 border border-pink-500/20 backdrop-blur-md rounded-xs">
-                <Database size={10} className="text-pink-400" />
-                <span className="text-[10px] font-mono font-black tracking-tighter text-pink-400">
-                    {userData?.popCoins ?? 0} <span className="opacity-40">PC</span>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-500/10 border border-yellow-500/20 backdrop-blur-md rounded-sm">
+                <div className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" />
+                <span className="text-[10px] font-mono font-black tracking-widest text-yellow-500 uppercase">
+                    {userData?.wallet?.popCoins ?? 0} <span className="opacity-40">PC</span>
                 </span>
             </div>
         </div>
       </nav>
 
-      {/* 📡 INTERFACE: Theatrical Flanks */}
-      <div className="relative z-50 w-full h-screen pointer-events-none">
+      {/* 🚀 CENTRAL FEED (Mobile First) */}
+      <div className="relative z-40 w-full max-w-md h-screen pt-28 px-6 pb-32 flex flex-col gap-6 overflow-y-auto no-scrollbar">
         
-        {/* LEFT FLANK: Radar Status & Mode Toggle */}
-        <div className="absolute left-6 top-32 w-44 space-y-6 pointer-events-auto">
-            <div className="flex items-center gap-3">
-                <div className="w-12 h-12 flex items-center justify-center bg-green-950/20 rounded-full border border-green-500/40 relative">
-                    <Radar className="w-6 h-6 text-green-500 animate-[spin_4s_linear_infinite]" />
-                    <span className="absolute inset-0 rounded-full border border-green-500/20 animate-ping opacity-30" />
-                </div>
-                <div>
-                    <h1 className="text-sm font-black font-orbitron uppercase italic text-white tracking-tighter">Signal_Radar</h1>
-                    <div className="flex items-center gap-1 text-green-500/60">
-                        <Wifi size={8} className="animate-pulse" />
-                        <span className="text-[7px] font-mono font-bold uppercase tracking-widest">Scanning...</span>
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-                <button 
-                    onClick={() => { setActiveTab("scout"); play("click"); }}
-                    className={cn(
-                        "py-4 px-2 flex items-center gap-3 font-black tracking-widest text-[8px] uppercase border transition-all backdrop-blur-md",
-                        activeTab === "scout" ? "bg-green-500/20 border-green-500 text-green-400" : "bg-black/40 border-white/5 text-white/30"
-                    )}
-                >
-                    <Search size={12} /> Audio_Scout
-                </button>
-                <button 
-                    onClick={() => { setActiveTab("operatives"); play("click"); }}
-                    className={cn(
-                        "py-4 px-2 flex items-center gap-3 font-black tracking-widest text-[8px] uppercase border transition-all backdrop-blur-md",
-                        activeTab === "operatives" ? "bg-cyan-500/20 border-cyan-500 text-cyan-400" : "bg-black/40 border-white/5 text-white/30"
-                    )}
-                >
-                    <Users size={12} /> Operatives
-                </button>
-            </div>
+        {/* MODE TOGGLE */}
+        <div className="flex p-1 bg-white/5 border border-white/10 rounded-sm backdrop-blur-xl">
+            <button 
+                onClick={() => { setActiveTab("SCOUT"); play("click"); }}
+                className={cn(
+                    "flex-1 py-3 text-[9px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2",
+                    activeTab === "SCOUT" ? "bg-green-600 text-black shadow-lg" : "text-gray-500 hover:text-white"
+                )}
+            >
+                <Radar size={12} /> Scout_Intel
+            </button>
+            <button 
+                onClick={() => { setActiveTab("HUNT"); play("click"); }}
+                className={cn(
+                    "flex-1 py-3 text-[9px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2",
+                    activeTab === "HUNT" ? "bg-yellow-500 text-black shadow-lg" : "text-gray-500 hover:text-white"
+                )}
+            >
+                <Target size={12} /> Bounty_List
+            </button>
         </div>
 
-        {/* RIGHT FLANK: Submissions / Operative Detail Feed */}
-        <div className="absolute right-6 top-32 w-52 pointer-events-auto max-h-[60vh] overflow-y-auto no-scrollbar">
-            {activeTab === "scout" ? (
-                <div className="space-y-4 animate-in slide-in-from-right-4 duration-500">
-                    <div className="p-4 bg-black/60 border-r-2 border-green-500/50 backdrop-blur-xl space-y-4">
-                        <div className="flex items-center gap-2 text-[8px] font-black text-green-500 uppercase tracking-widest">
-                            <Radio size={10} /> Intercept_Protocol
+        {/* --- SCOUT MODE --- */}
+        {activeTab === "SCOUT" && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                {/* RADAR VISUAL */}
+                <div className="relative w-full h-48 border border-green-500/30 bg-green-900/5 rounded-sm flex items-center justify-center overflow-hidden">
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(34,197,94,0.1)_70%)]" />
+                    <div className="w-64 h-64 border border-green-500/20 rounded-full animate-ping absolute opacity-20" />
+                    <div className="w-48 h-48 border border-green-500/30 rounded-full animate-ping delay-75 absolute opacity-30" />
+                    
+                    <div className="relative z-10 text-center space-y-2">
+                        <Wifi size={24} className="text-green-500 mx-auto animate-pulse" />
+                        <div className="space-y-0.5">
+                            <h2 className="text-sm font-black font-orbitron text-green-400 uppercase tracking-widest">Signal_Scanner</h2>
+                            <p className="text-[8px] font-mono text-green-600/60 uppercase">Listening for viral frequencies...</p>
                         </div>
-                        <p className="text-[9px] font-bold text-white/40 uppercase leading-relaxed">Logged viral frequencies bypass standard filters.</p>
-                        
-                        <form onSubmit={handleSubmitScout} className="space-y-2">
+                    </div>
+                    
+                    {/* Grid Lines */}
+                    <div className="absolute inset-0 bg-[linear-gradient(rgba(34,197,94,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(34,197,94,0.1)_1px,transparent_1px)] bg-[size:20px_20px] opacity-20" />
+                </div>
+
+                {/* INPUT FORM */}
+                <div className="p-5 bg-black/60 border border-white/10 backdrop-blur-xl space-y-4">
+                     <div className="flex justify-between items-start">
+                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Target_Parameters</label>
+                        <span className="text-[8px] font-mono text-green-500 bg-green-900/20 px-2 py-0.5 rounded-full">Reward: Variable</span>
+                     </div>
+
+                     <form onSubmit={handleSubmitScout} className="space-y-3">
+                         <div className="relative">
                             <Input 
-                                placeholder="IG_URL_REEL..." 
-                                className="bg-black/40 border-white/10 text-[9px] h-10 font-mono text-white focus:border-green-500"
+                                placeholder="PASTE_INSTAGRAM_LINK_HERE" 
+                                className="pl-9 bg-black/40 border-white/10 text-[10px] h-12 font-mono text-white focus:border-green-500 placeholder:text-white/20"
                                 value={url}
                                 onChange={(e) => setUrl(e.target.value)}
                             />
-                            <Button 
-                                type="submit" 
-                                disabled={loading || !url}
-                                className="w-full h-10 bg-green-600 text-black font-black italic tracking-widest text-[8px] uppercase"
-                            >
-                                {loading ? <Loader2 className="animate-spin" size={12} /> : "Transmit"}
-                            </Button>
-                        </form>
-                    </div>
-                </div>
-            ) : (
-                <div className="space-y-3 animate-in slide-in-from-right-4 duration-500">
-                    {OPERATIVES.map((op) => (
-                        <div key={op.id} className={cn(
-                            "p-3 bg-black/60 border-r-2 backdrop-blur-xl transition-all group",
-                            op.isBoosted ? "border-yellow-500" : op.isSisterProtocol ? "border-pink-500" : "border-white/10"
-                        )}>
-                            <div className="flex justify-between items-start mb-2">
-                                <div className="text-[9px] font-black font-orbitron uppercase text-white truncate w-24 italic">{op.username}</div>
-                                <span className="text-[8px] font-mono text-yellow-400">+{op.reward}PC</span>
+                            <div className="absolute left-3 top-3.5 text-white/30">
+                                <Search size={14} />
                             </div>
-                            <a 
-                                href={op.instagram} 
-                                target="_blank"
-                                className="w-full py-2 bg-white/5 border border-white/10 text-[7px] font-black tracking-widest uppercase hover:bg-white hover:text-black flex items-center justify-center gap-1 transition-all"
-                            >
-                                Link <ExternalLink size={8} />
-                            </a>
-                        </div>
-                    ))}
+                         </div>
+                         
+                         <Button 
+                            type="submit" 
+                            disabled={loading || !url}
+                            className="w-full h-12 bg-white/5 border border-green-500/50 hover:bg-green-500 hover:text-black transition-all text-[10px] font-black italic tracking-[0.2em] uppercase group"
+                         >
+                            {loading ? (
+                                <span className="flex items-center gap-2"><Loader2 className="animate-spin" size={12} /> ENCRYPTING...</span>
+                            ) : (
+                                <span className="flex items-center gap-2">UPLOAD_SIGNAL <Radio size={12} className="group-hover:animate-pulse" /></span>
+                            )}
+                         </Button>
+                     </form>
+                     
+                     <p className="text-[8px] font-mono text-gray-500 text-center leading-relaxed">
+                        Authorized agents receive PC for verified viral intel.<br/>
+                        <span className="text-red-500">Do not upload corrupted data.</span>
+                     </p>
                 </div>
-            )}
-        </div>
-      </div>
-
-      {/* 🧪 SYSTEM FOOTER */}
-      <footer className="fixed bottom-0 left-0 right-0 z-[100] px-6 py-5 flex items-center justify-between border-t border-white/5 bg-black/80 backdrop-blur-2xl">
-         <div className="flex items-center gap-4 opacity-50 text-green-500">
-            <Activity size={14} className="animate-pulse" />
-            <div className="flex flex-col gap-0.5">
-                <div className="h-0.5 w-16 bg-white/10 overflow-hidden">
-                    <div className="h-full bg-green-500 w-1/2 animate-[progress_3s_infinite_linear]" />
-                </div>
-                <span className="text-[7px] font-mono uppercase tracking-[0.2em] font-bold">Radar_Sync: v3.1</span>
             </div>
+        )}
+
+        {/* --- HUNT MODE --- */}
+        {activeTab === "HUNT" && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-4">
+                <div className="flex items-center justify-between px-1">
+                    <span className="text-[9px] font-mono font-bold text-gray-500 uppercase tracking-widest">Active_Contracts</span>
+                    <span className="text-[8px] font-mono text-yellow-500 animate-pulse">LIVE_FEED</span>
+                </div>
+
+                {TARGETS.map((target) => {
+                    const isClaimed = claimedTargets.includes(target.id);
+                    const isClicked = clickedTargets.includes(target.id);
+
+                    return (
+                        <div key={target.id} className={cn(
+                            "relative p-4 bg-black/60 border backdrop-blur-xl transition-all",
+                            isClaimed ? "border-white/5 opacity-50 grayscale" : "border-white/10 hover:border-yellow-500/50"
+                        )}>
+                             {target.type === "BOOST" && (
+                                 <div className="absolute -top-2 -right-2 bg-yellow-500 text-black text-[7px] font-black px-2 py-0.5 uppercase tracking-widest skew-x-[-10deg]">
+                                     High_Value
+                                 </div>
+                             )}
+
+                             <div className="flex justify-between items-start mb-4">
+                                 <div>
+                                     <h3 className="text-sm font-black font-orbitron uppercase text-white italic tracking-tighter">{target.username}</h3>
+                                     <div className="flex items-center gap-2 mt-1">
+                                         <span className="text-[8px] font-mono text-gray-400 uppercase">{target.tier}</span>
+                                         {target.type === "SISTER_PROTOCOL" && <span className="text-[7px] text-pink-500 border border-pink-500/30 px-1">ALLY</span>}
+                                     </div>
+                                 </div>
+                                 <div className="text-right">
+                                     <div className="text-lg font-black font-mono text-yellow-400 leading-none">{target.reward}</div>
+                                     <div className="text-[7px] font-mono text-yellow-600 uppercase">PopCoins</div>
+                                 </div>
+                             </div>
+
+                             {isClaimed ? (
+                                 <div className="w-full h-9 bg-white/5 border border-white/5 flex items-center justify-center gap-2 text-[9px] font-bold text-gray-500 uppercase tracking-widest cursor-not-allowed">
+                                     <CheckCircle2 size={12} /> Contract_Closed
+                                 </div>
+                             ) : isClicked ? (
+                                 <Button 
+                                    onClick={() => handleClaimReward(target.id, target.reward)}
+                                    className="w-full h-9 bg-yellow-500 text-black font-black italic tracking-widest text-[9px] uppercase hover:bg-yellow-400"
+                                 >
+                                     <Database size={12} className="mr-2" /> CLAIM_BOUNTY
+                                 </Button>
+                             ) : (
+                                 <Button 
+                                    onClick={() => handleTargetClick(target.id, target.url)}
+                                    className="w-full h-9 bg-white/5 border border-white/10 hover:bg-white hover:text-black transition-all text-[9px] font-black tracking-widest uppercase group"
+                                 >
+                                     ACQUIRE_TARGET <ExternalLink size={10} className="ml-2 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform" />
+                                 </Button>
+                             )}
+                        </div>
+                    );
+                })}
+            </div>
+        )}
+
+      </div>
+      
+      {/* 🧪 FOOTER STATUS */}
+      <footer className="fixed bottom-0 left-0 right-0 z-[100] px-6 py-4 flex items-center justify-between border-t border-white/5 bg-black/90 backdrop-blur-xl">
+         <div className="flex items-center gap-3">
+            <Activity size={12} className="text-green-500 animate-pulse" />
+            <span className="text-[7px] font-mono uppercase tracking-[0.2em] font-bold text-white/40">
+                Network_Sync
+            </span>
          </div>
-         <div className="flex items-center gap-2">
-             <Cpu size={12} className="text-white/20" />
-             <span className="text-[8px] font-bold text-white/20 uppercase tracking-[0.3em]">Secure_SigInt</span>
-         </div>
+         <span className="text-[8px] font-bold text-white/10 uppercase tracking-[0.3em]">SECURE_SIGINT</span>
       </footer>
 
-      <style jsx global>{`
-        @keyframes progress {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-      `}</style>
     </main>
   );
 }

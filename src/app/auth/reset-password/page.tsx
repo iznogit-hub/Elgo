@@ -48,7 +48,6 @@ export default function ResetPassword() {
 
   return (
     <main className="relative min-h-screen bg-black text-white font-sans overflow-hidden flex flex-col items-center">
-      
       <VideoStage src="/video/auth.mp4" overlayOpacity={0.6} />
       <Background /> 
       <SoundPrompter />
@@ -69,7 +68,7 @@ export default function ResetPassword() {
 
       <div className="relative z-50 w-full h-screen pointer-events-none flex flex-col md:flex-row items-center justify-center gap-12 px-6">
         
-        {/* LEFT FLANK: Status Briefing */}
+        {/* LEFT FLANK */}
         <div className="pointer-events-auto text-center md:text-left">
             <div className="space-y-4">
                 <div className="relative inline-block">
@@ -89,11 +88,16 @@ export default function ResetPassword() {
                     <p className="text-[9px] font-bold text-green-400 uppercase leading-relaxed tracking-widest">
                         Check secure comms.<br/>Link dispatched.
                     </p>
+                    <div className="mt-8 animate-pulse">
+                      <Link href="/auth/login" className="text-[10px] text-cyan-500 hover:text-white uppercase tracking-widest border-b border-cyan-500/30 pb-1">
+                        Return_To_Gateway &gt;&gt;
+                      </Link>
+                    </div>
                 </div>
             )}
         </div>
 
-        {/* RIGHT FLANK: Input Matrix */}
+        {/* RIGHT FLANK */}
         <div className="pointer-events-auto w-full max-w-sm">
             {!sent ? (
                 <>
@@ -121,16 +125,7 @@ export default function ResetPassword() {
                         </Button>
                     </form>
                 </>
-            ) : (
-                <div className="space-y-4 text-right">
-                    <Button 
-                        asChild
-                        className="w-full h-12 bg-white text-black font-black italic tracking-widest text-[9px] uppercase hover:bg-cyan-400"
-                    >
-                        <Link href="/auth/login">Return_to_Gateway</Link>
-                    </Button>
-                </div>
-            )}
+            ) : null}
         </div>
       </div>
     </main>
