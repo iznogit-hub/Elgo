@@ -5,8 +5,12 @@ import {
   CreditCard, Lock, Key, 
   Zap, ArrowLeft, Gem,
   Database, ShieldAlert,
-  ShoppingCart, Globe, TrendingUp
+  ShoppingCart, Globe, Smartphone
 } from "lucide-react";
+
+// 🔥 FIREBASE IMPORTS
+import { doc, updateDoc, increment, arrayUnion, addDoc, collection } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 import { Background } from "@/components/ui/background";
 import { Button } from "@/components/ui/button";
@@ -20,6 +24,12 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/context/auth-context";
 import { toast } from "sonner";
 
+// --- ⚡ UPI CONFIGURATION ---
+const MERCHANT = {
+  vpa: "iznoatwork@okicici", // ⚠️ REPLACE WITH YOUR ACTUAL UPI ID
+  name: "Pop_Store"
+};
+
 // --- DATA STRUCTURES ---
 
 const SUPPLY_DROPS = [
@@ -28,7 +38,7 @@ const SUPPLY_DROPS = [
     name: "Ration Pack", 
     amount: 500, 
     bonus: 0, 
-    price: 4.99, 
+    price: 299, 
     tag: "STARTER" 
   },
   { 
@@ -36,23 +46,23 @@ const SUPPLY_DROPS = [
     name: "Smuggler's Crate", 
     amount: 1200, 
     bonus: 200, 
-    price: 9.99, 
+    price: 899, 
     tag: "POPULAR" 
   },
   { 
     id: "drop_l", 
     name: "Cartel Shipment", 
-    amount: 2500, 
-    bonus: 500, 
-    price: 19.99, 
+    amount: 3000, 
+    bonus: 600, 
+    price: 2499, 
     tag: "VALUE" 
   },
   { 
     id: "drop_xl", 
     name: "The Vault", 
-    amount: 6500, 
-    bonus: 1500, 
-    price: 49.99, 
+    amount: 8000, 
+    bonus: 2000, 
+    price: 4999, 
     tag: "WHALE" 
   },
 ];
@@ -61,63 +71,118 @@ const BLACK_MARKET = [
   {
     id: "key_niche",
     name: "Sector Key",
-    description: "Unlocks 1 additional Niche permanently.",
+    description: "Universal unlock key for any standard sector.",
     icon: <Key className="text-yellow-400" />,
-    cost: 100, // Pop-Coins
+    cost: 100, 
     type: "ACCESS"
   },
   {
     id: "boost_genkit",
     name: "Genkit Overclock",
-    description: "24h Unlimited AI generations speed boost.",
+    description: "24h Priority queue for AI generation.",
     icon: <Zap className="text-cyan-400" />,
-    cost: 50, // Pop-Coins
+    cost: 50, 
     type: "BOOST"
   },
   {
     id: "contract_followers",
     name: "Mercenary Contract",
-    description: "Put a bounty on your head. Gain 50 followers.",
+    description: "Bounty placement for 50 followers.",
     icon: <Database className="text-pink-500" />,
-    cost: 500, // Pop-Coins
+    cost: 500, 
     type: "GROWTH"
   },
   {
     id: "intel_leak",
     name: "Insider Leak",
-    description: "See tomorrow's trends today.",
+    description: "Unlocks 'Trending Audio' list for 7 days.",
     icon: <Globe className="text-green-500" />,
-    cost: 25, // Pop-Coins
+    cost: 25, 
     type: "INTEL"
   }
 ];
 
 export default function StorePage() {
   const { play } = useSfx();
-  const { userData } = useAuth();
+  const { user, userData, loading } = useAuth();
   const [activeTab, setActiveTab] = useState<"MINT" | "MARKET">("MINT");
+  const [processing, setProcessing] = useState<string | null>(null);
 
-  // Fallback data if loading
-  const wallet = {
-    popCoins: userData?.popCoins ?? 300,
-    bubblePoints: userData?.bubblePoints ?? 0
-  };
+  const popCoins = userData?.wallet?.popCoins || 0;
 
-  const handlePurchase = (item: any) => {
-    // Placeholder logic for now
-    if (activeTab === "MARKET") {
-        if (wallet.popCoins >= item.cost) {
-            play("success");
-            toast.success(`ACQUIRED: ${item.name}`);
-        } else {
-            play("error");
-            toast.error("INSUFFICIENT FUNDS // GRIND REQUIRED");
-        }
-    } else {
+  // 🛒 PURCHASE LOGIC
+  const handlePurchase = async (item: any) => {
+    if (!user) return;
+
+    // A. REAL MONEY (THE MINT - UPI INTENT)
+    if (activeTab === "MINT") {
         play("click");
-        toast.info("REDIRECTING TO STRIPE_GATEWAY...");
+        
+        // 1. Construct UPI Link
+        const upiUrl = `upi://pay?pa=${MERCHANT.vpa}&pn=${MERCHANT.name}&am=${item.price}&cu=INR&tn=${item.name}_${user.uid.substring(0,4)}`;
+        
+        // 2. Log Attempt to Firestore (So Admin knows they tried to pay)
+        try {
+            await addDoc(collection(db, "payment_attempts"), {
+                uid: user.uid,
+                username: userData?.username || "Unknown",
+                item: item.name,
+                amount: item.price,
+                status: "initiated",
+                timestamp: new Date().toISOString()
+            });
+        } catch(e) { console.error("Log failed", e); }
+
+        // 3. Trigger Mobile Intent
+        // We use window.location for mobile deep linking
+        window.location.href = upiUrl;
+        
+        // 4. Feedback
+        toast.info("OPENING PAYMENT APP...", {
+            description: "After payment, please send screenshot to Admin.",
+            duration: 6000,
+            icon: <Smartphone size={16} />
+        });
+        return;
+    }
+
+    // B. BLACK MARKET (VIRTUAL CURRENCY)
+    if (activeTab === "MARKET") {
+        if (popCoins < item.cost) {
+            play("error");
+            toast.error(`INSUFFICIENT FUNDS. NEED ${item.cost} PC.`);
+            return;
+        }
+
+        if (confirm(`CONFIRM: Spend ${item.cost} PC for ${item.name}?`)) {
+            setProcessing(item.id);
+            play("click");
+
+            try {
+                const userRef = doc(db, "users", user.uid);
+                await updateDoc(userRef, {
+                    "wallet.popCoins": increment(-item.cost),
+                    "inventory": arrayUnion({
+                        itemId: item.id,
+                        name: item.name,
+                        purchasedAt: new Date().toISOString()
+                    })
+                });
+
+                play("success");
+                toast.success(`ACQUIRED: ${item.name}`);
+            } catch (e) {
+                console.error(e);
+                play("error");
+                toast.error("TRANSACTION FAILED");
+            } finally {
+                setProcessing(null);
+            }
+        }
     }
   };
+
+  if (loading) return null;
 
   return (
     <main className="relative min-h-screen bg-black text-white font-sans overflow-hidden flex flex-col">
@@ -142,19 +207,19 @@ export default function StorePage() {
             </div>
         </div>
         
-        {/* WALLET DISPLAY */}
+        {/* WALLET */}
         <div className="flex items-center gap-4">
             <div className="text-right">
                 <span className="block text-[8px] font-mono text-yellow-500/60 uppercase tracking-widest">Pop_Coins</span>
                 <span className="text-xl font-black font-orbitron text-yellow-400 tracking-tighter">
-                    <HackerText text={wallet.popCoins} />
+                    <HackerText text={popCoins} />
                 </span>
             </div>
             <div className="w-[1px] h-8 bg-white/10" />
             <div className="text-right opacity-50">
-                <span className="block text-[8px] font-mono text-white/40 uppercase tracking-widest">Fiat_Link</span>
+                <span className="block text-[8px] font-mono text-white/40 uppercase tracking-widest">UPI_Link</span>
                 <span className="text-sm font-bold font-mono text-white tracking-widest flex items-center justify-end gap-2">
-                    CONNECTED <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                    ACTIVE <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                 </span>
             </div>
         </div>
@@ -187,7 +252,7 @@ export default function StorePage() {
       {/* 📦 GRID CONTENT */}
       <div className="relative z-40 max-w-6xl mx-auto w-full px-6 pb-20 overflow-y-auto no-scrollbar h-full">
         
-        {/* TAB 1: SUPPLY DROPS (REAL MONEY) */}
+        {/* TAB 1: REAL MONEY (UPI) */}
         {activeTab === "MINT" && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-in slide-in-from-bottom-4 duration-500">
                 {SUPPLY_DROPS.map((item) => (
@@ -208,18 +273,22 @@ export default function StorePage() {
                             )}
                         </div>
 
+                        {/* UPI PAYMENT BUTTON */}
                         <Button 
                             onClick={() => handlePurchase(item)}
-                            className="w-full bg-white/5 border border-white/10 hover:bg-white hover:text-black hover:border-white transition-all text-[10px] font-black tracking-[0.2em] uppercase h-10 mt-4"
+                            className="w-full bg-white/5 border border-white/10 hover:bg-green-600 hover:text-white hover:border-green-400 transition-all text-[10px] font-black tracking-[0.2em] uppercase h-10 mt-4 group/btn"
                         >
-                            ${item.price} USD
+                            <span className="group-hover/btn:hidden">₹{item.price} INR</span>
+                            <span className="hidden group-hover/btn:inline flex items-center gap-2">
+                                PAY VIA UPI <Smartphone size={12} className="inline ml-1"/>
+                            </span>
                         </Button>
                     </div>
                 ))}
             </div>
         )}
 
-        {/* TAB 2: BLACK MARKET (VIRTUAL CURRENCY) */}
+        {/* TAB 2: VIRTUAL (POPCOINS) */}
         {activeTab === "MARKET" && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4 duration-500">
                 {BLACK_MARKET.map((item) => (
@@ -236,35 +305,27 @@ export default function StorePage() {
                             <div className="pt-3 flex items-center justify-between">
                                 <span className={cn(
                                     "text-sm font-black font-mono",
-                                    wallet.popCoins >= item.cost ? "text-yellow-400" : "text-red-500"
+                                    popCoins >= item.cost ? "text-yellow-400" : "text-red-500"
                                 )}>
                                     {item.cost} PC
                                 </span>
                                 <Button 
                                     size="sm"
                                     onClick={() => handlePurchase(item)}
+                                    disabled={processing === item.id || popCoins < item.cost}
                                     className={cn(
                                         "h-7 text-[8px] font-bold tracking-widest uppercase",
-                                        wallet.popCoins >= item.cost 
+                                        popCoins >= item.cost 
                                             ? "bg-cyan-600 hover:bg-cyan-500 text-white" 
                                             : "bg-white/5 text-white/20 cursor-not-allowed hover:bg-white/5"
                                     )}
                                 >
-                                    Acquire
+                                    {processing === item.id ? "SYNC..." : "ACQUIRE"}
                                 </Button>
                             </div>
                         </div>
                     </div>
                 ))}
-                
-                {/* LOCKED SEASON 2 TEASER */}
-                <div className="relative bg-black/40 border border-white/5 p-6 flex items-center justify-center opacity-50 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-500 cursor-not-allowed border-dashed">
-                    <div className="text-center space-y-2">
-                        <Lock className="mx-auto text-white/30" size={20} />
-                        <h3 className="text-xs font-black font-orbitron uppercase text-white/50">Season_02 Items</h3>
-                        <p className="text-[8px] font-mono text-white/30">ENCRYPTED // COMING SOON</p>
-                    </div>
-                </div>
             </div>
         )}
 
@@ -274,9 +335,9 @@ export default function StorePage() {
       <footer className="fixed bottom-0 left-0 right-0 z-[100] px-6 py-4 flex items-center justify-between border-t border-white/5 bg-black/90 backdrop-blur-xl">
          <div className="flex items-center gap-2 text-[8px] font-mono text-white/30">
             <ShieldAlert size={10} className="text-yellow-500" />
-            <span>ALL_TRANSACTIONS_ENCRYPTED</span>
+            <span>SECURE_PAYMENT_NODE</span>
          </div>
-         <div className="text-[9px] font-bold text-white/10 uppercase tracking-[0.3em]">SECURE_NODE_V9</div>
+         <div className="text-[9px] font-bold text-white/10 uppercase tracking-[0.3em]">ENCRYPTED</div>
       </footer>
 
     </main>
