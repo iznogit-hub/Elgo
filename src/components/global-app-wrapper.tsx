@@ -9,7 +9,7 @@ import { gsap } from "gsap";
 import { Preloader } from "@/components/ui/preloader";
 import { CommandMenu } from "@/components/command-menu";
 import { Background } from "@/components/ui/background";
-import { AvatarImage } from "@/components/ui/avatar-image"; // The 3D Avatar
+import { AvatarImage } from "@/components/ui/avatar-image"; 
 import { Navbar } from "@/components/navbar"; 
 import { Footer } from "@/components/footer"; 
 import { TabManager } from "@/components/ui/tab-manager";
@@ -17,7 +17,6 @@ import { SoundPrompter } from "@/components/ui/sound-prompter";
 
 // Context & Features
 import { LoadingContext } from "@/components/loading-context";
-import ChatWindow from "@/components/chat-window"; // Global Chat Access
 
 export function GlobalAppWrapper({ children }: { children: React.ReactNode }) {
   const [assetsLoaded, setAssetsLoaded] = useState(false);
@@ -26,12 +25,8 @@ export function GlobalAppWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { play } = useSfx();
 
-  // 🕵️ HIDE ON DASHBOARD (The App has its own layout/avatar)
-  const isDashboard = pathname.startsWith("/dashboard") || 
-                      pathname.startsWith("/hunter") || 
-                      pathname.startsWith("/store") || 
-                      pathname.startsWith("/niche") ||
-                      pathname.startsWith("/admin");
+  // ⚡ STRICT CHECK: Only show Avatar on the absolute home page
+  const isLandingPage = pathname === "/";
 
   // --- 1. HANDLE REDUCED MOTION ---
   useEffect(() => {
@@ -70,9 +65,11 @@ export function GlobalAppWrapper({ children }: { children: React.ReactNode }) {
   return (
     <LoadingContext.Provider value={{ assetsLoaded }}>
       
-      {/* 1. VISUAL LAYER */}
+      {/* 1. VISUAL LAYER - Renders ONCE globally */}
       <Background />
       <Preloader contentLoaded={assetsLoaded} />
+      
+      {/* Only show Prompter if assets loaded */}
       {assetsLoaded && <SoundPrompter />}
       
       {/* 2. NAVIGATION LAYER */}
@@ -80,23 +77,21 @@ export function GlobalAppWrapper({ children }: { children: React.ReactNode }) {
       <Navbar />
       <TabManager />
 
-      {/* 3. 3D AVATAR (LANDING PAGE ONLY) */}
-      {/* Clicking this now opens the Support Chat */}
-      {!isDashboard && (
+      {/* 3. 3D AVATAR (STRICTLY LANDING PAGE ONLY) */}
+      {/* If we are NOT on home page, this entire block is removed from DOM */}
+      {isLandingPage && (
         <>
           <div 
             onClick={() => {
-                play("click");
+                play("open");
                 setIsChatOpen(true);
             }}
-            className="fixed bottom-0 left-0 z-40 cursor-pointer hover:scale-105 transition-transform active:scale-95"
+            className="fixed bottom-0 left-0 z-40 cursor-pointer hover:scale-105 transition-transform active:scale-95 hidden md:block"
             title="Open Support Uplink"
           >
              <AvatarImage startAnimation={assetsLoaded} />
           </div>
-
-          {/* Global Chat Instance for Landing Page */}
-          <ChatWindow isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+         
         </>
       )}
 

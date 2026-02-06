@@ -16,7 +16,6 @@ import { cn } from "@/lib/utils";
 
 import { useSfx } from "@/hooks/use-sfx";
 import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
-import ChatWindow from "@/components/chat-window"; // The Chat Component
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -61,8 +60,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen bg-black font-sans selection:bg-cyan-500/30">
       
-      {/* ⚡ GLOBAL SUPPORT CHAT (Hidden until triggered) */}
-      <ChatWindow isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+      
 
       {/* --- SIDEBAR (DESKTOP) --- */}
       <aside className="hidden md:flex w-64 flex-col border-r border-white/10 bg-black fixed h-full z-50">
