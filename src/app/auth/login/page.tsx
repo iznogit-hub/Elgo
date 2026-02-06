@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { auth, googleProvider, db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -9,9 +9,10 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { HackerText } from "@/components/ui/hacker-text";
-import { Lock, ArrowLeft, Terminal, AlertTriangle, KeyRound } from "lucide-react";
+import { Lock, ArrowLeft, Terminal, AlertTriangle, KeyRound, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useSfx } from "@/hooks/use-sfx";
+import { useAuth } from "@/lib/context/auth-context"; // ⚡ IMPORTED AUTH CONTEXT
 import VideoStage from "@/components/canvas/video-stage";
 import { Background } from "@/components/ui/background";
 import { SoundPrompter } from "@/components/ui/sound-prompter";
@@ -19,13 +20,21 @@ import { SoundPrompter } from "@/components/ui/sound-prompter";
 export default function LoginPage() {
   const router = useRouter();
   const { play } = useSfx();
+  const { userData, loading: authLoading } = useAuth(); // ⚡ CHECK AUTH STATE
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showManual, setShowManual] = useState(false);
 
-  // 🛡️ RECOVERY LOGIC: If a user logs in via Google but has no DB Entry
+  // 🚀 1. INSTANT INGRESS (Auto-Redirect if already logged in)
+  useEffect(() => {
+    if (!authLoading && userData) {
+      router.push("/dashboard");
+    }
+  }, [userData, authLoading, router]);
+
+  // 🛡️ 2. RECOVERY LOGIC (Google Profile Sync)
   const ensureProfileExists = async (user: any) => {
     const docRef = doc(db, "users", user.uid);
     const docSnap = await getDoc(docRef);
@@ -37,7 +46,7 @@ export default function LoginPage() {
         email: user.email,
         username: user.displayName?.toUpperCase().replace(/\s/g, "_") || "OPERATIVE",
         wallet: { popCoins: 300, bubblePoints: 0 },
-        unlockedNiches: ["general"], 
+        unlockedNiches: ["tech", "fitness"], 
         dailyTracker: { date: today, audiosViewed: 0, imagesGenerated: 0, bountiesClaimed: 0 },
         membership: { tier: "recruit" },
         reputation: { intelSubmitted: 0, trustScore: 100 },
@@ -48,22 +57,23 @@ export default function LoginPage() {
     }
   };
 
+  // 🔵 GOOGLE LOGIN
   const handleGoogleLogin = async () => {
     play("click");
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      // 🔥 CRITICAL: Ensure DB matches Auth
       await ensureProfileExists(result.user);
 
       play("success");
       toast.success("IDENTITY_VERIFIED");
-      setTimeout(() => router.push("/dashboard"), 1000); 
+      router.push("/dashboard"); 
     } catch (error: any) {
       play("error");
       toast.error("ACCESS_DENIED");
     }
   };
 
+  // 🔴 MANUAL LOGIN
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     play("click");
@@ -80,6 +90,9 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  // ⚡ LOADER WHILE CHECKING AUTH
+  if (authLoading) return null;
 
   return (
     <main className="relative min-h-screen bg-black text-white font-sans overflow-hidden flex flex-col items-center">
@@ -177,7 +190,7 @@ export default function LoginPage() {
                                disabled={loading}
                                className="flex-[2] h-10 bg-red-700 hover:bg-red-600 text-white font-black italic tracking-widest text-[8px] uppercase border border-red-500"
                            >
-                               {loading ? "Decrypting..." : "Access_System"}
+                               {loading ? <Loader2 className="animate-spin w-4 h-4" /> : "Access_System"}
                            </Button>
                        </div>
                    </form>

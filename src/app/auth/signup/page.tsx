@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createUserWithEmailAndPassword, signInWithPopup, updateProfile } from "firebase/auth";
 import { auth, googleProvider, db } from "@/lib/firebase";
 import { doc, setDoc, getDoc } from "firebase/firestore";
@@ -12,6 +12,7 @@ import { HackerText } from "@/components/ui/hacker-text";
 import { ArrowLeft, Terminal, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useSfx } from "@/hooks/use-sfx";
+import { useAuth } from "@/lib/context/auth-context"; // ⚡ IMPORTED AUTH CONTEXT
 import VideoStage from "@/components/canvas/video-stage";
 import { Background } from "@/components/ui/background";
 import { SoundPrompter } from "@/components/ui/sound-prompter";
@@ -19,6 +20,7 @@ import { SoundPrompter } from "@/components/ui/sound-prompter";
 export default function SignupPage() {
   const router = useRouter();
   const { play } = useSfx();
+  const { userData, loading: authLoading } = useAuth(); // ⚡ CHECK AUTH STATE
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,9 +28,16 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [showManual, setShowManual] = useState(false);
 
+  // 🚀 1. INSTANT INGRESS (Auto-Redirect if already logged in)
+  useEffect(() => {
+    if (!authLoading && userData) {
+      router.push("/dashboard");
+    }
+  }, [userData, authLoading, router]);
+
   // --- 🛠️ THE INITIALIZATION SCRIPT ---
   const createOperativeProfile = async (user: any, customName?: string) => {
-    const today = new Date().toISOString().split('T')[0]; // "2026-02-05"
+    const today = new Date().toISOString().split('T')[0];
 
     await setDoc(doc(db, "users", user.uid), {
       uid: user.uid,
@@ -41,8 +50,8 @@ export default function SignupPage() {
         bubblePoints: 0
       },
 
-      // 🔐 KEYRING
-      unlockedNiches: ["general"], 
+      // 🔐 KEYRING (Updated to match valid sectors)
+      unlockedNiches: ["tech", "fitness"], 
 
       // 🔋 DAILY TRACKER
       dailyTracker: {
@@ -107,6 +116,9 @@ export default function SignupPage() {
       setLoading(false);
     }
   };
+
+  // ⚡ LOADER WHILE CHECKING AUTH
+  if (authLoading) return null;
 
   return (
     <main className="relative min-h-screen bg-black text-white font-sans overflow-hidden flex flex-col items-center">
