@@ -4,9 +4,8 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
-  Menu, X, Zap, 
-  LayoutDashboard, Radar, ShoppingBag, Users, UserCircle, ShieldAlert,
-  ChevronRight
+  Zap, 
+  LayoutDashboard, Radar, ShoppingBag, Users, UserCircle, ShieldAlert
 } from "lucide-react";
 import { useAuth } from "@/lib/context/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -17,8 +16,8 @@ import { Logo } from "@/components/ui/logo";
 import { useSfx } from "@/hooks/use-sfx";
 import { cn } from "@/lib/utils";
 
+
 export function Navbar() {
-  const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
   const { play } = useSfx();
@@ -34,6 +33,10 @@ export function Navbar() {
   }, []);
 
   // 2. HIDE ON APP PAGES
+  // Note: You listed these pages to HIDE the navbar. 
+  // If you want these icons visible WHILE on the dashboard, we need to remove this check.
+  // However, your prompt implies "change this navbar", so I will assume the visibility logic remains same 
+  // and this navbar is for the "Landing/Marketing" pages, but you want quick access if logged in.
   if (pathname.startsWith("/dashboard") || 
       pathname.startsWith("/hunter") || 
       pathname.startsWith("/store") || 
@@ -60,17 +63,16 @@ export function Navbar() {
         scrolled ? "py-4" : "py-6"
     )}>
       <nav className={cn(
-          "mx-auto max-w-5xl flex items-center justify-between transition-all duration-500 px-6 py-3",
-          // ⚡ UPDATE: 'bg-black' instead of 'bg-black/80', removed backdrop-blur
+          "mx-auto max-w-7xl flex items-center justify-between transition-all duration-500 px-6 py-3",
           scrolled 
-            ? "bg-black border border-white/10 rounded-full shadow-[0_0_30px_rgba(0,0,0,0.8)] w-[90%] md:w-full" 
+            ? "bg-black border border-white/10 rounded-full shadow-[0_0_30px_rgba(0,0,0,0.8)] w-[95%] md:w-full" 
             : "bg-transparent border-transparent w-full"
       )}>
         
         {/* LEFT: IDENTITY */}
         <Link 
           href="/" 
-          className="flex items-center gap-3 group"
+          className="flex items-center gap-3 group shrink-0"
           onClick={() => play("click")}
         >
           <div className="relative flex items-center justify-center w-10 h-10 bg-cyan-950/20 rounded-full border border-cyan-500/30 group-hover:border-cyan-400 group-hover:bg-cyan-500/20 transition-all duration-300">
@@ -90,28 +92,57 @@ export function Navbar() {
           </div>
         </Link>
 
-        {/* CENTER: SYSTEM CONTROLS (Desktop Only) */}
-        <div className="hidden md:flex items-center gap-1 bg-white/5 rounded-full px-2 py-1 border border-white/5">
-          <div className="scale-75"><CommandTrigger /></div>
-          <div className="h-4 w-px bg-white/10 mx-1" />
-          <div className="scale-75"><ThemeToggle /></div>
-          <div className="scale-75"><SoundToggle /></div>
-        </div>
+        {/* RIGHT: ACTIONS & CONTROLS */}
+        <div className="flex items-center gap-4">
+          
+          {/* LOGGED IN NAVIGATION ICONS */}
+          {!loading && userData && (
+            <div className="flex items-center gap-2 mr-2">
+              {APP_ROUTES.map((route) => (
+                <Link key={route.href} href={route.href}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-9 h-9 rounded-full bg-white/5 border border-white/5 hover:bg-white/10 hover:border-cyan-500/30 transition-all group"
+                    onClick={() => play("click")}
+                    title={route.name} // Native tooltip fallback
+                  >
+                    <route.icon className={cn("w-4 h-4 transition-colors", route.color, "group-hover:text-white")} />
+                  </Button>
+                </Link>
+              ))}
 
-        {/* RIGHT: AUTH ACTION (Desktop Only) */}
-        <div className="hidden md:flex items-center gap-4">
-          {!loading && userData ? (
-               <Link href="/dashboard">
-                 <Button 
-                   className="bg-cyan-600 hover:bg-cyan-500 text-white font-black h-9 px-6 tracking-widest font-orbitron rounded-full shadow-[0_0_15px_rgba(8,145,178,0.4)] hover:shadow-[0_0_25px_rgba(6,182,212,0.6)] transition-all border border-cyan-400/20"
-                   onMouseEnter={() => play("hover")}
-                 >
-                   <LayoutDashboard size={14} className="mr-2" /> ENTER NET
-                 </Button>
-               </Link>
-          ) : (
+              {isAdmin && (
+                <Link href="/admin">
+                   <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-9 h-9 rounded-full bg-red-900/10 border border-red-500/20 hover:bg-red-900/30 hover:border-red-500/50 transition-all group"
+                    onClick={() => play("click")}
+                    title="Admin Console"
+                  >
+                    <ShieldAlert className="w-4 h-4 text-red-500 group-hover:text-red-400" />
+                  </Button>
+                </Link>
+              )}
+              
+              {/* Divider between Nav and System Controls */}
+              <div className="h-6 w-px bg-white/10 mx-2" />
+            </div>
+          )}
+
+          {/* SYSTEM CONTROLS (Always visible or toggleable) */}
+          <div className="flex items-center gap-1 bg-white/5 rounded-full px-2 py-1 border border-white/5">
+            <div className="scale-75"><CommandTrigger /></div>
+            <div className="h-4 w-px bg-white/10 mx-1" />
+            <div className="scale-75"><ThemeToggle /></div>
+            <div className="scale-75"><SoundToggle /></div>
+          </div>
+
+          {/* AUTH BUTTONS (If NOT logged in) */}
+          {!loading && !userData && (
                <div className="flex items-center gap-3">
-                   <Link href="/auth/login" className="text-[10px] font-mono font-bold text-gray-400 hover:text-white transition-colors tracking-widest uppercase">
+                   <Link href="/auth/login" className="hidden sm:block text-[10px] font-mono font-bold text-gray-400 hover:text-white transition-colors tracking-widest uppercase">
                        Log_In
                    </Link>
                    <Link href="/auth/signup">
@@ -126,94 +157,7 @@ export function Navbar() {
                </div>
           )}
         </div>
-
-        {/* MOBILE TOGGLE */}
-        <button 
-          className="md:hidden p-2 text-white hover:bg-white/10 rounded-full transition-colors z-[1001] relative"
-          onClick={() => { setIsOpen(!isOpen); play("click"); }}
-        >
-          {isOpen ? <X /> : <Menu />}
-        </button>
       </nav>
-
-      {/* 📱 MOBILE MENU OVERLAY (SOLID BLACK) */}
-      {isOpen && (
-        <div className="fixed inset-0 z-[999] bg-black animate-in slide-in-from-top-5 duration-300 flex flex-col pt-24 px-6 pb-10 overflow-y-auto">
-            
-            {/* 1. SYSTEM CONTROLS (Mobile) */}
-            <div className="flex items-center justify-between pb-6 border-b border-white/10 mb-6">
-                <span className="text-xs font-mono text-gray-500 uppercase tracking-widest">System Controls</span>
-                <div className="flex gap-2">
-                   <ThemeToggle />
-                   <SoundToggle />
-                </div>
-            </div>
-
-            {/* 2. NAVIGATION LINKS */}
-            <div className="flex-1 space-y-2">
-               {!loading && userData ? (
-                   <>
-                       {/* LOGGED IN: SHOW ALL ROUTES */}
-                       {APP_ROUTES.map((route, i) => (
-                           <Link 
-                                key={route.href} 
-                                href={route.href} 
-                                onClick={() => setIsOpen(false)}
-                                className="group flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5 hover:border-white/20 hover:bg-white/10 transition-all"
-                                style={{ animationDelay: `${i * 50}ms` }}
-                           >
-                               <div className="flex items-center gap-4">
-                                   <route.icon className={cn("w-5 h-5", route.color)} />
-                                   <span className="text-sm font-black font-orbitron uppercase text-white tracking-wide">
-                                       {route.name}
-                                   </span>
-                               </div>
-                               <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-white" />
-                           </Link>
-                       ))}
-
-                       {isAdmin && (
-                           <Link 
-                                href="/admin" 
-                                onClick={() => setIsOpen(false)}
-                                className="group flex items-center justify-between p-4 bg-red-900/10 rounded-xl border border-red-500/20 hover:bg-red-900/20 transition-all mt-4"
-                           >
-                               <div className="flex items-center gap-4">
-                                   <ShieldAlert className="w-5 h-5 text-red-500" />
-                                   <span className="text-sm font-black font-orbitron uppercase text-red-500 tracking-wide">
-                                       Admin Console
-                                   </span>
-                               </div>
-                           </Link>
-                       )}
-                   </>
-               ) : (
-                   <>
-                       {/* LOGGED OUT */}
-                       <div className="flex flex-col gap-3">
-                           <Link href="/auth/login" onClick={() => setIsOpen(false)}>
-                             <Button variant="outline" className="w-full h-14 border-white/10 text-white font-mono uppercase tracking-widest rounded-xl hover:bg-white/10 text-xs">
-                                 Access Terminal
-                             </Button>
-                           </Link>
-                           <Link href="/auth/signup" onClick={() => setIsOpen(false)}>
-                             <Button className="w-full h-14 bg-white text-black font-black font-orbitron uppercase tracking-widest rounded-xl hover:bg-gray-200 text-xs">
-                                 Start Protocol <Zap size={14} className="ml-2" />
-                             </Button>
-                           </Link>
-                       </div>
-                   </>
-               )}
-            </div>
-            
-            <div className="mt-8 text-center">
-                <p className="text-[9px] font-mono text-gray-600 uppercase tracking-widest">
-                    BUBBLEPOPS OS v4.2 // SECURE CONNECTION
-                </p>
-            </div>
-
-        </div>
-      )}
     </header>
   );
 }
