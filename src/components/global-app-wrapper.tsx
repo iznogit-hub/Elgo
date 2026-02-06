@@ -13,7 +13,6 @@ import { AvatarImage } from "@/components/ui/avatar-image";
 import { Navbar } from "@/components/navbar"; 
 import { Footer } from "@/components/footer"; 
 import { TabManager } from "@/components/ui/tab-manager";
-import { SoundPrompter } from "@/components/ui/sound-prompter";
 
 // Context & Features
 import { LoadingContext } from "@/components/loading-context";
@@ -69,8 +68,7 @@ export function GlobalAppWrapper({ children }: { children: React.ReactNode }) {
       <Background />
       <Preloader contentLoaded={assetsLoaded} />
       
-      {/* Only show Prompter if assets loaded */}
-      {assetsLoaded && <SoundPrompter />}
+
       
       {/* 2. NAVIGATION LAYER */}
       <CommandMenu />

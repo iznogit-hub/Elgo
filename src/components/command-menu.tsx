@@ -6,7 +6,7 @@ import { useTheme } from "next-themes";
 import {
   LayoutDashboard, Radar, ShoppingBag, Users, Crown,
   LogOut, ShieldAlert, Terminal, Globe,
-  MessageSquare, Moon, Sun, UserCircle
+  Moon, Sun, UserCircle
 } from "lucide-react";
 import {
   CommandDialog,
@@ -69,13 +69,6 @@ export function CommandMenu() {
             router.push("/");
         }, 1000);
       })
-  };
-
-  // ⚡ EVENT DISPATCHER: Tells GlobalAppWrapper to open the chat
-  const triggerChat = () => {
-      window.dispatchEvent(new Event("open-support-chat"));
-      setOpen(false);
-      play("success");
   };
 
   return (
@@ -143,11 +136,6 @@ export function CommandMenu() {
         {/* --- UTILITY LAYER --- */}
         <CommandSeparator className="bg-white/10" />
         <CommandGroup heading="Protocols">
-            <CommandItem onSelect={triggerChat}>
-                <MessageSquare className="mr-2 h-4 w-4 text-pink-500" />
-                <span>Support Uplink</span>
-                <CommandShortcut>S</CommandShortcut>
-            </CommandItem>
             <CommandItem onSelect={() => runCommand(() => setTheme("dark"))}>
                 <Moon className="mr-2 h-4 w-4" />
                 <span>Theme: Stealth</span>
