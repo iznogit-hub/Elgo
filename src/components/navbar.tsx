@@ -33,7 +33,7 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // 2. HIDE ON APP PAGES (They have their own internal layout)
+  // 2. HIDE ON APP PAGES
   if (pathname.startsWith("/dashboard") || 
       pathname.startsWith("/hunter") || 
       pathname.startsWith("/store") || 
@@ -61,8 +61,9 @@ export function Navbar() {
     )}>
       <nav className={cn(
           "mx-auto max-w-5xl flex items-center justify-between transition-all duration-500 px-6 py-3",
+          // ⚡ UPDATE: 'bg-black' instead of 'bg-black/80', removed backdrop-blur
           scrolled 
-            ? "bg-black/80 backdrop-blur-xl border border-white/10 rounded-full shadow-[0_0_30px_rgba(0,0,0,0.5)] w-[90%] md:w-full" 
+            ? "bg-black border border-white/10 rounded-full shadow-[0_0_30px_rgba(0,0,0,0.8)] w-[90%] md:w-full" 
             : "bg-transparent border-transparent w-full"
       )}>
         
@@ -126,7 +127,7 @@ export function Navbar() {
           )}
         </div>
 
-        {/* MOBILE TOGGLE (Visible on small screens) */}
+        {/* MOBILE TOGGLE */}
         <button 
           className="md:hidden p-2 text-white hover:bg-white/10 rounded-full transition-colors z-[1001] relative"
           onClick={() => { setIsOpen(!isOpen); play("click"); }}
@@ -135,9 +136,9 @@ export function Navbar() {
         </button>
       </nav>
 
-      {/* 📱 MOBILE MENU OVERLAY (FULL SCREEN LIST) */}
+      {/* 📱 MOBILE MENU OVERLAY (SOLID BLACK) */}
       {isOpen && (
-        <div className="fixed inset-0 z-[999] bg-black/95 backdrop-blur-xl animate-in slide-in-from-top-5 duration-300 flex flex-col pt-24 px-6 pb-10 overflow-y-auto">
+        <div className="fixed inset-0 z-[999] bg-black animate-in slide-in-from-top-5 duration-300 flex flex-col pt-24 px-6 pb-10 overflow-y-auto">
             
             {/* 1. SYSTEM CONTROLS (Mobile) */}
             <div className="flex items-center justify-between pb-6 border-b border-white/10 mb-6">
@@ -171,7 +172,6 @@ export function Navbar() {
                            </Link>
                        ))}
 
-                       {/* ADMIN ONLY LINK */}
                        {isAdmin && (
                            <Link 
                                 href="/admin" 
@@ -189,7 +189,7 @@ export function Navbar() {
                    </>
                ) : (
                    <>
-                       {/* LOGGED OUT: LOGIN/SIGNUP */}
+                       {/* LOGGED OUT */}
                        <div className="flex flex-col gap-3">
                            <Link href="/auth/login" onClick={() => setIsOpen(false)}>
                              <Button variant="outline" className="w-full h-14 border-white/10 text-white font-mono uppercase tracking-widest rounded-xl hover:bg-white/10 text-xs">
