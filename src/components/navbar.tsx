@@ -4,18 +4,15 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
-  Zap, 
-  LayoutDashboard, Radar, ShoppingBag, Users, UserCircle, ShieldAlert
+  Zap, LayoutDashboard, Crosshair, ShoppingCart, 
+  ShieldAlert, Terminal, ChevronRight, Activity 
 } from "lucide-react";
 import { useAuth } from "@/lib/context/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SoundToggle } from "@/components/sound-toggle";
-import { CommandTrigger } from "@/components/command-trigger";
 import { Button } from "@/components/ui/button";
-import { Logo } from "@/components/ui/logo";
 import { useSfx } from "@/hooks/use-sfx";
 import { cn } from "@/lib/utils";
-
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -25,139 +22,127 @@ export function Navbar() {
 
   const isAdmin = userData?.email === "iznoatwork@gmail.com";
 
-  // 1. SCROLL EFFECT
+  // 1. SCROLL LISTENER
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // 2. HIDE ON APP PAGES
-  // Note: You listed these pages to HIDE the navbar. 
-  // If you want these icons visible WHILE on the dashboard, we need to remove this check.
-  // However, your prompt implies "change this navbar", so I will assume the visibility logic remains same 
-  // and this navbar is for the "Landing/Marketing" pages, but you want quick access if logged in.
-  if (pathname.startsWith("/dashboard") || 
-      pathname.startsWith("/hunter") || 
-      pathname.startsWith("/store") || 
-      pathname.startsWith("/niche") || 
-      pathname.startsWith("/referrals") ||
-      pathname.startsWith("/council") ||
-      pathname.startsWith("/profile") ||
-      pathname.startsWith("/admin")) {
-    return null;
-  }
+  // 2. VISIBILITY LOGIC 
+  // Hide on these pages because they have the Sidebar Dock
+  const appPages = ["/dashboard", "/hit-list", "/store", "/referrals", "/council", "/dossier", "/overseer", "/niche"];
+  const isAppPage = appPages.some(path => pathname.startsWith(path));
 
-  // 3. DEFINE APP ROUTES
-  const APP_ROUTES = [
-      { name: "Launch Dashboard", href: "/dashboard", icon: LayoutDashboard, color: "text-cyan-500" },
-      { name: "Signal Hunter", href: "/hunter", icon: Radar, color: "text-green-500" },
-      { name: "Black Market", href: "/store", icon: ShoppingBag, color: "text-yellow-500" },
-      { name: "My Gang", href: "/referrals", icon: Users, color: "text-purple-500" },
-      { name: "Operative Profile", href: "/profile", icon: UserCircle, color: "text-white" },
+  if (isAppPage) return null;
+
+  // 3. QUICK LINKS (For Logged In Users on Landing Page)
+  const QUICK_LINKS = [
+      { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      { name: "Targets", href: "/hit-list", icon: Crosshair },
+      { name: "Store", href: "/store", icon: ShoppingCart },
   ];
 
   return (
-    <header className={cn(
-        "fixed top-0 left-0 right-0 z-[100] transition-all duration-500",
+    <header 
+      className={cn(
+        "fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
         scrolled ? "py-4" : "py-6"
-    )}>
-      <nav className={cn(
-          "mx-auto max-w-7xl flex items-center justify-between transition-all duration-500 px-6 py-3",
+      )}
+    >
+      <div 
+        className={cn(
+          "mx-auto flex items-center justify-between transition-all duration-500",
           scrolled 
-            ? "bg-black border border-white/10 rounded-full shadow-[0_0_30px_rgba(0,0,0,0.8)] w-[95%] md:w-full" 
-            : "bg-transparent border-transparent w-full"
-      )}>
+            ? "w-[90%] max-w-5xl bg-black/60 backdrop-blur-xl border border-white/10 rounded-full px-6 py-3 shadow-[0_0_40px_-10px_rgba(0,0,0,0.5)]" 
+            : "w-full max-w-7xl px-6 bg-transparent border-transparent"
+        )}
+      >
         
-        {/* LEFT: IDENTITY */}
+        {/* --- LEFT: BRAND --- */}
         <Link 
           href="/" 
-          className="flex items-center gap-3 group shrink-0"
+          className="flex items-center gap-3 group"
           onClick={() => play("click")}
         >
-          <div className="relative flex items-center justify-center w-10 h-10 bg-cyan-950/20 rounded-full border border-cyan-500/30 group-hover:border-cyan-400 group-hover:bg-cyan-500/20 transition-all duration-300">
-            <Logo className="w-5 h-5 text-cyan-400 group-hover:scale-110 transition-transform" />
-            <div className="absolute inset-0 rounded-full border border-cyan-500/20 animate-ping opacity-20" />
+          <div className="relative w-10 h-10 flex items-center justify-center bg-white/5 border border-white/10 rounded-lg group-hover:bg-white/10 group-hover:border-cyan-500/50 transition-all overflow-hidden">
+             <Terminal size={20} className="text-white relative z-10" />
+             <div className="absolute inset-0 bg-cyan-500/20 blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>
-          <div className="hidden md:flex flex-col">
-            <span className="font-black font-orbitron text-lg leading-none tracking-tight text-white group-hover:text-cyan-400 transition-colors">
-              BUBBLE<span className="text-cyan-500">POPS</span>
+          
+          <div className="flex flex-col">
+            <span className="font-black text-sm tracking-[0.2em] text-white uppercase group-hover:text-cyan-400 transition-colors">
+              Boyz<span className="text-red-600">'N'</span>Galz
             </span>
-            <div className="flex items-center gap-2">
-                <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-[8px] font-mono text-gray-500 tracking-[0.3em] uppercase group-hover:text-white transition-colors">
-                   SYSTEM_ONLINE
-                </span>
-            </div>
+            <span className="text-[8px] font-mono text-white/40 tracking-widest uppercase">
+              Protocol_v4.0
+            </span>
           </div>
         </Link>
 
-        {/* RIGHT: ACTIONS & CONTROLS */}
-        <div className="flex items-center gap-4">
-          
-          {/* LOGGED IN NAVIGATION ICONS */}
-          {!loading && userData && (
-            <div className="flex items-center gap-2 mr-2">
-              {APP_ROUTES.map((route) => (
-                <Link key={route.href} href={route.href}>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="w-9 h-9 rounded-full bg-white/5 border border-white/5 hover:bg-white/10 hover:border-cyan-500/30 transition-all group"
-                    onClick={() => play("click")}
-                    title={route.name} // Native tooltip fallback
-                  >
-                    <route.icon className={cn("w-4 h-4 transition-colors", route.color, "group-hover:text-white")} />
-                  </Button>
-                </Link>
+        {/* --- CENTER: QUICK ACCESS (Desktop Only) --- */}
+        {!loading && userData && (
+           <div className="hidden md:flex items-center gap-1 bg-white/5 border border-white/5 rounded-full p-1 pl-4">
+              <span className="text-[9px] font-mono text-white/30 uppercase tracking-widest mr-2">Quick_Launch</span>
+              {QUICK_LINKS.map((link) => (
+                 <Link key={link.href} href={link.href}>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="w-8 h-8 rounded-full hover:bg-white/10 hover:text-cyan-400 transition-all"
+                      onClick={() => play("click")}
+                      title={link.name}
+                    >
+                       <link.icon size={14} />
+                    </Button>
+                 </Link>
               ))}
+           </div>
+        )}
 
-              {isAdmin && (
-                <Link href="/admin">
-                   <Button
-                    variant="ghost"
-                    size="icon"
-                    className="w-9 h-9 rounded-full bg-red-900/10 border border-red-500/20 hover:bg-red-900/30 hover:border-red-500/50 transition-all group"
-                    onClick={() => play("click")}
-                    title="Admin Console"
-                  >
-                    <ShieldAlert className="w-4 h-4 text-red-500 group-hover:text-red-400" />
-                  </Button>
-                </Link>
-              )}
-              
-              {/* Divider between Nav and System Controls */}
-              <div className="h-6 w-px bg-white/10 mx-2" />
-            </div>
-          )}
+        {/* --- RIGHT: ACTIONS --- */}
+        <div className="flex items-center gap-4">
+           
+           {/* UTILS */}
+           <div className="hidden sm:flex items-center gap-2">
+              <ThemeToggle />
+              <SoundToggle />
+           </div>
 
-          {/* SYSTEM CONTROLS (Always visible or toggleable) */}
-          <div className="flex items-center gap-1 bg-white/5 rounded-full px-2 py-1 border border-white/5">
-            <div className="scale-75"><CommandTrigger /></div>
-            <div className="h-4 w-px bg-white/10 mx-1" />
-            <div className="scale-75"><ThemeToggle /></div>
-            <div className="scale-75"><SoundToggle /></div>
-          </div>
-
-          {/* AUTH BUTTONS (If NOT logged in) */}
-          {!loading && !userData && (
-               <div className="flex items-center gap-3">
-                   <Link href="/auth/login" className="hidden sm:block text-[10px] font-mono font-bold text-gray-400 hover:text-white transition-colors tracking-widest uppercase">
-                       Log_In
-                   </Link>
-                   <Link href="/auth/signup">
-                     <Button 
-                       variant="outline"
-                       className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-950/30 h-9 px-6 tracking-widest font-mono rounded-full uppercase text-[10px]"
-                       onMouseEnter={() => play("hover")}
-                     >
-                        Initialize <Zap size={12} className="ml-2" />
-                     </Button>
-                   </Link>
-               </div>
-          )}
+           {/* AUTH STATUS */}
+           {!loading && (
+              userData ? (
+                 <div className="flex items-center gap-3">
+                    {isAdmin && (
+                        <Link href="/overseer">
+                           <Button variant="ghost" size="icon" className="w-9 h-9 rounded-full text-red-500 hover:bg-red-500/10 border border-red-500/20">
+                              <ShieldAlert size={16} />
+                           </Button>
+                        </Link>
+                    )}
+                    
+                    <Link href="/dashboard">
+                       <Button className="h-9 px-5 bg-white text-black hover:bg-cyan-400 hover:text-black font-bold text-[10px] uppercase tracking-widest rounded-full transition-all flex items-center gap-2">
+                          Enter_System <ChevronRight size={12} />
+                       </Button>
+                    </Link>
+                 </div>
+              ) : (
+                 <div className="flex items-center gap-3">
+                    <Link href="/auth/login" className="hidden sm:block text-[10px] font-bold text-white/50 hover:text-white uppercase tracking-widest transition-colors">
+                       Login
+                    </Link>
+                    <Link href="/auth/signup">
+                       <Button className="h-9 px-6 bg-white/10 hover:bg-white text-white hover:text-black border border-white/20 hover:border-white font-bold text-[10px] uppercase tracking-widest rounded-full transition-all backdrop-blur-md">
+                          Initialize <Zap size={12} className="ml-2 fill-current" />
+                       </Button>
+                    </Link>
+                 </div>
+              )
+           )}
         </div>
-      </nav>
+
+      </div>
     </header>
   );
 }

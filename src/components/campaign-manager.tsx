@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 
 export default function CampaignManager() {
   const [loading, setLoading] = useState(false);
-  const [selectedNiche, setSelectedNiche] = useState<string>("tech");
+  const [selectedNiche, setSelectedNiche] = useState<string>("general");
   const [selectedDay, setSelectedDay] = useState<number>(0); // 0-6
   
   // The Live Data we are editing
@@ -29,12 +29,16 @@ export default function CampaignManager() {
       const docRef = doc(db, "sectors", selectedNiche);
       const snap = await getDoc(docRef);
       
+      // Get base data from local file
+      const baseData = NICHE_DATA[selectedNiche] || NICHE_DATA["general"];
+
       if (snap.exists()) {
         // Merge DB data with local structure to ensure safety
-        setCampaignData({ ...NICHE_DATA[selectedNiche], ...snap.data() });
+        // Priority: DB Data > Local Data
+        setCampaignData({ ...baseData, ...snap.data() });
       } else {
         // Fallback to local default if DB is empty
-        setCampaignData(NICHE_DATA[selectedNiche]);
+        setCampaignData(baseData);
       }
       toast.success(`LOADED: ${selectedNiche.toUpperCase()}`);
     } catch (e) {
@@ -44,7 +48,7 @@ export default function CampaignManager() {
     }
   };
 
-  // Initial Load
+  // Initial Load & On Change
   useEffect(() => {
     fetchSectorData();
   }, [selectedNiche]);
@@ -57,7 +61,7 @@ export default function CampaignManager() {
       const docRef = doc(db, "sectors", selectedNiche);
       
       // We overwrite the sector data with our new state
-      // We strip the 'icon' and 'videoSrc' usually, but Firestore ignores undefined/functions anyway
+      // We strip the 'icon' because Firestore cannot store React Components
       const { icon, ...cleanData } = campaignData;
 
       await setDoc(docRef, cleanData, { merge: true });
@@ -74,24 +78,34 @@ export default function CampaignManager() {
   // Helper to update specific fields in the nested array
   const updateDayField = (field: string, value: any) => {
     if (!campaignData) return;
-    const newSchedule = [...campaignData.weekly_schedule];
+    // NOTE: We use 'protocol' here because that's what we defined in niche-data.tsx
+    const newSchedule = [...(campaignData.protocol || [])];
+    
+    if (!newSchedule[selectedDay]) return; // Safety check
+
     newSchedule[selectedDay] = {
         ...newSchedule[selectedDay],
         [field]: value
     };
-    setCampaignData({ ...campaignData, weekly_schedule: newSchedule });
+    setCampaignData({ ...campaignData, protocol: newSchedule });
   };
 
   const updateTask = (taskIndex: number, value: string) => {
     if (!campaignData) return;
-    const newSchedule = [...campaignData.weekly_schedule];
+    const newSchedule = [...(campaignData.protocol || [])];
+    
+    if (!newSchedule[selectedDay]) return;
+
     const newTasks = [...newSchedule[selectedDay].tasks];
     newTasks[taskIndex] = value;
     newSchedule[selectedDay] = { ...newSchedule[selectedDay], tasks: newTasks };
-    setCampaignData({ ...campaignData, weekly_schedule: newSchedule });
+    setCampaignData({ ...campaignData, protocol: newSchedule });
   };
 
-  if (!campaignData) return <div className="p-4 text-xs font-mono text-gray-500">INITIALIZING UPLINK...</div>;
+  if (!campaignData) return <div className="p-4 text-xs font-mono text-gray-500 animate-pulse">INITIALIZING UPLINK...</div>;
+
+  // Safety check for day data
+  const currentDayData = campaignData.protocol?.[selectedDay] || { script: "", prompt: "", tasks: ["", "", ""] };
 
   return (
     <div className="p-6 border border-white/10 bg-black/40 rounded-sm space-y-6">
@@ -101,7 +115,7 @@ export default function CampaignManager() {
         <div className="flex items-center gap-3">
             <Layers className="text-yellow-500" size={20} />
             <div>
-                <h3 className="text-sm font-black font-orbitron text-white uppercase">Campaign_Manager</h3>
+                <h3 className="text-sm font-black font-sans text-white uppercase">Campaign_Manager</h3>
                 <p className="text-[10px] font-mono text-gray-400">Manual Override Protocol</p>
             </div>
         </div>
@@ -116,7 +130,7 @@ export default function CampaignManager() {
                     <option key={key} value={key}>{NICHE_DATA[key].label}</option>
                 ))}
             </select>
-            <Button onClick={fetchSectorData} size="icon" variant="outline" className="h-9 w-9 border-white/20 bg-black text-white hover:bg-white/10">
+            <Button onClick={fetchSectorData} size="icon" variant="outline" className="h-9 w-9 border-white/20 bg-black text-white hover:bg-white/10 rounded-sm">
                 <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
             </Button>
         </div>
@@ -142,58 +156,58 @@ export default function CampaignManager() {
 
       {/* EDITOR FORM */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-300" key={`${selectedNiche}-${selectedDay}`}>
-         
-         {/* LEFT: SCRIPT & PROMPTS */}
-         <div className="space-y-4">
-            <div className="space-y-2">
+          
+          {/* LEFT: SCRIPT & PROMPTS */}
+          <div className="space-y-4">
+             <div className="space-y-2">
                 <label className="text-[10px] font-mono text-cyan-500 flex items-center gap-2 font-bold">
                     <FileText size={12} /> VIRAL SCRIPT
                 </label>
                 <Textarea 
-                    value={campaignData.weekly_schedule[selectedDay].script}
+                    value={currentDayData.script}
                     onChange={(e) => updateDayField("script", e.target.value)}
-                    className="h-40 bg-black/50 border-white/10 font-mono text-[10px] leading-relaxed focus:border-cyan-500 text-gray-300"
+                    className="h-40 bg-black/50 border-white/10 font-mono text-[10px] leading-relaxed focus:border-cyan-500 text-gray-300 rounded-sm"
                 />
-            </div>
-            <div className="space-y-2">
+             </div>
+             <div className="space-y-2">
                 <label className="text-[10px] font-mono text-pink-500 flex items-center gap-2 font-bold">
                     <ImageIcon size={12} /> MIDJOURNEY PROMPT
                 </label>
                 <Textarea 
-                    value={campaignData.weekly_schedule[selectedDay].prompt}
+                    value={currentDayData.prompt}
                     onChange={(e) => updateDayField("prompt", e.target.value)}
-                    className="h-20 bg-black/50 border-white/10 font-mono text-[10px] focus:border-pink-500 text-gray-300"
+                    className="h-20 bg-black/50 border-white/10 font-mono text-[10px] focus:border-pink-500 text-gray-300 rounded-sm"
                 />
-            </div>
-         </div>
-
-         {/* RIGHT: TASKS */}
-         <div className="space-y-4">
-             <label className="text-[10px] font-mono text-green-500 flex items-center gap-2 font-bold">
-                <ListTodo size={12} /> DAILY TASKS (3)
-             </label>
-             {[0, 1, 2].map(i => (
-                 <div key={i} className="flex gap-2">
-                     <span className="text-[10px] font-mono text-gray-500 pt-3">0{i+1}</span>
-                     <Input 
-                        value={campaignData.weekly_schedule[selectedDay].tasks[i]}
-                        onChange={(e) => updateTask(i, e.target.value)}
-                        className="bg-black/50 border-white/10 font-mono text-[10px] h-10 focus:border-green-500 text-gray-300"
-                     />
-                 </div>
-             ))}
-             
-             <div className="pt-8">
-                 <Button 
-                    onClick={handleSave} 
-                    disabled={loading}
-                    className="w-full h-12 bg-yellow-500 text-black font-black uppercase text-xs tracking-widest hover:bg-yellow-400"
-                 >
-                    {loading ? <Loader2 className="animate-spin" /> : <Save size={16} className="mr-2" />}
-                    PUBLISH UPDATES TO APP
-                 </Button>
              </div>
-         </div>
+          </div>
+
+          {/* RIGHT: TASKS */}
+          <div className="space-y-4">
+              <label className="text-[10px] font-mono text-green-500 flex items-center gap-2 font-bold">
+                 <ListTodo size={12} /> DAILY TASKS (3)
+              </label>
+              {[0, 1, 2].map(i => (
+                  <div key={i} className="flex gap-2">
+                      <span className="text-[10px] font-mono text-gray-500 pt-3">0{i+1}</span>
+                      <Input 
+                        value={currentDayData.tasks?.[i] || ""}
+                        onChange={(e) => updateTask(i, e.target.value)}
+                        className="bg-black/50 border-white/10 font-mono text-[10px] h-10 focus:border-green-500 text-gray-300 rounded-sm"
+                      />
+                  </div>
+              ))}
+              
+              <div className="pt-8">
+                  <Button 
+                    onClick={handleSave} 
+                    disabled={loading} 
+                    className="w-full h-12 bg-yellow-500 text-black font-black uppercase text-xs tracking-widest hover:bg-yellow-400 rounded-sm"
+                  >
+                     {loading ? <Loader2 className="animate-spin" /> : <Save size={16} className="mr-2" />}
+                     PUBLISH UPDATES TO APP
+                  </Button>
+              </div>
+          </div>
       </div>
 
     </div>

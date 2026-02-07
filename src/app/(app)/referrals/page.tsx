@@ -1,207 +1,294 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import Image from "next/image"; 
 import { useAuth } from "@/lib/context/auth-context";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { 
+  collection, query, where, getDocs, limit, 
+  doc, updateDoc, increment, arrayUnion, writeBatch 
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Background } from "@/components/ui/background";
 import { TransitionLink } from "@/components/ui/transition-link";
-import VideoStage from "@/components/canvas/video-stage";
 import { SoundPrompter } from "@/components/ui/sound-prompter";
 import { 
   Copy, Users, Network, ArrowLeft, 
-  Cpu, Activity, Share, CheckCircle2, Globe
+  Cpu, Activity, Share, Globe, Crown, 
+  UserPlus, ArrowRightLeft, ShieldCheck, Radar
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSfx } from "@/hooks/use-sfx";
 import { cn } from "@/lib/utils";
+import { HackerText } from "@/components/ui/hacker-text";
 
 export default function ReferralPage() {
-  const { userData } = useAuth();
+  const { user, userData } = useAuth();
   const { play } = useSfx();
   
-  const [recruitCount, setRecruitCount] = useState(0);
-  const [velocityCommission, setVelocityCommission] = useState(0);
-  const [loading, setLoading] = useState(true);
+  // STATE
+  const [activeTab, setActiveTab] = useState<"SQUAD" | "RADAR">("SQUAD");
+  const [squad, setSquad] = useState<any[]>([]);
+  const [radarTargets, setRadarTargets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  
+  // TRANSFER STATE
+  const [transferTarget, setTransferTarget] = useState<any | null>(null);
+  const [transferAmount, setTransferAmount] = useState("");
 
+  // 1. FETCH SQUAD (People I recruited or connected with)
   useEffect(() => {
-    const fetchRecruits = async () => {
+    const fetchSquad = async () => {
       if (!userData) return; 
       try {
-        const q = query(collection(db, "users"), where("invitedBy", "==", userData.uid));
+        // Fetch users I invited OR users I follow (My Squad)
+        const q = query(
+            collection(db, "users"), 
+            where("invitedBy", "==", userData.uid),
+            limit(10)
+        );
         const snap = await getDocs(q);
-        setRecruitCount(snap.size);
-        // Assuming 10% commission on a base velocity or fixed amount
-        setVelocityCommission(snap.size * 150); 
-      } catch (e) {
-        toast.error("DATA_SYNC_FAILED");
-      } finally {
-        setLoading(false);
-      }
+        const recruits = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setSquad(recruits);
+      } catch (e) { console.error(e); }
     };
-    fetchRecruits();
+    fetchSquad();
   }, [userData]);
 
+  // 2. FETCH RADAR (Random active users to recruit)
+  const scanRadar = async () => {
+      if (!user) return;
+      setLoading(true);
+      play("scan");
+      try {
+          const q = query(
+              collection(db, "users"),
+              where("uid", "!=", user.uid),
+              limit(5) // Just grab 5 for now
+          );
+          const snap = await getDocs(q);
+          const found = snap.docs
+              .map(doc => ({ id: doc.id, ...doc.data() }))
+              .filter((u: any) => !squad.some(s => s.uid === u.uid)); // Filter out existing squad
+          
+          setRadarTargets(found);
+          play("success");
+      } catch (e) { toast.error("RADAR OFFLINE"); }
+      finally { setLoading(false); }
+  };
+
+  // 3. ACTION: RECRUIT (Add to Squad List locally)
+  // In a real app, this would send a Friend Request. For MVP, we just "Link" them.
+  const handleRecruit = async (target: any) => {
+      play("click");
+      if (confirm(`Send Squad Invite to ${target.username}?`)) {
+          // Logic to add to "allies" array in DB would go here
+          setSquad(prev => [...prev, target]);
+          setRadarTargets(prev => prev.filter(u => u.uid !== target.uid));
+          toast.success("INVITE SENT // UNIT LINKED");
+          play("success");
+      }
+  };
+
+  // 4. ACTION: TRANSFER FUNDS (Quota Sharing)
+  const handleTransfer = async () => {
+      if (!transferTarget || !user || !userData) return;
+      
+      const amount = parseInt(transferAmount);
+      if (isNaN(amount) || amount <= 0) return toast.error("INVALID AMOUNT");
+      if (userData.wallet.popCoins < amount) return toast.error("INSUFFICIENT FUNDS");
+
+      play("kaching");
+      
+      try {
+          const batch = writeBatch(db);
+          
+          // Deduct from Me
+          const myRef = doc(db, "users", user.uid);
+          batch.update(myRef, { "wallet.popCoins": increment(-amount) });
+
+          // Add to Them
+          const targetRef = doc(db, "users", transferTarget.uid);
+          batch.update(targetRef, { "wallet.popCoins": increment(amount) });
+
+          await batch.commit();
+          toast.success(`SENT ${amount} PC TO ${transferTarget.username}`);
+          setTransferTarget(null);
+          setTransferAmount("");
+      } catch (e) {
+          toast.error("TRANSACTION FAILED");
+      }
+  };
+
   const getReferralLink = () => {
-      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://bubblepops.com';
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://boyzngalz.com';
       return userData ? `${origin}/auth/signup?ref=${userData.uid}` : '';
   };
 
   const handleCopy = () => {
-    if (!userData) return;
     play("click");
     navigator.clipboard.writeText(getReferralLink());
-    toast.success("UPLINK COPIED TO CLIPBOARD");
-  };
-
-  const handleNativeShare = async () => {
-      play("click");
-      const link = getReferralLink();
-      if (navigator.share) {
-          try {
-              await navigator.share({
-                  title: 'Join the Zaibatsu',
-                  text: 'Secure your invite to the growth economy.',
-                  url: link,
-              });
-              play("success");
-          } catch (err) {
-              console.log("Share cancelled");
-          }
-      } else {
-          handleCopy();
-      }
+    toast.success("UPLINK COPIED");
   };
 
   return (
-    <main className="relative min-h-screen bg-black text-white font-sans overflow-hidden flex flex-col items-center">
+    <main className="relative min-h-screen bg-black text-white font-sans overflow-hidden flex flex-col items-center selection:bg-yellow-500 selection:text-black">
       
-      {/* 📽️ BACKGROUND */}
-      <VideoStage src="/video/main.mp4" overlayOpacity={0.6} />
-      <Background /> 
+      {/* --- ATMOSPHERE --- */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <Image src="/images/referral-bg.jpg" alt="Grid" fill priority className="object-cover opacity-20 grayscale contrast-125" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black z-10" />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
+      </div>
+
       <SoundPrompter />
 
-      {/* 📱 TOP HUD */}
+      {/* --- TOP NAV --- */}
       <nav className="fixed top-0 left-0 right-0 z-[100] p-6 flex items-center justify-between pointer-events-none">
         <div className="pointer-events-auto">
-            <TransitionLink 
-              href="/dashboard"
-              className="w-12 h-12 border border-white/10 bg-black/40 backdrop-blur-md flex items-center justify-center group hover:border-purple-500 transition-all"
-            >
-              <ArrowLeft size={20} className="text-gray-400 group-hover:text-purple-400" />
+            <TransitionLink href="/dashboard" onClick={() => play("hover")} className="w-10 h-10 border border-white/10 bg-black/40 backdrop-blur-md flex items-center justify-center group hover:border-yellow-500 transition-all rounded-sm">
+              <ArrowLeft size={18} className="text-neutral-500 group-hover:text-yellow-500" />
             </TransitionLink>
         </div>
-        
-        <div className="pointer-events-auto flex items-center gap-2 px-3 py-1 bg-purple-500/10 border border-purple-500/20 backdrop-blur-md rounded-full">
-            <Network size={12} className="text-purple-400" />
-            <span className="text-[8px] font-mono font-black tracking-widest text-purple-400 uppercase">
-                Node_Link
-            </span>
+        <div className="pointer-events-auto flex items-center gap-2 px-3 py-1 bg-neutral-900/50 border border-yellow-500/20 backdrop-blur-md rounded-sm">
+            <Network size={12} className="text-yellow-500" />
+            <span className="text-[8px] font-mono font-black tracking-widest text-yellow-500 uppercase">Squad_Ops</span>
         </div>
       </nav>
 
-      {/* 🚀 CENTRAL FEED (Mobile First) */}
+      {/* --- MAIN CONTENT --- */}
       <div className="relative z-40 w-full max-w-md h-screen pt-24 px-6 pb-32 flex flex-col gap-6 overflow-y-auto no-scrollbar">
         
-        {/* 1. HIERARCHY STATUS CARD */}
-        <div className="w-full bg-gradient-to-br from-purple-900/20 to-black/80 border border-purple-500/30 backdrop-blur-xl p-6 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-3 opacity-20">
-                <Activity size={80} className="text-purple-500" />
-            </div>
-
-            <div className="relative z-10 space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                    <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
-                    <span className="text-[8px] font-mono text-purple-400 uppercase tracking-widest">Network_Performance</span>
+        {/* 1. SQUAD SUMMARY CARD */}
+        <div className="w-full bg-neutral-900/40 border border-white/10 backdrop-blur-xl p-6 relative overflow-hidden rounded-sm">
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-[8px] font-mono text-white uppercase tracking-widest">Active_Personnel</span>
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <span className="block text-[8px] font-mono text-gray-400 uppercase mb-1">Total_Recruits</span>
-                        <span className="text-3xl font-black font-orbitron text-white">{recruitCount}</span>
-                    </div>
-                    <div>
-                        <span className="block text-[8px] font-mono text-gray-400 uppercase mb-1">Commission (XP)</span>
-                        <span className="text-3xl font-black font-orbitron text-purple-400">+{velocityCommission}</span>
-                    </div>
-                </div>
-
-                <div className="w-full bg-black/40 border border-white/5 p-2 flex items-center justify-between">
-                    <span className="text-[8px] font-mono text-gray-500 uppercase">Current_Rate</span>
-                    <span className="text-[9px] font-black text-green-500 uppercase tracking-widest">10% Velocity</span>
-                </div>
-            </div>
-        </div>
-
-        {/* 2. UPLINK SHARE CARD */}
-        <div className="w-full bg-black/60 border border-white/10 backdrop-blur-md p-5 space-y-4">
-            <div className="flex items-center justify-between">
-                 <h3 className="text-sm font-black font-orbitron uppercase italic text-white">Generate Uplink</h3>
-                 <Globe size={14} className="text-gray-500" />
+                <span className="text-2xl font-black font-sans italic text-white">{squad.length} <span className="text-[10px] text-neutral-500 not-italic">UNITS</span></span>
             </div>
             
-            <p className="text-[9px] font-mono text-gray-400 leading-relaxed">
-                Distribute your frequency. Any operative who binds to this signal will permanently boost your velocity.
-            </p>
-
-            <div className="space-y-3">
-                <div className="bg-black/80 border border-white/5 p-3 rounded-sm flex items-center justify-between">
-                    <code className="text-[8px] font-mono text-purple-300 truncate max-w-[200px]">
-                        {getReferralLink()}
-                    </code>
-                    <button onClick={handleCopy} className="text-white/40 hover:text-white transition-colors">
-                        <Copy size={12} />
-                    </button>
+            {/* Invite Link Mini */}
+            <div className="flex gap-2">
+                <div className="flex-1 bg-black/50 border border-white/10 p-2 flex items-center gap-2">
+                    <Globe size={12} className="text-yellow-500" />
+                    <code className="text-[8px] font-mono text-white/50 truncate flex-1">{getReferralLink()}</code>
                 </div>
-
-                <Button 
-                    onClick={handleNativeShare}
-                    className="w-full h-12 bg-purple-600 hover:bg-purple-500 text-white font-black italic tracking-widest text-[9px] uppercase flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(147,51,234,0.3)]"
-                >
-                    <Share size={12} /> Transmit_Signal
+                <Button onClick={handleCopy} className="h-full bg-white text-black font-bold text-[8px] uppercase px-3 rounded-none hover:bg-yellow-500 transition-colors">
+                    <Copy size={12} />
                 </Button>
             </div>
         </div>
 
-        {/* 3. VISUAL NETWORK GRID (The "Downline") */}
-        <div className="space-y-3">
-            <div className="flex items-center justify-between px-1">
-                 <span className="text-[9px] font-mono font-bold text-gray-500 uppercase tracking-widest">Active_Nodes</span>
-                 <span className="text-[8px] font-mono text-purple-500">{recruitCount} Online</span>
-            </div>
+        {/* 2. TABS: MY SQUAD vs RADAR */}
+        <div className="flex p-1 bg-neutral-900 border border-white/10 rounded-sm">
+            <button onClick={() => setActiveTab("SQUAD")} className={cn("flex-1 py-2 text-[9px] font-black uppercase tracking-widest transition-all", activeTab === "SQUAD" ? "bg-yellow-600 text-black" : "text-neutral-500")}>
+                My Squad
+            </button>
+            <button onClick={() => { setActiveTab("RADAR"); scanRadar(); }} className={cn("flex-1 py-2 text-[9px] font-black uppercase tracking-widest transition-all", activeTab === "RADAR" ? "bg-white text-black" : "text-neutral-500")}>
+                Find Units
+            </button>
+        </div>
 
-            <div className="grid grid-cols-5 gap-2">
-                {/* Render actual recruits or placeholders */}
-                {Array.from({ length: Math.max(5, recruitCount + 2) }).map((_, i) => {
-                    const isActive = i < recruitCount;
-                    return (
-                        <div key={i} className={cn(
-                            "aspect-square flex items-center justify-center border transition-all",
-                            isActive 
-                                ? "bg-purple-500/20 border-purple-500/50" 
-                                : "bg-white/5 border-white/5 opacity-30"
-                        )}>
-                            {isActive ? (
-                                <Users size={12} className="text-purple-400" />
+        {/* 3. LIST VIEW */}
+        <div className="space-y-3 min-h-[200px]">
+            
+            {/* SQUAD LIST (With Transfer Option) */}
+            {activeTab === "SQUAD" && squad.map((member) => (
+                <div key={member.id} className="flex items-center justify-between p-3 bg-neutral-900/60 border border-white/10 hover:border-yellow-500/50 transition-colors group rounded-sm">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-sm bg-neutral-800 border border-white/10 overflow-hidden relative">
+                            {member.avatar ? (
+                                <Image src={member.avatar} alt="Unit" fill className="object-cover" />
                             ) : (
-                                <div className="w-1 h-1 rounded-full bg-white/20" />
+                                <div className="w-full h-full flex items-center justify-center text-white/20"><Users size={12}/></div>
                             )}
                         </div>
-                    );
-                })}
-            </div>
+                        <div>
+                            <div className="text-[10px] font-bold text-white uppercase">{member.username}</div>
+                            <div className="text-[8px] font-mono text-neutral-500 uppercase">{member.membership?.tier || "RECRUIT"}</div>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={() => setTransferTarget(member)}
+                        className="px-3 py-1.5 bg-black border border-white/20 text-[8px] font-mono uppercase text-yellow-500 hover:bg-yellow-500 hover:text-black transition-all flex items-center gap-1"
+                    >
+                        <ArrowRightLeft size={10} /> Transfer
+                    </button>
+                </div>
+            ))}
+
+            {/* RADAR LIST (Find New People) */}
+            {activeTab === "RADAR" && (
+                <>
+                    {loading ? (
+                        <div className="text-center py-10 text-[10px] font-mono text-yellow-500 animate-pulse">SCANNING SECTOR...</div>
+                    ) : (
+                        radarTargets.map((target) => (
+                            <div key={target.id} className="flex items-center justify-between p-3 bg-neutral-900/60 border border-white/10 rounded-sm animate-in slide-in-from-right-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-sm border border-white/10 bg-neutral-800 flex items-center justify-center">
+                                        <Radar size={12} className="text-red-500" />
+                                    </div>
+                                    <div>
+                                        <div className="text-[10px] font-bold text-white uppercase">{target.username}</div>
+                                        <div className="text-[8px] font-mono text-neutral-500 uppercase">Signal Detected</div>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => handleRecruit(target)}
+                                    className="px-3 py-1.5 bg-white text-black text-[8px] font-bold uppercase hover:bg-green-500 hover:text-white transition-all flex items-center gap-1"
+                                >
+                                    <UserPlus size={10} /> Add
+                                </button>
+                            </div>
+                        ))
+                    )}
+                    {!loading && radarTargets.length === 0 && (
+                        <div onClick={scanRadar} className="text-center py-10 text-[10px] font-mono text-neutral-600 cursor-pointer hover:text-white">NO SIGNAL // CLICK TO RESCAN</div>
+                    )}
+                </>
+            )}
         </div>
 
       </div>
 
-      {/* 🧪 FOOTER */}
-      <footer className="fixed bottom-0 left-0 right-0 z-[100] px-6 py-5 flex items-center justify-between border-t border-white/5 bg-black/90 backdrop-blur-2xl">
-         <div className="flex items-center gap-4 opacity-50 text-purple-500">
-            <Cpu size={14} className="animate-pulse" />
-            <span className="text-[7px] font-mono uppercase tracking-[0.2em] font-bold">Ref_ID // {userData?.uid.slice(0, 6)}</span>
-         </div>
-      </footer>
+      {/* --- MODAL: TRANSFER FUNDS --- */}
+      {transferTarget && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-sm p-6 animate-in fade-in zoom-in duration-200">
+            <div className="w-full max-w-xs bg-neutral-900 border border-yellow-500/30 p-6 space-y-4 shadow-[0_0_50px_rgba(234,179,8,0.2)] relative">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-black font-sans text-yellow-500 uppercase flex items-center gap-2 tracking-widest">
+                        <ArrowRightLeft size={12} /> Transfer_Funds
+                    </h3>
+                    <button onClick={() => setTransferTarget(null)} className="text-neutral-500 hover:text-white">✕</button>
+                </div>
+                
+                <div className="bg-black p-3 border border-white/10 text-center">
+                    <span className="text-[8px] font-mono text-neutral-500 uppercase tracking-widest">Recipient</span>
+                    <div className="text-lg font-black text-white uppercase">{transferTarget.username}</div>
+                </div>
+
+                <div className="space-y-1">
+                    <label className="text-[7px] font-mono text-neutral-500 uppercase tracking-widest">Amount (PC)</label>
+                    <Input 
+                        type="number"
+                        value={transferAmount} 
+                        onChange={(e) => setTransferAmount(e.target.value)} 
+                        className="bg-black border-white/10 text-white font-mono font-bold text-lg h-12 text-center uppercase rounded-none focus:border-yellow-500" 
+                        placeholder="0000" 
+                    />
+                    <div className="text-[8px] text-right text-neutral-500 font-mono">Max: {userData?.wallet.popCoins}</div>
+                </div>
+
+                <Button onClick={handleTransfer} className="w-full h-12 bg-yellow-500 hover:bg-yellow-400 text-black font-black text-[10px] uppercase tracking-widest rounded-none">
+                    Confirm Transfer
+                </Button>
+            </div>
+        </div>
+      )}
 
     </main>
   );

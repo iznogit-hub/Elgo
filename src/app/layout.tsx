@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+"use client";
+
 import { Orbitron, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
@@ -11,7 +12,7 @@ import { RealtimeProvider } from "@/providers/realtime-provider";
 import { GlobalAppWrapper } from "@/components/global-app-wrapper"; 
 
 // --- GLOBAL UI ---
-import { Cursor } from "@/components/ui/cursor"; // 👈 The Tactical HUD Cursor
+import { Cursor } from "@/components/ui/cursor"; 
 
 // --- FONTS ---
 const inter = Inter({ 
@@ -32,76 +33,49 @@ const mono = JetBrains_Mono({
   display: "swap",
 });
 
-// --- METADATA ---
-export const metadata: Metadata = {
-  metadataBase: new URL("https://bee-popper.vercel.app"), // TODO: Replace with your actual deployed domain
-  title: {
-    default: "BubblePops // High-Frequency Growth",
-    template: "%s | BubblePops",
-  },
-  description: "The algorithmic growth cartel. Join the inner circle.",
-  keywords: ["Instagram Growth", "Zaibatsu", "Cyberpunk", "Marketing", "BubblePops"],
-  authors: [{ name: "High Command", url: "https://bee-popper.vercel.app" }],
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    url: "https://bee-popper.vercel.app",
-    title: "BubblePops Zaibatsu",
-    description: "Join the Inner Circle. Control the Signal.",
-    siteName: "BubblePops",
-  },
-  icons: {
-    icon: "/favicon.ico",
-  },
-};
-
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="en" className="dark scroll-smooth" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${orbitron.variable} ${mono.variable} font-sans bg-black text-white antialiased selection:bg-cyan-500/30 selection:text-cyan-100 overflow-x-hidden min-h-screen cursor-none`}
+        className={`${inter.variable} ${orbitron.variable} ${mono.variable} font-sans bg-black text-white antialiased selection:bg-red-900 selection:text-white overflow-x-hidden min-h-screen`}
       >
-        {/* 1. THEME ENGINE */}
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
           enableSystem={false}
           disableTransitionOnChange
         >
-          {/* 2. AUDIO ENGINE */}
           <SoundProvider>
-            
-            {/* 3. IDENTITY LAYER */}
             <AuthProvider>
-              
-              {/* 4. REALTIME SOCKETS */}
               <RealtimeProvider>
                 
-                {/* 5. TACTICAL CURSOR (Global Overlay) */}
-                <Cursor />
+                {/* 🔴 TACTICAL OVERLAY: Desktop Only */}
+                <div className="hidden lg:block pointer-events-none z-[9999] fixed inset-0">
+                  <Cursor />
+                </div>
 
-                {/* 6. VISUAL FX WRAPPER */}
+                {/* 🔴 CORE ARCHITECTURE */}
                 <GlobalAppWrapper>
                   {children}
                 </GlobalAppWrapper>
 
-                {/* 7. SYSTEM NOTIFICATIONS */}
+                {/* 🔴 INDUSTRIAL NOTIFICATIONS */}
                 <Toaster 
                   position="bottom-right" 
                   toastOptions={{
                     style: {
-                      background: 'rgba(5, 5, 5, 0.9)',
-                      border: '1px solid rgba(255,255,255,0.1)',
+                      background: 'rgba(5, 0, 0, 0.95)',
+                      border: '1px solid rgba(220,38,38,0.2)', // Red border
                       color: 'white',
                       fontFamily: 'var(--font-mono)',
-                      fontSize: '12px',
+                      fontSize: '11px',
                       textTransform: 'uppercase',
-                      backdropFilter: 'blur(10px)',
-                      borderRadius: '4px'
+                      backdropFilter: 'blur(12px)',
+                      borderRadius: '0px', 
                     },
                     className: "font-mono"
                   }} 

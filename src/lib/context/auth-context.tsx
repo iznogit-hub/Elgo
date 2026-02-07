@@ -4,92 +4,122 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+import { useRouter } from "next/navigation";
 
-// --- 1. DEFINING THE OPERATIVE PROFILE ---
-export interface UserProfile {
+// --- 1. DEFINING THE DATA STRUCTURE ---
+
+export interface UserWallet {
+  popCoins: number;
+  bubblePoints: number;
+}
+
+export interface UserMembership {
+  // Added "elite" here to fix your error
+  tier: "recruit" | "elite" | "warlord" | "council" | "inner_circle";
+  joinedAt?: string;
+  paymentId?: string; // For tracking the ₹99 payment
+}
+
+export interface UserReputation {
+  intelSubmitted: number;
+  trustScore: number;
+}
+
+export interface DailyTracker {
+  date: string;
+  audiosViewed: number;
+  imagesGenerated: number;
+  bountiesClaimed: number;
+}
+
+export interface InventoryItem {
+  itemId: string;
+  name: string;
+  purchasedAt: string;
+}
+
+export interface ReferralData {
+  code: string;       // The unique code (usually username)
+  count: number;      // How many people invited
+  earnings: number;   // Total PC earned from invites
+}
+
+// THE MASTER INTERFACE
+export interface UserData {
   uid: string;
   email: string | null;
   username: string;
-  
-  // 📸 IDENTITY BINDING (Added)
   instagramHandle?: string;
-
-  // 💰 THE WALLET (Economy)
-  wallet: {
-    popCoins: number;       // The "Grind" Currency
-    bubblePoints: number;   // The "Fiat" Currency
-  };
-
-  // 🔐 ACCESS & PROGRESSION
-  unlockedNiches: string[]; // Array of Niche IDs (e.g. ["general", "tech"])
-  membership: {
-    tier: "recruit" | "operative" | "council" | "inner_circle";
-    validUntil?: string; // ISO Date
-  };
-
-  // 🔋 DAILY RATION TRACKER
-  dailyTracker: {
-    date: string;           // "2026-02-05"
-    audiosViewed: number;
-    imagesGenerated: number;
-    bountiesClaimed: number;
-  };
+  avatar?: string;
   
-  // ⚔️ MERCENARY STATS
-  reputation: {
-    intelSubmitted: number;
-    trustScore: number;
-  };
+  // Nested Objects
+  wallet: UserWallet;
+  membership: UserMembership;
+  reputation: UserReputation;
+  dailyTracker: DailyTracker;
+  referrals?: ReferralData; // Optional, might not exist for old users yet
+
+  // Arrays
+  unlockedNiches: string[];
+  completedTasks: string[];
+  followedCreators: string[];
+  inventory: InventoryItem[];
   
-  // System Status
-  status: "active" | "banned" | "purged";
+  status: "active" | "banned" | "shadow_banned";
   createdAt: string;
 }
 
+// --- 2. CONTEXT SETUP ---
+
 interface AuthContextType {
-  user: User | null;              // Raw Firebase User
-  userData: UserProfile | null;   // Database Game Data
+  user: User | null;          // The raw Firebase Auth user
+  userData: UserData | null;  // The live Firestore data
   loading: boolean;
-  isAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   userData: null,
   loading: true,
-  isAdmin: false,
 });
+
+export const useAuth = () => useContext(AuthContext);
+
+// --- 3. PROVIDER COMPONENT ---
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [userData, setUserData] = useState<UserProfile | null>(null);
+  const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
-    // REAL-TIME LISTENER FOR AUTH STATE
+    // Listen to Firebase Auth state (Login/Logout)
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
-      
+
       if (currentUser) {
-        // ⚡ REAL-TIME DB LISTENER (Updates Wallet Instantly)
-        const docRef = doc(db, "users", currentUser.uid);
+        // If logged in, listen to Firestore document in Real-time
+        const userDocRef = doc(db, "users", currentUser.uid);
         
-        const unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
+        const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
-            setUserData(docSnap.data() as UserProfile);
+            // Force cast data to our Interface
+            setUserData(docSnap.data() as UserData);
           } else {
-            console.warn("⚠️ User authenticated but no DB profile found.");
+            console.error("Auth exists but Firestore Profile missing.");
             setUserData(null);
           }
           setLoading(false);
-        }, (err) => {
-          console.error("❌ Error fetching live profile:", err);
+        }, (error) => {
+          console.error("Firestore Listen Error:", error);
           setLoading(false);
         });
 
-        // Cleanup the snapshot listener when auth state changes
+        // Cleanup snapshot listener when auth state changes
         return () => unsubscribeSnapshot();
       } else {
+        // Logged out
         setUserData(null);
         setLoading(false);
       }
@@ -98,20 +128,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribeAuth();
   }, []);
 
-  // --- ADMIN GATEKEEPER ---
-  const ADMIN_EMAILS = ["iznoatwork@gmail.com", "admin@zaibatsu.com"];
-  
-  const isAdmin = !!(
-    userData && 
-    userData.email && 
-    ADMIN_EMAILS.includes(userData.email)
-  );
-
   return (
-    <AuthContext.Provider value={{ user, userData, loading, isAdmin }}>
+    <AuthContext.Provider value={{ user, userData, loading }}>
       {children}
     </AuthContext.Provider>
   );
 };
-
-export const useAuth = () => useContext(AuthContext);
