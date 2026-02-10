@@ -2,11 +2,11 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 
-// --- 1. DEFINING THE DATA STRUCTURE ---
+// --- 1. DATA STRUCTURES ---
 
 export interface UserWallet {
   popCoins: number;
@@ -14,10 +14,9 @@ export interface UserWallet {
 }
 
 export interface UserMembership {
-  // Added "elite" here to fix your error
   tier: "recruit" | "elite" | "warlord" | "council" | "inner_circle";
   joinedAt?: string;
-  paymentId?: string; // For tracking the ₹99 payment
+  paymentId?: string;
 }
 
 export interface UserReputation {
@@ -39,9 +38,9 @@ export interface InventoryItem {
 }
 
 export interface ReferralData {
-  code: string;       // The unique code (usually username)
-  count: number;      // How many people invited
-  earnings: number;   // Total PC earned from invites
+  code: string;
+  count: number;
+  earnings: number;
 }
 
 // THE MASTER INTERFACE
@@ -49,15 +48,25 @@ export interface UserData {
   uid: string;
   email: string | null;
   username: string;
-  instagramHandle?: string;
   avatar?: string;
   
+  // Social Identities (THE NETWORK)
+  instagramHandle: string; // MANDATORY
+  youtubeHandle?: string;  // OPTIONAL
+  linkedinHandle?: string; // OPTIONAL
+  
+  // Guild Data
+  guildId?: string;
+  guildName?: string;
+  guildLeader?: string;
+  guildBankContribution?: number;
+
   // Nested Objects
   wallet: UserWallet;
   membership: UserMembership;
   reputation: UserReputation;
   dailyTracker: DailyTracker;
-  referrals?: ReferralData; // Optional, might not exist for old users yet
+  referrals?: ReferralData;
 
   // Arrays
   unlockedNiches: string[];
@@ -65,27 +74,44 @@ export interface UserData {
   followedCreators: string[];
   inventory: InventoryItem[];
   
+  // System State
   status: "active" | "banned" | "shadow_banned";
   createdAt: string;
+  lastActive?: Timestamp;
 }
+
+const DEFAULT_USER_DATA: Partial<UserData> = {
+  wallet: { popCoins: 0, bubblePoints: 0 },
+  membership: { tier: "recruit" },
+  unlockedNiches: ["general"],
+  inventory: [],
+  followedCreators: [],
+  guildBankContribution: 0,
+  guildName: "SHADOW_SYNDICATE",
+  instagramHandle: "", // Default empty
+};
 
 // --- 2. CONTEXT SETUP ---
 
 interface AuthContextType {
-  user: User | null;          // The raw Firebase Auth user
-  userData: UserData | null;  // The live Firestore data
+  user: User | null;
+  userData: UserData | null;
   loading: boolean;
+  isAdmin: boolean;
+  isVIP: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   userData: null,
   loading: true,
+  isAdmin: false,
+  isVIP: false,
 });
 
 export const useAuth = () => useContext(AuthContext);
 
-// --- 3. PROVIDER COMPONENT ---
+// --- 3. PROVIDER ---
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -94,18 +120,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
 
   useEffect(() => {
-    // Listen to Firebase Auth state (Login/Logout)
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
 
       if (currentUser) {
-        // If logged in, listen to Firestore document in Real-time
         const userDocRef = doc(db, "users", currentUser.uid);
         
+        updateDoc(userDocRef, { lastActive: serverTimestamp() }).catch(() => null);
+
         const unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
-            // Force cast data to our Interface
-            setUserData(docSnap.data() as UserData);
+            const data = docSnap.data() as UserData;
+            setUserData({ ...DEFAULT_USER_DATA, ...data } as UserData);
           } else {
             console.error("Auth exists but Firestore Profile missing.");
             setUserData(null);
@@ -116,10 +142,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setLoading(false);
         });
 
-        // Cleanup snapshot listener when auth state changes
         return () => unsubscribeSnapshot();
       } else {
-        // Logged out
         setUserData(null);
         setLoading(false);
       }
@@ -128,8 +152,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribeAuth();
   }, []);
 
+  const isAdmin = userData?.email === "iznoatwork@gmail.com";
+  const tier = userData?.membership?.tier;
+  const isVIP = tier === "elite" || tier === "warlord" || tier === "council" || tier === "inner_circle";
+
   return (
-    <AuthContext.Provider value={{ user, userData, loading }}>
+    <AuthContext.Provider value={{ user, userData, loading, isAdmin, isVIP }}>
       {children}
     </AuthContext.Provider>
   );

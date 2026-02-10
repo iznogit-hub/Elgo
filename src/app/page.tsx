@@ -4,38 +4,59 @@ import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image"; 
 import { 
-  ArrowRight, Terminal, AlertTriangle, Play, 
-  Instagram, User, Coins, ShieldCheck, Lock, Check, Edit2, Globe, Crosshair, Skull,
-  Zap
+  ArrowRight, AlertTriangle, Play, 
+  Zap, Radio, Target, Lock, ShieldCheck, Skull, Fingerprint
 } from "lucide-react";
 import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
-import { TransitionLink } from "@/components/ui/transition-link";
 import { useSfx } from "@/hooks/use-sfx";
 import { useAuth } from "@/lib/context/auth-context";
 import { HackerText } from "@/components/ui/hacker-text";
 import { cn } from "@/lib/utils";
 
-// --- AVATARS DATA ---
-const AVATARS = [
-  { id: "1", src: "/avatars/1.jpg" },
-  { id: "2", src: "/avatars/2.jpg" },
-  { id: "3", src: "/avatars/3.jpg" },
-];
-
 const TICKER_TEXT = [
-  "PROTOCOL INITIATED: TOTAL WAR",
-  "PLAYER COUNT: 14,203 ACTIVE",
-  "CURRENT BOUNTY POOL: 1,200,000 PTS",
-  "SURVIVAL RATE: 12%",
-  "GAME MASTER IS WATCHING"
+  "CULLING PROTOCOL ACTIVE // 48H REMAINING",
+  "TOP WARLORD: NEON_VIPER // 1,240 KILLS",
+  "TOTAL BOUNTY POOL: 2,847,320 PC",
+  "SURVIVAL RATE: 8.2% // DECLINING",
+  "NEW COLONY UNLOCKED: SHIBUYA GRID",
+  "GLOBAL BROADCAST: ELIMINATE ALL RECRUITS",
+  "GOD MODE DETECTED // OVERSEER ONLINE"
 ];
 
-// --- STATIC GAME MODES DATA ---
 const COLONIES = [
-    { id: "01", name: "Tokyo No. 1", type: "General Warfare", status: "ONLINE", players: 12402 },
-    { id: "02", name: "Sendai Colony", type: "Tech Blitz", status: "ONLINE", players: 8392 },
-    { id: "03", name: "Sakurajima", type: "Fitness Raid", status: "LOCKED", players: 0 },
-    { id: "04", name: "Shibuya", type: "Style War", status: "LOCKED", players: 0 },
+  { id: "01", name: "Tokyo Core", type: "Total War", status: "ONLINE", players: 18420, threat: "EXTREME" },
+  { id: "02", name: "Sendai Outpost", type: "Tech Assault", status: "ONLINE", players: 12394, threat: "HIGH" },
+  { id: "03", name: "Sakurajima Arena", type: "Fitness Carnage", status: "LOCKED", players: 0, threat: "UNKNOWN" },
+  { id: "04", name: "Shibuya Crossroads", type: "Style Execution", status: "ONLINE", players: 9872, threat: "MEDIUM" },
+  { id: "05", name: "Kyoto Shadows", type: "Stealth Hunt", status: "LOCKED", players: 0, threat: "CLASSIFIED" },
+  { id: "06", name: "Osaka Vault", type: "Wealth Raid", status: "ONLINE", players: 15678, threat: "CRITICAL" },
+];
+
+const PROTOCOLS = [
+  {
+    id: "01",
+    title: "AUTHENTICATE",
+    desc: "Secure Google Uplink required to enter the grid.",
+    icon: ShieldCheck,
+    color: "text-blue-500",
+    border: "border-blue-500/50"
+  },
+  {
+    id: "02",
+    title: "IDENTIFY",
+    desc: "Declare your social frequency. Become visible.",
+    icon: Fingerprint,
+    color: "text-pink-500",
+    border: "border-pink-500/50"
+  },
+  {
+    id: "03",
+    title: "DOMINATE",
+    desc: "Kill targets. Earn bounties. Ascend the hierarchy.",
+    icon: Skull,
+    color: "text-red-500",
+    border: "border-red-500/50"
+  }
 ];
 
 export default function Home() {
@@ -43,334 +64,175 @@ export default function Home() {
   const { userData, loading } = useAuth();
   const router = useRouter();
   
-  // STATE FOR ONBOARDING
-  const [formData, setFormData] = useState({
-    instagram: "",
-    avatar: "/avatars/1.jpg",
-  });
-  const [igConfirmed, setIgConfirmed] = useState(false);
-  const [avatarConfirmed, setAvatarConfirmed] = useState(false);
-  
   const [tickerIndex, setTickerIndex] = useState(0);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [isHovering, setIsHovering] = useState(false);
 
+  // REDIRECT IF LOGGED IN
   useEffect(() => {
     if (!loading && userData) {
       router.push("/dashboard");
     }
   }, [userData, loading, router]);
 
+  // TICKER ANIMATION
   useEffect(() => {
     const interval = setInterval(() => {
       setTickerIndex((prev) => (prev + 1) % TICKER_TEXT.length);
-    }, 2500);
+    }, 3000);
     return () => clearInterval(interval);
   }, []);
 
-  // AUTO SCROLL (Pauses on Hover)
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    
-    let scrollAmount = 0;
-    const speed = 0.5; 
-    let animationId: number;
-
-    const step = () => {
-      if (!isHovering) {
-          scrollAmount += speed;
-          if (scrollAmount >= el.scrollWidth / 2) {
-             scrollAmount = 0;
-             el.scrollLeft = 0;
-          } else {
-             el.scrollLeft += speed;
-          }
-      }
-      animationId = requestAnimationFrame(step);
-    };
-    
-    animationId = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(animationId);
-  }, [isHovering]);
-
-  // FINAL NAVIGATE
+  // ENTRY HANDLER
   const handleEnterGame = () => {
-      play("click");
-      const query = new URLSearchParams({
-        ig: formData.instagram,
-        av: formData.avatar,
-        ref: "glass_guide"
-      }).toString();
-      router.push(`/auth/signup?${query}`);
+    play("success");
+    // Direct path to Login -> Identity Flow
+    router.push("/auth/login");
   };
 
   return (
-    <main className="relative min-h-screen bg-black text-white selection:bg-red-900 overflow-x-hidden font-sans flex flex-col">
+    <main className="relative min-h-screen bg-black text-white font-sans overflow-hidden flex flex-col selection:bg-red-900 selection:text-white">
       
-      {/* --- HERO BACKGROUND --- */}
-      <div className="absolute inset-0 z-0">
-         <Image 
-           src="/images/hero-bg.jpg" 
-           alt="Barrier"
-           fill
-           className="object-cover opacity-30 grayscale contrast-125 animate-[pulse_10s_infinite]"
-           priority
-         />
-         <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] z-10 bg-[length:100%_4px,3px_100%] pointer-events-none" />
-         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black" />
+      {/* HERO BACKGROUND */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <Image 
+          src="/images/hero-bg.jpg" 
+          alt="Culling Barrier"
+          fill
+          priority
+          className="object-cover opacity-20 grayscale contrast-150 animate-pulse"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(220,38,38,0.15)_0%,transparent_70%)] animate-pulse" />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-30 mix-blend-overlay" />
       </div>
 
-      {/* --- LIVE TICKER --- */}
-      <div className="absolute top-10 left-0 w-full flex justify-center z-20">
-        <div className="flex items-center gap-2 px-4 py-1 bg-red-950/80 border border-red-900 rounded-full shadow-[0_0_20px_rgba(220,38,38,0.4)]">
-           <Terminal size={10} className="text-red-500 animate-pulse" />
-           <span className="text-[10px] font-mono font-bold tracking-[0.2em] text-red-500 uppercase min-w-[200px] text-center">
-              <HackerText text={TICKER_TEXT[tickerIndex]} speed={30} />
-           </span>
+      {/* LIVE TICKER */}
+      <div className="absolute top-12 left-1/2 -translate-x-1/2 z-50 w-full max-w-4xl px-4">
+        <div className="flex items-center justify-center gap-4 px-8 py-3 bg-red-950/90 border-4 border-red-600/80 backdrop-blur-2xl rounded-full shadow-2xl shadow-red-600/60 animate-pulse">
+          <Radio size={24} className="text-red-500 hidden md:block" />
+          <HackerText text={TICKER_TEXT[tickerIndex]} className="text-xl md:text-2xl font-black text-red-400 tracking-wider text-center" />
         </div>
       </div>
 
-      {/* --- HERO CONTENT --- */}
-      <section className="relative z-30 flex flex-col items-center justify-center min-h-[90vh] gap-12 pt-20">
-         
-         <div className="text-center space-y-6">
-             <div className="inline-flex items-center gap-2 px-3 py-1 bg-black/60 border border-white/20 backdrop-blur-md animate-in zoom-in-50 duration-700">
-                <AlertTriangle size={12} className="text-yellow-500" />
-                <span className="text-[9px] font-mono font-bold tracking-widest text-white uppercase">
-                  Participation is Mandatory
-                </span>
-             </div>
-             
-             <h1 className="text-7xl md:text-9xl font-black font-sans tracking-tighter leading-[0.85] text-white mix-blend-screen">
-                BOYZ <br/>
-                <span className="text-transparent bg-clip-text bg-gradient-to-b from-red-600 to-black stroke-white stroke-2">
-                  'N' GALZ
-                </span>
-             </h1>
-
-             <p className="text-sm font-mono text-neutral-400 max-w-sm mx-auto tracking-widest uppercase animate-in fade-in delay-300 duration-1000">
-                The Culling Game has begun. <br/> Kill for Status. Survive for Wealth.
-             </p>
-         </div>
-
-         {/* --- THE INTERACTIVE RULES CAROUSEL --- */}
-         <div 
-            className="w-full max-w-[100vw] overflow-hidden py-10"
-            onMouseEnter={() => setIsHovering(true)}
-            onMouseLeave={() => setIsHovering(false)}
-         >
-            <div 
-              ref={scrollRef}
-              className="flex gap-8 px-8 overflow-x-hidden w-max hover:cursor-grab active:cursor-grabbing"
-              style={{ maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)' }}
-            >
-               {/* DOUBLED ARRAY FOR INFINITE SCROLL */}
-               {[1, 2].map((loop) => (
-                 <React.Fragment key={loop}>
-                    
-                    {/* CARD 1: IDENTITY (Interactive Rule 1) */}
-                    <div className={cn(
-                        "group relative w-[320px] h-[480px] flex-none border backdrop-blur-xl flex flex-col p-8 justify-between relative overflow-hidden transition-all duration-500",
-                        igConfirmed ? "bg-neutral-900/80 border-green-500/50" : "bg-black/60 border-white/10"
-                    )}>
-                        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 pointer-events-none" />
-                        <div className="space-y-4 z-10">
-                            <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-mono text-red-500 font-bold tracking-widest border-b border-red-900 pb-1">RULE_01</span>
-                                {igConfirmed && <Check size={16} className="text-green-500" />}
-                            </div>
-                            <div>
-                                <h3 className="text-3xl font-black font-sans uppercase italic text-white leading-none">Declare Identity</h3>
-                                <p className="text-xs font-mono text-neutral-400 mt-2 uppercase tracking-widest leading-relaxed">
-                                    Link your digital footprint to enter the barrier.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="relative z-20 space-y-4">
-                            <div className="relative group/input">
-                                <div className="absolute left-3 top-3.5 text-pink-500"><Instagram size={18} /></div>
-                                <input 
-                                    type="text" 
-                                    placeholder="@HANDLE" 
-                                    value={formData.instagram}
-                                    disabled={igConfirmed}
-                                    onChange={(e) => setFormData({...formData, instagram: e.target.value})}
-                                    className="w-full h-12 bg-black/50 border border-white/20 pl-10 text-white font-mono uppercase focus:border-red-500 focus:outline-none transition-all placeholder:text-white/20 disabled:opacity-50"
-                                />
-                            </div>
-                            {!igConfirmed ? (
-                                <button 
-                                    onClick={() => { if(formData.instagram) { setIgConfirmed(true); play("success"); } }}
-                                    disabled={!formData.instagram.includes("@")}
-                                    className="w-full h-10 bg-white text-black font-black uppercase text-xs tracking-widest hover:bg-red-600 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    CONFIRM HANDLE
-                                </button>
-                            ) : (
-                                <button onClick={() => setIgConfirmed(false)} className="w-full h-10 bg-neutral-900 text-neutral-500 font-mono text-xs uppercase hover:text-white flex items-center justify-center gap-2">
-                                    <Edit2 size={12} /> EDIT
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* CARD 2: VESSEL (Interactive Rule 2) */}
-                    <div className={cn(
-                        "group relative w-[320px] h-[480px] flex-none border backdrop-blur-xl flex flex-col p-8 justify-between relative overflow-hidden transition-all duration-500",
-                        avatarConfirmed ? "bg-neutral-900/80 border-green-500/50" : "bg-black/60 border-white/10",
-                        !igConfirmed && "opacity-40 pointer-events-none grayscale"
-                    )}>
-                        <div className="space-y-4 z-10">
-                            <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-mono text-red-500 font-bold tracking-widest border-b border-red-900 pb-1">RULE_02</span>
-                                {!igConfirmed && <Lock size={14} className="text-white/20" />}
-                            </div>
-                            <div>
-                                <h3 className="text-3xl font-black font-sans uppercase italic text-white leading-none">Choose Vessel</h3>
-                                <p className="text-xs font-mono text-neutral-400 mt-2 uppercase tracking-widest leading-relaxed">
-                                    Select your combat skin. Appearance dictates status.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-3 z-20">
-                            {AVATARS.map((av) => (
-                                <div 
-                                    key={av.id}
-                                    onClick={() => !avatarConfirmed && setFormData({...formData, avatar: av.src})}
-                                    className={cn(
-                                        "relative aspect-square border-2 cursor-pointer transition-all",
-                                        formData.avatar === av.src ? "border-red-500 scale-105" : "border-white/10 hover:border-white",
-                                        avatarConfirmed && formData.avatar !== av.src && "opacity-30"
-                                    )}
-                                >
-                                    <Image src={av.src} alt={av.id} fill className="object-cover" />
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="z-20">
-                            {!avatarConfirmed ? (
-                                <button 
-                                    onClick={() => { setAvatarConfirmed(true); play("success"); }}
-                                    className="w-full h-10 bg-white text-black font-black uppercase text-xs tracking-widest hover:bg-red-600 hover:text-white transition-all"
-                                >
-                                    CONFIRM VESSEL
-                                </button>
-                            ) : (
-                                <button onClick={() => setAvatarConfirmed(false)} className="w-full h-10 bg-neutral-900 text-neutral-500 font-mono text-xs uppercase hover:text-white flex items-center justify-center gap-2">
-                                    <Edit2 size={12} /> RESELECT
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* CARD 3: REWARD (Interactive Rule 3) */}
-                    <div className={cn(
-                        "group relative w-[320px] h-[480px] flex-none bg-black/80 border border-white/20 backdrop-blur-xl flex flex-col p-8 justify-center text-center relative overflow-hidden transition-all duration-500",
-                        (!igConfirmed || !avatarConfirmed) && "opacity-40 pointer-events-none grayscale"
-                    )}>
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(220,38,38,0.1)_0%,transparent_70%)]" />
-                        
-                        <div className="relative z-10 flex flex-col items-center gap-6">
-                            <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center border border-white/10 shadow-[0_0_30px_rgba(234,179,8,0.3)]">
-                                 <Coins size={32} className="text-yellow-500" />
-                            </div>
-                            
-                            <div className="space-y-2">
-                                <h3 className="text-3xl font-black font-sans uppercase italic text-white">Rule #3</h3>
-                                <p className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest">
-                                    Claim your starting ration.
-                                </p>
-                            </div>
-
-                            <div className="py-4 border-y border-white/10 w-full">
-                                <span className="text-5xl font-black text-yellow-500 font-sans tracking-tighter">300</span>
-                                <span className="block text-[8px] font-mono text-yellow-700 uppercase tracking-[0.3em] mt-1">PopCoins</span>
-                            </div>
-
-                            <div className="space-y-4 w-full">
-                                <p className="text-[9px] font-mono text-neutral-500 uppercase">
-                                    By clicking below, you accept the Culling Game Contract.
-                                </p>
-                                <button 
-                                    onClick={handleEnterGame}
-                                    className="w-full h-14 bg-red-600 text-white font-black text-lg uppercase tracking-[0.2em] hover:bg-red-500 transition-all shadow-[0_0_20px_rgba(220,38,38,0.4)] flex items-center justify-center gap-2"
-                                >
-                                    ENTER GAME <ArrowRight size={16} />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                 </React.Fragment>
-               ))}
-            </div>
-         </div>
-
-         {/* --- STATIC CTA (For instant access) --- */}
-         <div className="w-full max-w-xs animate-in slide-in-from-bottom-10 fade-in duration-1000">
-            <MagneticWrapper>
-               <button 
-                 onClick={handleEnterGame}
-                 className="group relative h-16 w-full bg-white text-black font-black font-sans text-xl tracking-[0.2em] uppercase hover:bg-red-600 hover:text-white transition-all duration-300 flex items-center justify-center gap-4 overflow-hidden clip-path-slant shadow-[0_0_30px_rgba(255,255,255,0.2)]"
-               >
-                 <span>ENTER BARRIER</span>
-                 <Play size={20} fill="currentColor" />
-               </button>
-            </MagneticWrapper>
-         </div>
-
-      </section>
-
-      {/* --- SECTION 2: THE ECONOMY & STATUS --- */}
-      <section className="relative py-24 bg-neutral-900 border-t border-white/10">
-          <div className="text-center mb-16 space-y-4">
-              <h2 className="text-4xl font-black font-sans uppercase italic text-white tracking-tighter">Active Colonies</h2>
-              <p className="text-[10px] font-mono text-neutral-500 tracking-widest uppercase">Select your battlefield. Once entered, there is no return.</p>
+      {/* HERO CONTENT */}
+      <section className="relative z-30 flex-1 flex flex-col items-center justify-center gap-12 md:gap-16 px-8 pt-32 pb-20">
+        
+        {/* TITLE BLOCK */}
+        <div className="text-center space-y-8 animate-in fade-in zoom-in duration-1000">
+          <div className="inline-flex items-center gap-4 px-6 py-3 bg-black/70 border-4 border-red-600/60 backdrop-blur-xl rounded-full shadow-2xl shadow-red-600/50">
+            <AlertTriangle size={32} className="text-yellow-500 animate-pulse" />
+            <HackerText text="PARTICIPATION IS MANDATORY" className="text-xl md:text-2xl font-black text-yellow-400 tracking-widest" />
           </div>
 
-          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-6">
-              {COLONIES.map((colony, i) => (
-                  <div key={i} className="group relative h-64 bg-black border border-white/10 flex flex-col justify-between p-6 hover:border-red-500 transition-colors cursor-crosshair overflow-hidden">
-                      <div className="absolute inset-0 bg-red-900/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      
-                      <div className="flex justify-between items-start relative z-10">
-                          <span className="text-[8px] font-mono text-neutral-500 border border-neutral-800 px-2 py-1">NO. {colony.id}</span>
-                          {colony.status === "ONLINE" ? <Zap size={14} className="text-green-500 animate-pulse" /> : <Lock size={14} className="text-red-500" />}
-                      </div>
+          <h1 className="text-6xl md:text-9xl lg:text-[12rem] font-black leading-none tracking-tighter drop-shadow-2xl">
+            <span className="block text-white mix-blend-screen">BOYZ</span>
+            <span className="block text-transparent bg-clip-text bg-gradient-to-br from-red-600 via-red-500 to-black stroke-white stroke-4">
+              'N' GALZ
+            </span>
+          </h1>
 
-                      <div className="relative z-10 space-y-2">
-                          <h3 className="text-2xl font-black font-sans uppercase italic text-white group-hover:text-red-500 transition-colors">{colony.name}</h3>
-                          <p className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest">{colony.type}</p>
-                      </div>
-
-                      <div className="relative z-10 border-t border-white/10 pt-4 flex justify-between items-end">
-                          <div>
-                              <span className="block text-[8px] text-neutral-500 uppercase">Population</span>
-                              <span className="text-sm font-mono text-white">{colony.players.toLocaleString()}</span>
-                          </div>
-                          <span className={colony.status === "ONLINE" ? "text-[8px] text-green-500 font-bold" : "text-[8px] text-red-500 font-bold"}>{colony.status}</span>
-                      </div>
-                  </div>
-              ))}
-          </div>
-      </section>
-
-      {/* --- FOOTER --- */}
-      <footer className="py-12 border-t border-white/10 bg-black text-center">
-          <p className="text-[9px] font-mono text-neutral-600 uppercase tracking-widest">
-              Warning: By entering, you agree to the rules of the Culling. Death is permanent.
+          <p className="text-xl md:text-2xl font-mono text-neutral-400 uppercase tracking-widest max-w-2xl mx-auto leading-relaxed">
+            The Culling Game Has Begun • Kill for Status • Survive for Eternal Wealth
           </p>
-      </footer>
+        </div>
 
-      <style jsx global>{`
-        .clip-path-slant {
-          clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%, 0 20%);
-        }
-      `}</style>
+        {/* PROTOCOL CARDS (Replacing Form) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl">
+          {PROTOCOLS.map((proto, i) => (
+            <div 
+              key={proto.id}
+              className={cn(
+                "relative bg-black/60 backdrop-blur-md border-2 p-8 rounded-2xl flex flex-col items-center text-center gap-4 group hover:bg-black/80 transition-all duration-500",
+                proto.border
+              )}
+              style={{ animationDelay: `${i * 150}ms` }}
+            >
+              <div className={cn("p-4 rounded-full bg-black/50 border border-white/10 mb-2 group-hover:scale-110 transition-transform", proto.color)}>
+                <proto.icon size={40} />
+              </div>
+              <h3 className="text-2xl font-black italic uppercase tracking-widest text-white">
+                <span className="text-neutral-600 mr-2">{proto.id}.</span> {proto.title}
+              </h3>
+              <p className="text-sm font-mono text-neutral-400 uppercase leading-relaxed">
+                {proto.desc}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* MASSIVE CTA */}
+        <div className="w-full max-w-md">
+          <MagneticWrapper>
+            <button 
+              onClick={handleEnterGame}
+              className="group relative w-full py-8 md:py-10 text-3xl md:text-5xl font-black uppercase bg-gradient-to-r from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 shadow-[0_0_60px_rgba(220,38,38,0.6)] hover:shadow-[0_0_100px_rgba(220,38,38,0.8)] transition-all flex items-center justify-center gap-6 border-4 border-red-500/50"
+            >
+              <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
+              <span className="relative z-10 flex items-center gap-4">
+                BREACH BARRIER <ArrowRight size={48} className="group-hover:translate-x-2 transition-transform" />
+              </span>
+            </button>
+          </MagneticWrapper>
+          <p className="text-center mt-6 text-xs font-mono text-neutral-600 uppercase tracking-widest">
+            By clicking above, you agree to the lethal terms of service.
+          </p>
+        </div>
+
+      </section>
+
+      {/* COLONIES PREVIEW */}
+      <section className="relative py-20 md:py-32 bg-gradient-to-b from-black to-neutral-900 border-t-8 border-red-900/60">
+        <div className="text-center mb-12 md:mb-20 px-4">
+          <HackerText text="ACTIVE BATTLE ZONES" className="text-5xl md:text-7xl font-black text-red-400 mb-6" />
+          <p className="text-xl md:text-2xl font-mono text-neutral-400 uppercase tracking-widest">
+            Choose Your Graveyard
+          </p>
+        </div>
+
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12 px-6 md:px-12">
+          {COLONIES.map((colony) => (
+            <div key={colony.id} className={cn(
+              "relative h-80 md:h-96 bg-black/80 border-8 rounded-3xl overflow-hidden shadow-2xl transition-all hover:scale-105 group",
+              colony.status === "ONLINE" ? "border-red-600/80" : "border-neutral-800 opacity-60"
+            )}>
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
+              {colony.status === "LOCKED" && <Lock size={100} className="absolute inset-0 m-auto text-red-600/60" />}
+              
+              <div className="relative h-full p-8 md:p-12 flex flex-col justify-between">
+                <div className="flex justify-between items-start">
+                  <span className="text-2xl md:text-3xl font-black text-red-500">NO.{colony.id}</span>
+                  <div className="text-right">
+                    <span className="block text-base md:text-lg font-mono text-neutral-400 uppercase">{colony.threat}</span>
+                    {colony.status === "ONLINE" ? <Zap size={32} className="text-green-500 animate-pulse ml-auto mt-2" /> : <Skull size={32} className="text-red-500 ml-auto mt-2" />}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-4xl md:text-5xl font-black uppercase mb-2 md:mb-4 text-white group-hover:text-red-500 transition-colors">{colony.name}</h3>
+                  <p className="text-xl md:text-2xl font-mono text-neutral-300 uppercase">{colony.type}</p>
+                </div>
+
+                <div className="flex justify-between items-end border-t border-white/10 pt-4">
+                  <div>
+                    <span className="block text-lg md:text-xl font-mono text-neutral-500 uppercase">Population</span>
+                    <span className="text-4xl md:text-6xl font-black text-white">{colony.players.toLocaleString()}</span>
+                  </div>
+                  <span className={cn("text-2xl md:text-3xl font-black", colony.status === "ONLINE" ? "text-green-500" : "text-red-500")}>
+                    {colony.status}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer className="py-20 border-t-8 border-red-900/60 bg-black text-center px-6">
+        <HackerText text="WARNING: NO RESPAWNS" className="text-3xl md:text-4xl font-black text-red-500 mb-8" />
+        <p className="text-xl md:text-2xl font-mono text-neutral-500 uppercase tracking-widest max-w-4xl mx-auto">
+          By entering the barrier, you forfeit all rights. Death is permanent. Wealth is eternal.
+        </p>
+      </footer>
     </main>
   );
 }

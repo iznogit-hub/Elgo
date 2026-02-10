@@ -1,15 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image"; 
 import { 
-  CreditCard, Lock, Key, Zap, ArrowLeft, Gem,
-  Database, ShieldAlert, ShoppingCart, Globe, 
-  Smartphone, X, ScanLine, Box, Newspaper, Megaphone, CheckCircle2
+  CreditCard, Package, Megaphone, ArrowLeft, 
+  ShoppingCart, Smartphone, Box, Sparkles, Diamond,
 } from "lucide-react";
-import { doc, updateDoc, increment, arrayUnion, addDoc, collection } from "firebase/firestore";
+import { doc, updateDoc, increment, arrayUnion, addDoc, collection, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Background } from "@/components/ui/background";
 import { Button } from "@/components/ui/button";
 import { TransitionLink } from "@/components/ui/transition-link";
 import { SoundPrompter } from "@/components/ui/sound-prompter";
@@ -18,309 +16,358 @@ import { useSfx } from "@/hooks/use-sfx";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/context/auth-context";
 import { toast } from "sonner";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { HackerText } from "@/components/ui/hacker-text";
 
 const MERCHANT = {
   vpa: "iznoatwork@okicici", 
   name: "Boyz_N_Galz_Armory"
 };
 
-// --- DATA: CURRENCY ---
+// EXPANDED SUPPLY DROPS
 const SUPPLY_DROPS = [
-  { id: "drop_s", name: "Recruit Stash", amount: 500, price: 299, tag: "STARTER" },
-  { id: "drop_m", name: "Soldier Crate", amount: 1200, price: 899, tag: "POPULAR" },
-  { id: "drop_l", name: "Warlord Chest", amount: 3000, price: 2499, tag: "VALUE" },
-  { id: "drop_xl", name: "God Mode", amount: 8000, price: 4999, tag: "WHALE" },
+  { id: "drop_xs", name: "Recon Pack", amount: 300, price: 199, tag: "NEW" },
+  { id: "drop_s", name: "Recruit Stash", amount: 800, price: 499, tag: "STARTER" },
+  { id: "drop_m", name: "Soldier Crate", amount: 2000, price: 1499, tag: "POPULAR" },
+  { id: "drop_l", name: "Elite Cache", amount: 5000, price: 3499, tag: "BEST VALUE" },
+  { id: "drop_xl", name: "Warlord Vault", amount: 12000, price: 7999, tag: "WHALE" },
+  { id: "drop_god", name: "God Mode Bundle", amount: 25000, price: 14999, tag: "LIMITED", limited: true },
 ];
 
-// --- DATA: ITEMS ---
+// EXPANDED BLACK MARKET ITEMS
 const BLACK_MARKET = [
-  { id: "key_niche", name: "Colony Key", description: "Unlock new battle zones.", icon: <Key className="text-yellow-500" />, cost: 100, type: "ACCESS" },
-  { id: "boost_speed", name: "Adrenaline", description: "2x Kill Speed for 1hr.", icon: <Zap className="text-red-500" />, cost: 50, type: "BOOST" },
-  { id: "contract_followers", name: "Mercenary Squad", description: "Gain 50 loyal soldiers.", icon: <Database className="text-white" />, cost: 500, type: "GROWTH" },
-  { id: "intel_leak", name: "Spy Network", description: "See who viewed your profile.", icon: <Globe className="text-green-500" />, cost: 25, type: "INTEL" }
+  { id: "boost_speed", name: "Adrenaline Surge", desc: "2x Mission Speed • 2 Hours", icon: "/items/boost_speed.jpg", cost: 150, rarity: "rare" },
+  { id: "boost_loot", name: "Loot Magnet", desc: "+50% Loot Chance • 4 Hours", icon: "/items/boost_loot.jpg", cost: 300, rarity: "epic" },
+  { id: "boost_energy", name: "Infinite Energy", desc: "Unlimited Energy • 1 Hour", icon: "/items/boost_energy.jpg", cost: 500, rarity: "legendary" },
+  { id: "key_niche", name: "Sector Key", desc: "Instant Unlock 1 New Colony", icon: "/items/key_niche.jpg", cost: 800, rarity: "rare" },
+  { id: "key_vip", name: "Inner Circle Pass", desc: "Permanent Elite Tier Access", icon: "/items/key_vip.jpg", cost: 5000, rarity: "mythic" },
+  { id: "skin_legend", name: "Legendary Skin Pack", desc: "3 Exclusive Avatars", icon: "/items/skin_legend.jpg", cost: 1200, rarity: "epic" },
+  { id: "title_warlord", name: "Warlord Title", desc: "Custom Chat Badge + Crown", icon: "/items/title_warlord.jpg", cost: 2000, rarity: "legendary" },
+  { id: "growth_squad", name: "Mercenary Contract", desc: "+100 Auto-Recruits", icon: "/items/growth_squad.jpg", cost: 1000, rarity: "rare" },
 ];
 
-// --- DATA: PR PACKAGES (New) ---
-const AGENCY_PACKS = [
-    { 
-        id: "pr_starter", 
-        name: "The Debut", 
-        price: 4999, 
-        features: ["1 Global Press Release", "Google News Indexing", "Distribution to 100+ Sites", "verified_ready Tag"],
-        icon: <Newspaper size={32} className="text-white" />,
-        tag: "ESSENTIAL"
-    },
-    { 
-        id: "pr_growth", 
-        name: "Viral Vector", 
-        price: 14999, 
-        features: ["3 Major Articles", "Yahoo Finance Feature", "Instagram Blue Tick Support", "Dedicated PR Manager"],
-        icon: <Megaphone size={32} className="text-yellow-500" />,
-        tag: "POPULAR"
-    },
-    { 
-        id: "pr_celeb", 
-        name: "Icon Status", 
-        price: 49999, 
-        features: ["Full Media Takeover", "Forbes/Entrepreneur Mention", "Wikipedia Page Draft", "Lifetime Elite Membership"],
-        icon: <Gem size={32} className="text-purple-500" />,
-        tag: "LEGENDARY"
-    }
+// BUNDLES
+const BUNDLES = [
+  { id: "bundle_starter", name: "Operator Bundle", items: ["Recruit Stash", "Adrenaline", "Sector Key"], original: 1748, price: 1299, tag: "60% OFF" },
+  { id: "bundle_pro", name: "Dominance Bundle", items: ["Soldier Crate", "Loot Magnet", "Legendary Skin"], original: 4499, price: 2999, tag: "HOT" },
+  { id: "bundle_god", name: "Ascension Bundle", items: ["Warlord Vault", "God Mode Boost", "Warlord Title", "Inner Circle Pass"], original: 24999, price: 14999, tag: "LIMITED TIME" },
 ];
+
+// EXPANDED AGENCY
+const AGENCY_PACKS = [
+  { id: "pr_debut", name: "The Debut", price: 7999, features: ["1 Global PR", "100+ News Sites", "Google Indexing", "Social Boost"], tag: "ENTRY" },
+  { id: "pr_viral", name: "Viral Vector", price: 24999, features: ["3 Major Features", "Yahoo/Forbes Potential", "Instagram Verification Assist", "1M Reach Campaign"], tag: "POPULAR" },
+  { id: "pr_icon", name: "Icon Status", price: 79999, features: ["Full Media Domination", "Guaranteed Major Publication", "Wikipedia Draft", "Lifetime VIP + Custom Skin"], tag: "LEGENDARY" },
+  { id: "pr_empire", name: "Empire Builder", price: 199999, features: ["Everything in Icon + TV Interview Slot", "Brand Partnership Intro", "Personal PR Team 6 Months"], tag: "WHALE ONLY" },
+];
+
+const getRarityStyle = (rarity: string) => {
+  switch (rarity) {
+    case "mythic": return { border: "border-purple-500/80", glow: "shadow-purple-600/60", tag: "bg-purple-600" };
+    case "legendary": return { border: "border-yellow-500/80", glow: "shadow-yellow-600/60", tag: "bg-yellow-600" };
+    case "epic": return { border: "border-red-500/70", glow: "shadow-red-600/50", tag: "bg-red-600" };
+    case "rare": return { border: "border-cyan-500/60", glow: "shadow-cyan-600/40", tag: "bg-cyan-600" };
+    default: return { border: "border-white/30", glow: "", tag: "bg-neutral-700" };
+  }
+};
 
 export default function StorePage() {
   const { play } = useSfx();
   const { user, userData, loading } = useAuth();
   
-  const [activeTab, setActiveTab] = useState<"MINT" | "MARKET" | "AGENCY">("MINT");
+  const [activeTab, setActiveTab] = useState<"MINT" | "MARKET" | "BUNDLES" | "AGENCY">("MINT");
   const [processing, setProcessing] = useState<string | null>(null);
   const [showQR, setShowQR] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<any>(null);
+  const [inventory, setInventory] = useState<any[]>([]);
 
-  const popCoins = userData?.wallet?.popCoins || 0;
+  const popCoins = userData?.wallet?.popCoins ?? 0;
 
-  // --- HANDLER: PURCHASE FLOW ---
+  useEffect(() => {
+    if (!user) return;
+    const unsub = onSnapshot(doc(db, "users", user.uid), (doc) => {
+      setInventory(doc.data()?.inventory || []);
+    });
+    return unsub;
+  }, [user]);
+
   const handlePurchase = async (item: any, type: "fiat" | "points") => {
     if (!user) return;
 
-    // 1. FIAT PURCHASE (Minting / Agency) -> SHOW QR
     if (type === "fiat") {
-        play("click");
-        const txnRef = `${user.uid.substring(0,4)}_${Date.now().toString().slice(-4)}`;
-        // Note: For PR, we might want a different note
-        const note = activeTab === "AGENCY" ? `PR_ORDER: ${item.name}` : item.name;
-        
-        const upiUrl = `upi://pay?pa=${MERCHANT.vpa}&pn=${MERCHANT.name}&am=${item.price}&cu=INR&tn=${note}`;
-        
-        setCurrentOrder({ ...item, upiUrl, txnRef });
-        setShowQR(true);
+      play("click");
+      const txnRef = `${user.uid.substring(0,6)}_${Date.now()}`;
+      const note = `${activeTab.toUpperCase()}: ${item.name}`;
+      const upiUrl = `upi://pay?pa=${MERCHANT.vpa}&pn=${MERCHANT.name}&am=${item.price}&cu=INR&tn=${note}`;
+      
+      setCurrentOrder({ ...item, upiUrl, txnRef });
+      setShowQR(true);
 
-        // Log Intent
-        try {
-            await addDoc(collection(db, "payment_attempts"), {
-                uid: user.uid,
-                username: userData?.username || "Unknown",
-                item: item.name,
-                type: activeTab, // "MINT" or "AGENCY"
-                amount: item.price,
-                status: "QR_Generated",
-                txnRef,
-                timestamp: new Date().toISOString()
-            });
-        } catch(e) { console.error("Log failed", e); }
-        return;
+      try {
+        await addDoc(collection(db, "payment_attempts"), {
+          uid: user.uid,
+          username: userData?.username,
+          item: item.name,
+          type: activeTab,
+          amount: item.price,
+          status: "QR_Shown",
+          txnRef,
+          timestamp: new Date().toISOString()
+        });
+      } catch(e) {}
+      return;
     }
 
-    // 2. POINTS PURCHASE (Black Market) -> DIRECT DEDUCT
     if (type === "points") {
-        if (popCoins < item.cost) {
-            play("error");
-            toast.error(`INSUFFICIENT FUNDS // NEED ${item.cost} POINTS`);
-            return;
-        }
+      if (popCoins < item.cost) {
+        play("error");
+        toast.error(`INSUFFICIENT PC // GRIND HARDER`);
+        return;
+      }
 
-        if (confirm(`CONFIRM PURCHASE: ${item.name} for ${item.cost} PTS?`)) {
-            setProcessing(item.id);
-            play("kaching");
-            try {
-                const userRef = doc(db, "users", user.uid);
-                await updateDoc(userRef, {
-                    "wallet.popCoins": increment(-item.cost),
-                    "inventory": arrayUnion({
-                        itemId: item.id,
-                        name: item.name,
-                        purchasedAt: new Date().toISOString()
-                    })
-                });
-                play("success");
-                toast.success(`ITEM ACQUIRED: ${item.name}`);
-            } catch (e) {
-                play("error");
-                toast.error("TRANSACTION FAILED");
-            } finally {
-                setProcessing(null);
-            }
-        }
+      if (!confirm(`DEPLOY ${item.cost} PC FOR ${item.name.toUpperCase()}?`)) return;
+
+      setProcessing(item.id);
+      play("kaching");
+      try {
+        await updateDoc(doc(db, "users", user.uid), {
+          "wallet.popCoins": increment(-item.cost),
+          inventory: arrayUnion({
+            itemId: item.id,
+            name: item.name,
+            purchasedAt: new Date().toISOString()
+          })
+        });
+        toast.success(`ACQUIRED: ${item.name.toUpperCase()}`);
+        play("success");
+      } catch (e) {
+        toast.error("SYNC ERROR");
+      } finally {
+        setProcessing(null);
+      }
+    }
+  };
+
+  const handleSell = async (item: any) => {
+    if (!confirm(`SELL ${item.name.toUpperCase()} FOR ${(item.cost * 0.5).toFixed(0)} PC?`)) return;
+    play("kaching");
+    try {
+      await updateDoc(doc(db, "users", user!.uid), {
+        "wallet.popCoins": increment(Math.floor(item.cost * 0.5))
+      });
+      toast.success(`SOLD // +${Math.floor(item.cost * 0.5)} PC`);
+    } catch (e) {
+      toast.error("MARKET CRASH");
     }
   };
 
   if (loading) return null;
 
   return (
-    <main className="relative min-h-screen bg-black text-white font-sans overflow-hidden flex flex-col selection:bg-red-900 selection:text-white">
+    <main className="relative min-h-screen bg-black text-white font-sans overflow-hidden flex flex-col selection:bg-yellow-900 selection:text-black">
       
-      {/* --- ATMOSPHERE --- */}
+      {/* ATMOSPHERE */}
       <div className="absolute inset-0 z-0 pointer-events-none">
-        <Image src="/images/store-bg.jpg" alt="Black Market" fill priority className="object-cover opacity-20 grayscale contrast-125" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black" />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
+        <Image src="/images/store-bg.jpg" alt="Armory" fill priority className="object-cover opacity-15 grayscale contrast-150" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black via-black/70 to-black" />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay animate-pulse" />
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-96 h-96 bg-yellow-600/10 blur-[150px] rounded-full animate-pulse" />
       </div>
 
       <SoundPrompter />
 
-      {/* --- TOP NAV --- */}
-      <nav className="relative z-50 p-6 flex items-center justify-between border-b border-white/5 bg-black/80 backdrop-blur-xl">
-        <div className="flex items-center gap-4">
-            <TransitionLink href="/dashboard" onClick={() => play("hover")} className="w-10 h-10 border border-white/10 bg-black/40 flex items-center justify-center hover:border-red-500 hover:text-red-500 transition-all rounded-sm">
-              <ArrowLeft size={18} />
-            </TransitionLink>
+      {/* TOP HUD */}
+      <header className="relative z-50 flex-none border-b-8 border-yellow-900/60 bg-black/90 backdrop-blur-2xl">
+        <div className="px-8 py-6 flex items-center justify-between">
+          <TransitionLink href="/dashboard" className="flex items-center gap-6 group">
+            <div className="w-16 h-16 border-4 border-yellow-600/40 bg-black/60 backdrop-blur-md flex items-center justify-center group-hover:border-yellow-400 transition-all">
+              <ArrowLeft size={40} className="text-neutral-500 group-hover:text-yellow-400" />
+            </div>
             <div>
-                <h1 className="text-xl font-black font-sans tracking-tighter italic uppercase text-white">The_Armory</h1>
-                <p className="text-[8px] font-mono text-neutral-500 uppercase tracking-widest">Global_Supply_Chain</p>
+              <HackerText text="THE_ARMORY" className="text-5xl font-black text-yellow-400" />
+              <span className="block text-sm font-mono text-yellow-600 uppercase tracking-widest">Black_Market_Protocol_v9</span>
             </div>
-        </div>
-        
-        <div className="flex items-center gap-4">
+          </TransitionLink>
+
+          <div className="flex items-center gap-12">
             <div className="text-right">
-                <span className="block text-[7px] font-mono text-yellow-500/80 uppercase tracking-widest">War_Funds</span>
-                <span className="text-xl font-black font-mono text-yellow-400 tracking-tighter tabular-nums">{popCoins.toLocaleString()}</span>
-            </div>
-        </div>
-      </nav>
-
-      {/* --- TABS --- */}
-      <div className="relative z-40 max-w-6xl mx-auto w-full px-6 pt-8 pb-4 flex justify-center">
-        <div className="flex bg-neutral-900/50 border border-white/10 backdrop-blur-md p-1 rounded-sm overflow-x-auto no-scrollbar">
-            <button onClick={() => { setActiveTab("MINT"); play("click"); }} className={cn("px-6 py-3 text-[9px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 rounded-sm whitespace-nowrap", activeTab === "MINT" ? "bg-white text-black shadow-lg" : "text-neutral-500 hover:text-white")}>
-                <CreditCard size={12} /> Buy_Points
-            </button>
-            <button onClick={() => { setActiveTab("MARKET"); play("click"); }} className={cn("px-6 py-3 text-[9px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 rounded-sm whitespace-nowrap", activeTab === "MARKET" ? "bg-red-600 text-white shadow-lg" : "text-neutral-500 hover:text-white")}>
-                <ShoppingCart size={12} /> Black_Market
-            </button>
-            <button onClick={() => { setActiveTab("AGENCY"); play("click"); }} className={cn("px-6 py-3 text-[9px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 rounded-sm whitespace-nowrap", activeTab === "AGENCY" ? "bg-yellow-600 text-black shadow-lg" : "text-neutral-500 hover:text-white")}>
-                <Globe size={12} /> The_Agency
-            </button>
-        </div>
-      </div>
-
-      {/* --- CONTENT GRID --- */}
-      <div className="relative z-40 max-w-6xl mx-auto w-full px-6 pb-20 overflow-y-auto no-scrollbar h-full">
-        
-        {/* 1. MINT (Points) */}
-        {activeTab === "MINT" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-in slide-in-from-bottom-4 duration-500">
-                {SUPPLY_DROPS.map((item) => (
-                    <div key={item.id} className="group relative bg-neutral-900/40 border border-white/10 hover:border-yellow-500 hover:bg-yellow-950/10 transition-all p-6 flex flex-col justify-between h-64 overflow-hidden rounded-sm">
-                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-100 transition-opacity"><Box size={40} className="text-yellow-500" /></div>
-                        <div className="space-y-2 relative z-10">
-                            <Badge variant="outline" className="border-yellow-500/20 text-yellow-500 text-[8px] tracking-widest mb-2 rounded-none">{item.tag}</Badge>
-                            <h3 className="text-lg font-black font-sans italic uppercase text-white group-hover:text-yellow-400 transition-colors">{item.name}</h3>
-                            <div className="flex items-baseline gap-1">
-                                <span className="text-3xl font-black text-white">{item.amount.toLocaleString()}</span>
-                                <span className="text-[10px] font-mono text-neutral-500">PTS</span>
-                            </div>
-                        </div>
-                        <Button onClick={() => handlePurchase(item, "fiat")} className="w-full bg-white/5 border border-white/10 hover:bg-green-600 hover:text-white hover:border-green-500 transition-all text-[9px] font-black tracking-[0.2em] uppercase h-10 mt-4 group/btn rounded-none">
-                            <span className="group-hover/btn:hidden">₹{item.price} INR</span>
-                            <span className="hidden group-hover/btn:flex items-center gap-2">PAY NOW <Smartphone size={12}/></span>
-                        </Button>
-                    </div>
-                ))}
-            </div>
-        )}
-
-        {/* 2. MARKET (Items) */}
-        {activeTab === "MARKET" && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4 duration-500">
-                {BLACK_MARKET.map((item) => (
-                    <div key={item.id} className="relative bg-neutral-900/40 border border-white/10 hover:border-red-500/50 p-6 flex items-center gap-6 group transition-all rounded-sm">
-                        <div className="w-16 h-16 bg-black border border-white/5 flex items-center justify-center rounded-none group-hover:scale-110 transition-transform">{item.icon}</div>
-                        <div className="flex-1 space-y-1">
-                            <Badge variant="secondary" className="bg-white/5 text-white/40 text-[7px] tracking-widest mb-1 rounded-none">{item.type}</Badge>
-                            <h3 className="text-sm font-black font-sans uppercase text-white">{item.name}</h3>
-                            <p className="text-[9px] font-mono text-neutral-500 leading-relaxed uppercase">{item.description}</p>
-                            <div className="pt-3 flex items-center justify-between">
-                                <span className={cn("text-sm font-black font-mono", popCoins >= item.cost ? "text-yellow-400" : "text-red-500")}>{item.cost} PTS</span>
-                                <Button size="sm" onClick={() => handlePurchase(item, "points")} disabled={processing === item.id || popCoins < item.cost} className={cn("h-7 text-[8px] font-bold tracking-widest uppercase rounded-none", popCoins >= item.cost ? "bg-white text-black hover:bg-neutral-200" : "bg-white/5 text-white/20")}>
-                                    {processing === item.id ? "SYNC..." : "BUY"}
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        )}
-
-        {/* 3. AGENCY (PR Services) */}
-        {activeTab === "AGENCY" && (
-            <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-                <div className="text-center space-y-2">
-                    <h2 className="text-3xl font-black font-sans italic uppercase text-yellow-500 tracking-tighter">Global Influence Protocol</h2>
-                    <p className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest max-w-md mx-auto">
-                        Deploy your narrative to the world. <br/> AccessWire press releases, verified articles, and celebrity status.
-                    </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {AGENCY_PACKS.map((pack) => (
-                        <div key={pack.id} className="relative bg-neutral-900/60 border border-yellow-500/20 hover:border-yellow-500 p-8 flex flex-col items-center text-center gap-6 group transition-all rounded-sm overflow-hidden">
-                            {/* Glow Effect */}
-                            <div className="absolute top-0 w-full h-1 bg-gradient-to-r from-transparent via-yellow-500 to-transparent opacity-50" />
-                            
-                            <div className="w-20 h-20 bg-black border border-white/5 flex items-center justify-center rounded-full group-hover:scale-110 transition-transform shadow-2xl">
-                                {pack.icon}
-                            </div>
-
-                            <div className="space-y-2">
-                                <Badge className="bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 text-[9px] rounded-none">{pack.tag}</Badge>
-                                <h3 className="text-xl font-black font-sans uppercase text-white">{pack.name}</h3>
-                                <p className="text-2xl font-mono font-bold text-white">₹{pack.price.toLocaleString()}</p>
-                            </div>
-
-                            <ul className="space-y-3 w-full text-left bg-black/40 p-4 border border-white/5">
-                                {pack.features.map((feat, i) => (
-                                    <li key={i} className="flex items-center gap-2 text-[9px] font-mono text-neutral-300 uppercase">
-                                        <CheckCircle2 size={10} className="text-green-500" /> {feat}
-                                    </li>
-                                ))}
-                            </ul>
-
-                            <Button onClick={() => handlePurchase(pack, "fiat")} className="w-full h-12 bg-yellow-600 hover:bg-yellow-500 text-black font-black uppercase tracking-widest rounded-none mt-auto">
-                                Purchase Contract
-                            </Button>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        )}
-
-      </div>
-
-      {/* --- QR CODE MODAL --- */}
-      {showQR && currentOrder && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-              <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" onClick={() => setShowQR(false)} />
-              <div className="relative bg-black border border-white/20 p-8 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
-                  <button onClick={() => setShowQR(false)} className="absolute top-4 right-4 text-neutral-500 hover:text-white transition-colors"><X size={20} /></button>
-                  <div className="flex flex-col items-center space-y-6">
-                      <div className="flex items-center gap-2 text-yellow-500 mb-2">
-                          <ScanLine className="animate-pulse" size={20} />
-                          <span className="font-black font-sans text-lg tracking-widest uppercase">Secure_Gateway</span>
-                      </div>
-                      <div className="p-4 bg-white border-4 border-yellow-500">
-                          <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentOrder.upiUrl)}`} alt="Scan to Pay" className="w-48 h-48 mix-blend-multiply" />
-                      </div>
-                      <div className="text-center space-y-1">
-                          <p className="text-white font-black text-2xl font-mono">₹{currentOrder.price.toLocaleString()}</p>
-                          <p className="text-neutral-500 text-[10px] font-mono uppercase tracking-widest">{currentOrder.name}</p>
-                          <p className="text-neutral-600 text-[8px] font-mono uppercase">Ref: {currentOrder.txnRef}</p>
-                      </div>
-                      <Button onClick={() => window.location.href = currentOrder.upiUrl} className="w-full bg-green-600 hover:bg-green-500 text-white font-black h-12 uppercase tracking-widest rounded-none shadow-[0_0_20px_rgba(34,197,94,0.3)] transition-all active:scale-95">
-                          PAY VIA APP <Smartphone size={16} className="ml-2" />
-                      </Button>
-                  </div>
+              <span className="text-lg font-mono text-neutral-500 uppercase">Vault Balance</span>
+              <div className="flex items-center gap-6">
+                <Diamond size={48} className="text-yellow-500 animate-pulse" />
+                <span className="text-6xl font-black text-yellow-400 tabular-nums">{popCoins.toLocaleString()}</span>
               </div>
+            </div>
           </div>
+        </div>
+
+        {/* TABS */}
+        <div className="flex overflow-x-auto no-scrollbar">
+          <button onClick={() => setActiveTab("MINT")} className={cn("flex-1 py-6 text-xl font-black uppercase tracking-widest transition-all", activeTab === "MINT" ? "bg-gradient-to-b from-yellow-600 to-yellow-400 text-black border-t-8 border-yellow-300" : "text-neutral-600 hover:text-neutral-300")}>
+            <CreditCard size={32} className="inline mr-4" /> Mint_PC
+          </button>
+          <button onClick={() => setActiveTab("MARKET")} className={cn("flex-1 py-6 text-xl font-black uppercase tracking-widest transition-all", activeTab === "MARKET" ? "bg-gradient-to-b from-red-600 to-red-400 text-white border-t-8 border-red-300" : "text-neutral-600 hover:text-neutral-300")}>
+            <ShoppingCart size={32} className="inline mr-4" /> Market
+          </button>
+          <button onClick={() => setActiveTab("BUNDLES")} className={cn("flex-1 py-6 text-xl font-black uppercase tracking-widest transition-all", activeTab === "BUNDLES" ? "bg-gradient-to-b from-purple-600 to-purple-400 text-white border-t-8 border-purple-300" : "text-neutral-600 hover:text-neutral-300")}>
+            <Package size={32} className="inline mr-4" /> Bundles
+          </button>
+          <button onClick={() => setActiveTab("AGENCY")} className={cn("flex-1 py-6 text-xl font-black uppercase tracking-widest transition-all", activeTab === "AGENCY" ? "bg-gradient-to-b from-cyan-600 to-cyan-400 text-black border-t-8 border-cyan-300" : "text-neutral-600 hover:text-neutral-300")}>
+            <Megaphone size={32} className="inline mr-4" /> Agency
+          </button>
+        </div>
+      </header>
+
+      {/* MAIN SHOP */}
+      <div className="relative z-40 flex-1 overflow-hidden p-8">
+        <ScrollArea className="h-full pr-6">
+
+          {/* MINT TAB */}
+          {activeTab === "MINT" && (
+            <div>
+              <HackerText text="PC_MINTING_VAULT" className="text-5xl font-black text-yellow-400 mb-12 text-center" />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                {SUPPLY_DROPS.map((drop) => (
+                  <div key={drop.id} className={cn("relative bg-gradient-to-b from-neutral-900/80 to-black border-4 rounded-3xl overflow-hidden shadow-2xl transition-all hover:scale-105", drop.limited && "border-yellow-500/80 shadow-yellow-600/60 animate-pulse")}>
+                    {drop.limited && <Badge className="absolute top-4 right-4 bg-red-600 text-white text-lg px-4">LIMITED</Badge>}
+                    <div className="p-8 text-center">
+                      <Box size={120} className="text-yellow-500 mx-auto mb-6" />
+                      <Badge className="mb-4 bg-yellow-600 text-black">{drop.tag}</Badge>
+                      <h3 className="text-3xl font-black uppercase mb-4">{drop.name}</h3>
+                      <div className="text-6xl font-black text-yellow-400 mb-2">{drop.amount.toLocaleString()}</div>
+                      <p className="text-lg font-mono text-neutral-400 mb-8">PC INSTANT</p>
+                      <Button onClick={() => handlePurchase(drop, "fiat")} className="w-full py-8 text-2xl font-black bg-gradient-to-r from-green-600 to-green-400 hover:from-green-500 hover:to-green-300">
+                        ₹{drop.price} • PAY NOW
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* MARKET TAB */}
+          {activeTab === "MARKET" && (
+            <div>
+              <HackerText text="BLACK_MARKET_EXCHANGE" className="text-5xl font-black text-red-400 mb-12 text-center" />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                {BLACK_MARKET.map((item) => {
+                  const rarity = getRarityStyle(item.rarity || "rare");
+                  const owned = inventory.some(i => i.itemId === item.id);
+                  return (
+                    <div key={item.id} className={cn("relative bg-black/80 border-4 rounded-3xl overflow-hidden shadow-2xl transition-all hover:scale-105", rarity.border, rarity.glow)}>
+                      <div className="aspect-video relative">
+                        <div className={cn("absolute inset-0 bg-gradient-to-br from-black to-neutral-900 flex items-center justify-center")}>
+                            <Box size={64} className="text-white/20" />
+                        </div>
+                        <Badge className={cn("absolute top-4 left-4 text-lg px-4", rarity.tag)}>{item.rarity.toUpperCase()}</Badge>
+                        {owned && <Badge className="absolute top-4 right-4 bg-green-600 text-black text-lg px-4">OWNED</Badge>}
+                      </div>
+                      <div className="p-8 text-center">
+                        <h3 className="text-3xl font-black uppercase mb-4">{item.name}</h3>
+                        <p className="text-lg font-mono text-neutral-300 mb-8 uppercase">{item.desc}</p>
+                        <div className="flex items-center justify-center gap-4 mb-8">
+                          <Diamond size={40} className="text-yellow-500" />
+                          <span className="text-5xl font-black text-yellow-400">{item.cost}</span>
+                        </div>
+                        {owned ? (
+                          <Button onClick={() => handleSell(item)} className="w-full py-6 text-2xl font-black bg-red-600 hover:bg-red-500">
+                            SELL FOR {Math.floor(item.cost * 0.5)} PC
+                          </Button>
+                        ) : (
+                          <Button onClick={() => handlePurchase(item, "points")} disabled={processing === item.id || popCoins < item.cost} className="w-full py-6 text-2xl font-black bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-500 hover:to-cyan-300">
+                            {processing === item.id ? "SYNCING..." : "ACQUIRE"}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* BUNDLES TAB */}
+          {activeTab === "BUNDLES" && (
+            <div>
+              <HackerText text="LIMITED_EDITION_BUNDLES" className="text-5xl font-black text-purple-400 mb-12 text-center" />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
+                {BUNDLES.map((bundle) => (
+                  <div key={bundle.id} className="relative bg-gradient-to-br from-purple-950/60 to-black border-4 border-purple-600/80 rounded-3xl overflow-hidden shadow-2xl hover:scale-105 transition-all">
+                    <Badge className="absolute top-6 right-6 bg-red-600 text-white text-2xl px-6 py-2">{bundle.tag}</Badge>
+                    <div className="p-10 text-center">
+                      <Package size={140} className="text-purple-500 mx-auto mb-8" />
+                      <h3 className="text-4xl font-black uppercase mb-6">{bundle.name}</h3>
+                      <div className="space-y-4 mb-10">
+                        {bundle.items.map((it, i) => (
+                          <div key={i} className="text-xl font-mono text-purple-300 uppercase">{it}</div>
+                        ))}
+                      </div>
+                      <div className="flex items-center justify-center gap-6 mb-8">
+                        <span className="text-3xl font-mono text-neutral-500 line-through">₹{bundle.original}</span>
+                        <span className="text-6xl font-black text-purple-400">₹{bundle.price}</span>
+                      </div>
+                      <Button onClick={() => handlePurchase({ ...bundle, price: bundle.price }, "fiat")} className="w-full py-8 text-3xl font-black bg-gradient-to-r from-purple-600 to-purple-400 hover:from-purple-500 hover:to-purple-300">
+                        GRAB BUNDLE
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* AGENCY TAB */}
+          {activeTab === "AGENCY" && (
+            <div>
+              <HackerText text="GLOBAL_INFLUENCE_AGENCY" className="text-5xl font-black text-cyan-400 mb-12 text-center" />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
+                {AGENCY_PACKS.map((pack) => (
+                  <div key={pack.id} className="relative bg-gradient-to-b from-cyan-950/60 to-black border-4 border-cyan-600/80 rounded-3xl overflow-hidden shadow-2xl hover:scale-105 transition-all">
+                    <Badge className="absolute top-6 left-6 bg-cyan-600 text-black text-xl px-4">{pack.tag}</Badge>
+                    <div className="p-10 text-center">
+                      <Megaphone size={120} className="text-cyan-500 mx-auto mb-8" />
+                      <h3 className="text-4xl font-black uppercase mb-6">{pack.name}</h3>
+                      <div className="text-6xl font-black text-cyan-400 mb-10">₹{pack.price.toLocaleString()}</div>
+                      <ul className="space-y-4 text-left mb-12">
+                        {pack.features.map((f, i) => (
+                          <li key={i} className="flex items-center gap-4 text-lg font-mono text-cyan-300">
+                            <Sparkles size={24} className="text-yellow-500" /> {f}
+                          </li>
+                        ))}
+                      </ul>
+                      <Button onClick={() => handlePurchase(pack, "fiat")} className="w-full py-8 text-3xl font-black bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-500 hover:to-cyan-300">
+                        DEPLOY CAMPAIGN
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </ScrollArea>
+      </div>
+
+      {/* QR MODAL */}
+      {showQR && currentOrder && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-8 bg-black/95 backdrop-blur-xl">
+          <div className="relative bg-gradient-to-b from-neutral-900 to-black border-8 border-yellow-600/80 rounded-3xl p-12 max-w-lg w-full shadow-2xl">
+            <button onClick={() => setShowQR(false)} className="absolute top-6 right-6 text-neutral-400 hover:text-white text-4xl">×</button>
+            <HackerText text="SECURE PAYMENT GATEWAY" className="text-5xl font-black text-yellow-400 mb-8 text-center" />
+            <div className="bg-white p-8 rounded-2xl mb-10">
+              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(currentOrder.upiUrl)}`} alt="QR" className="w-full" />
+            </div>
+            <div className="text-center space-y-4">
+              <div className="text-6xl font-black text-yellow-400">₹{currentOrder.price.toLocaleString()}</div>
+              <p className="text-2xl font-mono uppercase">{currentOrder.name}</p>
+              <p className="text-lg text-neutral-400">Ref: {currentOrder.txnRef}</p>
+            </div>
+            <Button onClick={() => window.location.href = currentOrder.upiUrl} className="w-full mt-12 py-10 text-4xl font-black bg-gradient-to-r from-green-600 to-green-400 hover:from-green-500 hover:to-green-300 shadow-2xl shadow-green-600/60">
+              OPEN PAYMENT APP <Smartphone size={48} className="ml-6" />
+            </Button>
+          </div>
+        </div>
       )}
-
-      {/* --- FOOTER --- */}
-      <footer className="fixed bottom-0 left-0 right-0 z-[100] px-6 py-4 flex items-center justify-between border-t border-white/5 bg-black/95 backdrop-blur-xl">
-          <div className="flex items-center gap-2 text-[8px] font-mono text-neutral-600">
-            <ShieldAlert size={10} className="text-yellow-500" />
-            <span>ENCRYPTED_TRANSACTION_LAYER // V4.0</span>
-          </div>
-      </footer>
-
     </main>
   );
 }

@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import Image from "next/image"; 
 import { 
   ShieldAlert, Crosshair, Lock, Play, 
-  Activity, Zap, Globe, Skull, Check, X
+  Activity, Zap, Globe, Skull, Check, X,
+  Terminal, BarChart3, Youtube, Instagram, Timer,
+  Flame, Trophy, Target, Radio, AlertTriangle,
+  Swords, UserCheck, Clock, ChevronRight
 } from "lucide-react";
 import { 
   collection, query, where, onSnapshot, 
@@ -14,13 +17,34 @@ import {
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/context/auth-context";
 import { toast } from "sonner";
-import { NICHE_DATA } from "@/lib/niche-data"; // Importing your Master Data
+import { NICHE_DATA } from "@/lib/niche-data"; 
 
 // UI Components
 import { useSfx } from "@/hooks/use-sfx";
 import { cn } from "@/lib/utils";
 import PlayerStatusCard from "@/components/ui/player-status-card";
 import { HackerText } from "@/components/ui/hacker-text";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
+
+// --- 🛠️ GAME CONFIGURATION ---
+const MAX_TITHE = 100;
+
+// MOCK: Daily Quests (In V2, fetch from Firestore 'daily_tasks')
+const DAILY_QUESTS = [
+  { id: "login", label: "Login Mainframe", reward: 50, completed: true },
+  { id: "scan", label: "Scan 5 Targets", reward: 100, completed: false, progress: 60 },
+  { id: "yt_op", label: "Execute 2 YouTube Ops", reward: 200, completed: false, progress: 30 },
+  { id: "recruit", label: "Recruit 1 Operative", reward: 300, completed: false, progress: 0 },
+];
+
+// MOCK: Atmosphere Data
+const FAKE_KILL_FEED = [
+  { killer: "SHADOWREAPER", target: "N00B_HUNTER", amount: 250 },
+  { killer: "CYBERWOLF", target: "DATA_THIEF", amount: 180 },
+  { killer: "NEON_VIPER", target: "GRID_RUNNER", amount: 320 },
+  { killer: "GHOST_01", target: "SYSTEM_ADMIN", amount: 500 },
+];
 
 export default function Dashboard() {
   const router = useRouter();
@@ -29,15 +53,51 @@ export default function Dashboard() {
   
   // STATE
   const [incomingAttacks, setIncomingAttacks] = useState<any[]>([]);
+  const [networkMode, setNetworkMode] = useState<"INSTA" | "YOUTUBE">("INSTA");
+  const [titheProgress, setTitheProgress] = useState(100);
+  const [glitch, setGlitch] = useState(false);
   
-  // DATA
+  // DERIVED DATA
   const score = userData?.wallet?.popCoins || 0;
   const unlockedColonies = userData?.unlockedNiches || ["general"]; 
+  const isYoutubeUnlocked = userData?.membership?.tier !== "recruit"; // Locked for Recruits
+  const rankTitle = userData?.membership?.tier?.toUpperCase() || "RECRUIT";
+  const totalDailyReward = DAILY_QUESTS.reduce((sum, q) => sum + q.reward, 0);
 
-  // --- 1. DEFENSE LOGIC ---
+  // --- 1. FX: RANDOM GLITCH ---
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (Math.random() < 0.05) { // 5% chance every 3s
+        setGlitch(true);
+        play("error"); // Subtle glitch sound
+        setTimeout(() => setGlitch(false), 150);
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [play]);
+
+  // --- 2. MECHANIC: BLOOD TITHE (Countdown) ---
+  useEffect(() => {
+    const updateTithe = () => {
+        const now = new Date();
+        const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+        const totalMs = 24 * 60 * 60 * 1000; // 24 hours
+        const remaining = endOfDay.getTime() - Date.now();
+        
+        const percent = Math.max(0, (remaining / totalMs) * 100);
+        setTitheProgress(percent);
+    };
+    
+    updateTithe();
+    const interval = setInterval(updateTithe, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, []);
+
+  // --- 3. MECHANIC: DEFENSE SYSTEM (Real-time) ---
   useEffect(() => {
     if (!userData?.username) return;
     
+    // Listen for attacks where I am the target
     const q = query(
         collection(db, "kill_claims"), 
         where("targetName", "==", userData.username),
@@ -47,191 +107,340 @@ export default function Dashboard() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const attacks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setIncomingAttacks(attacks);
+        
         if (attacks.length > 0) {
             play("error"); 
-            if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([200, 100, 200]);
+            // Mobile Vibrate
+            if (typeof navigator !== "undefined" && navigator.vibrate) {
+                navigator.vibrate([300, 100, 300, 100, 600]);
+            }
         }
     });
 
     return () => unsubscribe();
   }, [userData, play]);
 
-  // --- HANDLERS (Confirm/Deny) ---
+  // --- HANDLERS ---
   const handleConfirmDeath = async (claim: any) => {
-      play("success");
-      const batch = writeBatch(db);
-      const killerRef = doc(db, "users", claim.killerId);
-      batch.update(killerRef, { 
-          "wallet.popCoins": increment(claim.amount),
-          "dailyTracker.bountiesClaimed": increment(1)
-      });
-      const myRef = doc(db, "users", userData!.uid);
-      batch.update(myRef, { "wallet.popCoins": increment(10) });
-      const claimRef = doc(db, "kill_claims", claim.id);
-      batch.update(claimRef, { status: "verified" });
-      await batch.commit();
-      toast.success("DEATH CONFIRMED // POINTS TRANSFERRED");
+      play("click");
+      try {
+          const batch = writeBatch(db);
+          // Pay Killer
+          const killerRef = doc(db, "users", claim.killerId);
+          batch.update(killerRef, { 
+              "wallet.popCoins": increment(claim.amount),
+              "dailyTracker.bountiesClaimed": increment(1)
+          });
+          // Pay Self (Consolation)
+          const myRef = doc(db, "users", userData!.uid);
+          batch.update(myRef, { "wallet.popCoins": increment(10) });
+          // Close Ticket
+          const claimRef = doc(db, "kill_claims", claim.id);
+          batch.update(claimRef, { status: "verified" });
+          
+          await batch.commit();
+          play("success");
+          toast.success("CONFIRMED // BLOOD PRICE PAID");
+      } catch (e) {
+          toast.error("TRANSMISSION FAILED");
+      }
   };
 
   const handleDenyDeath = async (claimId: string) => {
       play("error");
       await updateDoc(doc(db, "kill_claims", claimId), { status: "disputed" });
-      toast.error("ATTACK REPELLED // FLAGGED TO OVERSEER");
+      toast.error("COUNTER-ATTACK // DISPUTE LOGGED");
+  };
+
+  const toggleNetwork = (mode: "INSTA" | "YOUTUBE") => {
+      if (mode === "YOUTUBE" && !isYoutubeUnlocked) {
+          play("error");
+          toast.error("ACCESS DENIED // RANK UP TO UNLOCK YOUTUBE GRID");
+          return;
+      }
+      play("click");
+      setNetworkMode(mode);
   };
 
   if (loading) return null;
 
   return (
-    <main className="relative min-h-screen w-full bg-black text-white font-sans overflow-hidden flex flex-col selection:bg-red-900 selection:text-white">
+    <main className={cn(
+        "relative min-h-screen w-full bg-black text-white font-sans overflow-hidden flex flex-col selection:bg-red-900 selection:text-white transition-all duration-100", 
+        glitch && "invert opacity-90" // The Glitch Effect
+    )}>
       
-      {/* --- BACKGROUND --- */}
+      {/* BACKGROUND LAYER */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <Image 
           src="/images/dashboard-bg.jpg" 
           alt="War Room"
           fill
           priority
-          className="object-cover opacity-20 grayscale contrast-125"
+          className="object-cover opacity-20 grayscale contrast-150"
         />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/50 to-black" />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay animate-pulse" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black via-black/60 to-black" />
       </div>
 
-      {/* --- 1. DEFENSE ALERT (The Red Banner) --- */}
+      {/* 🚨 CRITICAL ALERT BANNER (Attacks) */}
       {incomingAttacks.length > 0 && (
-         <div className="relative z-50 bg-red-600 text-white px-6 py-2 flex items-center justify-between animate-in slide-in-from-top-full duration-300 shadow-[0_0_30px_red]">
-             <div className="flex items-center gap-4">
-                 <ShieldAlert className="animate-pulse text-black" size={24} />
-                 <span className="font-black font-mono text-sm tracking-widest uppercase">
-                     WARNING: {incomingAttacks.length} HOSTILE SIGNATURES DETECTED
-                 </span>
+         <div className="relative z-[200] bg-gradient-to-r from-red-900 via-red-600 to-red-900 text-white px-6 py-5 flex flex-col lg:flex-row items-center justify-between shadow-[0_0_80px_red] border-b-8 border-red-950 animate-in slide-in-from-top-full">
+             <div className="flex items-center gap-6 mb-4 lg:mb-0">
+                 <AlertTriangle className="animate-pulse" size={32} />
+                 <div>
+                   <HackerText text="INCOMING ASSASSINATION PROTOCOLS" className="text-2xl font-black tracking-widest" />
+                   <span className="block text-sm font-mono text-red-200 mt-1">
+                     {incomingAttacks.length} ACTIVE KILL CONTRACT{incomingAttacks.length !== 1 ? "S" : ""}
+                   </span>
+                 </div>
              </div>
-             <div className="flex gap-2">
+             <div className="flex flex-wrap gap-4 justify-center">
                  {incomingAttacks.map(attack => (
-                     <div key={attack.id} className="flex items-center gap-2 bg-black/30 px-3 py-1 rounded-sm">
-                         <span className="text-[10px] font-mono">{attack.killerName}</span>
-                         <button onClick={() => handleConfirmDeath(attack)} className="hover:text-green-300"><Check size={14}/></button>
-                         <button onClick={() => handleDenyDeath(attack.id)} className="hover:text-red-300"><X size={14}/></button>
+                     <div key={attack.id} className="flex items-center gap-4 bg-black/60 border-2 border-red-500/50 px-5 py-3 rounded-lg backdrop-blur-xl">
+                         <div className="text-left">
+                           <span className="text-xs font-mono text-red-300">ASSASSIN:</span>
+                           <p className="font-black text-lg">{attack.killerName || "SHADOW"}</p>
+                           <span className="text-xs text-red-400">BOUNTY: {attack.amount} PC</span>
+                         </div>
+                         <div className="flex gap-3">
+                           <button onClick={() => handleConfirmDeath(attack)} className="p-3 bg-green-900/50 hover:bg-green-600 transition-all rounded-lg border border-green-500/50">
+                             <Check size={20} />
+                           </button>
+                           <button onClick={() => handleDenyDeath(attack.id)} className="p-3 bg-red-900/50 hover:bg-red-600 transition-all rounded-lg border border-red-500/50">
+                             <X size={20} />
+                           </button>
+                         </div>
                      </div>
                  ))}
              </div>
          </div>
       )}
 
-      {/* --- MAIN LAYOUT --- */}
-      <div className="relative z-40 flex flex-col lg:flex-row h-full flex-1 p-6 gap-8 overflow-y-auto no-scrollbar">
-        
-        {/* --- LEFT COLUMN: OPERATIVE STATUS --- */}
-        <aside className="w-full lg:w-1/3 flex flex-col gap-6">
-            
-            {/* Player Card */}
-            <PlayerStatusCard userData={userData} className="w-full shadow-[0_0_50px_rgba(0,0,0,0.5)]" />
+      {/* WAR ROOM GRID LAYOUT */}
+      <div className="relative z-40 flex flex-col lg:flex-row h-full flex-1 p-6 md:p-10 gap-10 overflow-hidden">
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-2 gap-4">
-                <div className="bg-neutral-900/50 border border-white/10 p-4 backdrop-blur-md">
-                    <span className="text-[8px] text-neutral-500 font-mono uppercase tracking-widest block mb-1">Current_Balance</span>
-                    <span className="text-2xl font-black text-yellow-500 font-mono">{score.toLocaleString()}</span>
-                </div>
-                <div className="bg-neutral-900/50 border border-white/10 p-4 backdrop-blur-md">
-                    <span className="text-[8px] text-neutral-500 font-mono uppercase tracking-widest block mb-1">Global_Rank</span>
-                    <span className="text-2xl font-black text-white font-mono">#14,203</span>
-                </div>
-            </div>
+        {/* --- LEFT: COMMAND CONSOLE --- */}
+        <aside className="w-full lg:w-[420px] shrink-0 flex flex-col gap-8">
+          
+          {/* Player Card */}
+          <PlayerStatusCard userData={userData} className="shadow-[0_0_60px_rgba(0,255,255,0.2)] border border-cyan-500/30" />
 
-            {/* Daily Brief */}
-            <div className="bg-neutral-900/50 border border-white/10 p-4 backdrop-blur-md flex-1">
-                <div className="flex items-center gap-2 mb-4 text-red-500">
-                    <Activity size={16} />
-                    <span className="text-xs font-black uppercase tracking-widest">Live_Intel</span>
-                </div>
-                <p className="text-[10px] font-mono text-neutral-400 leading-relaxed uppercase">
-                    <HackerText text="Kenjaku has updated the bounty rules for the Shibuya Colony. Tech sector yields +20% efficiency today." speed={30} />
-                </p>
+          {/* 🩸 BLOOD TITHE (Retention Mechanic) */}
+          <div className="bg-gradient-to-b from-red-950/40 to-black border-2 border-red-800/60 p-6 backdrop-blur-lg relative overflow-hidden rounded-2xl group">
+            <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,rgba(255,0,0,0.6),transparent_70%)] group-hover:opacity-20 transition-opacity" />
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-4">
+                <Flame className="text-red-500 animate-pulse" size={28} />
+                <HackerText text="BLOOD_TITHE" className="text-2xl font-black text-red-400 tracking-wider" />
+              </div>
+              <div className="text-right">
+                <span className="text-3xl font-black text-red-300 tabular-nums">{Math.floor(titheProgress)}%</span>
+                <p className="text-[10px] text-red-500 uppercase font-mono">Life Support</p>
+              </div>
             </div>
+            <Progress 
+              value={titheProgress} 
+              className="h-4 bg-black/60 border border-red-900/50 mb-3"
+              // Custom indicator styling usually requires CSS modules or inline styles overrides in Shadcn
+            />
+            <div className="flex items-center gap-3 text-xs font-mono text-red-300 uppercase">
+              <Skull size={16} className={titheProgress < 30 ? "animate-pulse" : ""} />
+              <span>10% Decay at 00:00 // Spill Blood or Perish</span>
+            </div>
+          </div>
+
+          {/* 📋 DAILY DIRECTIVES (Quest Log) */}
+          <div className="bg-neutral-900/60 border border-yellow-600/30 p-6 backdrop-blur-lg flex-1 rounded-2xl flex flex-col">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <Target className="text-yellow-500" size={24} />
+                <HackerText text="Daily_Directives" className="text-xl font-black text-yellow-400" />
+              </div>
+              <span className="text-sm font-mono text-yellow-500">
+                POTENTIAL: {totalDailyReward} PC
+              </span>
+            </div>
+            <ScrollArea className="flex-1 pr-4 max-h-[300px]">
+              <div className="space-y-3">
+                {DAILY_QUESTS.map((quest) => (
+                  <div key={quest.id} className={cn("p-4 border rounded-lg transition-all", quest.completed ? "border-green-600/50 bg-green-950/20" : "border-white/10 bg-neutral-900/40")}>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className={cn("text-sm font-black uppercase", quest.completed && "line-through text-neutral-500")}>
+                        {quest.label}
+                      </p>
+                      <span className="text-xs font-bold text-yellow-500">+{quest.reward} PC</span>
+                    </div>
+                    {!quest.completed && quest.progress !== undefined && (
+                      <Progress value={quest.progress} className="h-1.5 bg-black/50" />
+                    )}
+                    {quest.completed && <span className="text-[10px] text-green-400 uppercase font-mono flex items-center gap-1"><Check size={10}/> Directive Fulfilled</span>}
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+
+          {/* 💀 KILL FEED (Atmosphere) */}
+          <div className="bg-black/60 border border-red-900/40 p-5 backdrop-blur-md rounded-2xl overflow-hidden">
+            <div className="flex items-center gap-3 mb-4 border-b border-red-900/30 pb-2">
+              <Radio className="text-red-500 animate-pulse" size={20} />
+              <HackerText text="Global_Kill_Feed" className="text-lg text-red-400 font-bold" />
+            </div>
+            <div className="space-y-3">
+              {FAKE_KILL_FEED.map((kill, i) => (
+                <div key={i} className="flex items-center justify-between text-xs font-mono animate-in slide-in-from-left" style={{ animationDelay: `${i * 200}ms` }}>
+                  <span className="text-red-400 font-bold">{kill.killer}</span>
+                  <Swords size={12} className="text-neutral-600" />
+                  <span className="text-neutral-400">{kill.target}</span>
+                  <span className="text-yellow-500 font-bold">+{kill.amount}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </aside>
 
-        {/* --- RIGHT COLUMN: MISSION SELECT (The Grid) --- */}
-        <section className="w-full lg:w-2/3 flex flex-col gap-6">
-            
-            <header className="flex items-end justify-between border-b border-white/10 pb-4">
-                <div>
-                    <h1 className="text-3xl font-black font-sans uppercase italic text-white tracking-tighter">
-                        Mission Select
-                    </h1>
-                    <p className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest mt-1">
-                        Select a Colony to Initialize Link
-                    </p>
+        {/* --- CENTRAL BATTLE STATION (Map) --- */}
+        <section className="flex-1 flex flex-col gap-8 h-full">
+          
+          <header className="flex flex-col md:flex-row items-end justify-between gap-4">
+            <div>
+              <HackerText text="Mission_Select" className="text-5xl md:text-6xl font-black uppercase italic tracking-tighter text-cyan-400 mb-2" />
+              <div className="flex items-center gap-6 text-sm font-mono text-neutral-400 uppercase">
+                <div className="flex items-center gap-2 px-3 py-1 bg-green-900/20 rounded-full border border-green-900/50">
+                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                  Online Colonies: {Object.keys(NICHE_DATA).length}
                 </div>
-                <div className="flex items-center gap-2 text-green-500 text-[10px] font-mono uppercase font-bold animate-pulse">
-                    <Globe size={12} /> Network_Online
+                <div className="flex items-center gap-2 px-3 py-1 bg-yellow-900/20 rounded-full border border-yellow-900/50">
+                  <Trophy size={14} className="text-yellow-500" />
+                  Rank: <span className="text-white font-bold">{rankTitle}</span>
                 </div>
-            </header>
-
-            {/* THE GRID */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-20">
-                {Object.entries(NICHE_DATA).map(([key, data]: [string, any]) => {
-                    const isLocked = !unlockedColonies.includes(key);
-                    
-                    return (
-                        <button
-                            key={key}
-                            disabled={isLocked}
-                            onClick={() => { play("click"); router.push(`/niche/${key}`); }}
-                            onMouseEnter={() => play("hover")}
-                            className={cn(
-                                "group relative h-48 w-full border overflow-hidden transition-all duration-300 text-left",
-                                isLocked 
-                                    ? "border-white/5 bg-neutral-950 grayscale opacity-60 cursor-not-allowed" 
-                                    : "border-white/10 bg-neutral-900 hover:border-red-500 hover:scale-[1.01] hover:shadow-[0_0_30px_rgba(220,38,38,0.2)]"
-                            )}
-                        >
-                            {/* Background Image */}
-                            <div className="absolute inset-0 z-0">
-                                <Image 
-                                    src={data.imageSrc || `/images/sectors/${key}.jpg`} 
-                                    alt={data.label}
-                                    fill
-                                    className="object-cover opacity-40 group-hover:opacity-60 transition-all duration-500 group-hover:scale-110"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
-                            </div>
-
-                            {/* Content */}
-                            <div className="absolute inset-0 z-10 p-6 flex flex-col justify-between">
-                                <div className="flex justify-between items-start">
-                                    <div className={cn(
-                                        "w-8 h-8 flex items-center justify-center border",
-                                        isLocked ? "bg-black/50 border-white/10 text-neutral-600" : `bg-${data.color}-900/20 border-${data.color}-500/50 text-${data.color}-500`
-                                    )}>
-                                        {isLocked ? <Lock size={14} /> : data.icon}
-                                    </div>
-                                    {isLocked && (
-                                        <span className="text-[8px] font-black bg-neutral-800 text-neutral-500 px-2 py-1 uppercase">Classified</span>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <h3 className="text-xl font-black font-sans uppercase italic text-white leading-none mb-1 group-hover:text-red-500 transition-colors">
-                                        {data.label}
-                                    </h3>
-                                    <p className="text-[9px] font-mono text-neutral-400 uppercase tracking-widest line-clamp-1">
-                                        {data.description}
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Hover Overlay "DEPLOY" */}
-                            {!isLocked && (
-                                <div className="absolute inset-0 z-20 bg-red-600/90 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 backdrop-blur-sm">
-                                    <span className="text-lg font-black font-sans uppercase italic tracking-widest text-white">DEPLOY</span>
-                                    <Play fill="currentColor" size={16} className="text-white" />
-                                </div>
-                            )}
-                        </button>
-                    );
-                })}
+              </div>
             </div>
+
+            {/* NETWORK SWITCH (Insta vs Youtube) */}
+            <div className="bg-black/70 border-2 border-white/20 p-1.5 rounded-xl flex gap-2 backdrop-blur-xl shadow-2xl">
+              <button 
+                  onClick={() => toggleNetwork("INSTA")}
+                  className={cn(
+                      "px-6 py-3 rounded-lg font-black uppercase tracking-widest flex items-center gap-3 transition-all text-sm md:text-base",
+                      networkMode === "INSTA" ? "bg-gradient-to-r from-cyan-600 to-cyan-400 text-black shadow-lg shadow-cyan-500/50" : "text-neutral-500 hover:text-white hover:bg-white/5"
+                  )}
+              >
+                  <Instagram size={18} /> Insta_Net
+              </button>
+              <button 
+                  onClick={() => toggleNetwork("YOUTUBE")}
+                  className={cn(
+                      "px-6 py-3 rounded-lg font-black uppercase tracking-widest flex items-center gap-3 transition-all text-sm md:text-base",
+                      networkMode === "YOUTUBE" ? "bg-gradient-to-r from-red-600 to-red-400 text-white shadow-lg shadow-red-500/50" : "text-neutral-600 hover:text-white hover:bg-white/5",
+                      !isYoutubeUnlocked && "opacity-60 grayscale cursor-not-allowed"
+                  )}
+              >
+                  {isYoutubeUnlocked ? <Youtube size={18} /> : <Lock size={18} />}
+                  YouTube_Grid
+              </button>
+            </div>
+          </header>
+
+          {/* COLONY GRID SCROLLABLE */}
+          <ScrollArea className="flex-1 -mr-4 pr-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-32">
+              {Object.entries(NICHE_DATA).map(([key, data]: [string, any], index) => {
+                  const isLocked = !unlockedColonies.includes(key);
+                  // Simulating dynamic "War" stats for each colony
+                  const threatLevel = Math.floor(Math.random() * 90) + 10; 
+                  const activeOps = Math.floor(Math.random() * 500) + 50;
+                  
+                  return (
+                      <button
+                          key={key}
+                          disabled={isLocked}
+                          onClick={() => { play("click"); router.push(`/niche/${key}`); }}
+                          onMouseEnter={() => play("hover")}
+                          className={cn(
+                              "group relative h-72 w-full border-4 overflow-hidden rounded-xl transition-all duration-500 text-left",
+                              isLocked 
+                                  ? "border-neutral-800 bg-neutral-900/50 grayscale opacity-40 cursor-not-allowed" 
+                                  : networkMode === "YOUTUBE"
+                                      ? "border-red-900/60 bg-red-950/20 hover:border-red-500 hover:shadow-[0_0_40px_rgba(220,38,38,0.3)] hover:scale-[1.02]"
+                                      : "border-cyan-900/60 bg-cyan-950/20 hover:border-cyan-400 hover:shadow-[0_0_40px_rgba(6,182,212,0.3)] hover:scale-[1.02]"
+                          )}
+                          style={{ animationDelay: `${index * 100}ms` }}
+                      >
+                          {/* Background Image */}
+                          <div className="absolute inset-0 z-0">
+                              {data.imageSrc && (
+                                  <Image 
+                                      src={data.imageSrc} 
+                                      alt={data.label}
+                                      fill
+                                      className="object-cover opacity-40 group-hover:opacity-60 transition-all duration-1000 group-hover:scale-110"
+                                  />
+                              )}
+                              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+                          </div>
+
+                          {/* Overlay HUD Stats */}
+                          {!isLocked && (
+                            <div className="absolute top-3 left-3 right-3 flex justify-between text-[10px] font-mono font-bold z-20">
+                              <div className="bg-black/80 px-2 py-1 rounded border border-white/10 backdrop-blur-sm text-red-400">
+                                THREAT: {threatLevel}%
+                              </div>
+                              <div className="bg-black/80 px-2 py-1 rounded border border-white/10 backdrop-blur-sm text-green-400 flex items-center gap-1">
+                                <UserCheck size={10} /> {activeOps} UNITS
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Main Content */}
+                          <div className="absolute inset-0 z-10 p-6 flex flex-col justify-end">
+                            {/* Icon Box */}
+                            <div className={cn(
+                                "w-12 h-12 rounded-lg flex items-center justify-center border-2 mb-4 backdrop-blur-md shadow-xl",
+                                isLocked ? "border-neutral-700 bg-neutral-900" : `border-${data.color}-500 bg-black/50 text-${data.color}-500`
+                            )}>
+                                {isLocked ? <Lock size={20} /> : networkMode === "YOUTUBE" ? <Youtube size={24} className="text-red-500" /> : data.icon}
+                            </div>
+
+                            <h3 className="text-3xl font-black uppercase italic leading-none mb-2 text-white drop-shadow-lg group-hover:translate-x-2 transition-transform">
+                              {data.label}
+                            </h3>
+                            
+                            <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-neutral-300">
+                              <div className={cn("w-2 h-2 rounded-full", isLocked ? "bg-red-600" : "bg-green-500 animate-pulse")} />
+                              <span>
+                                {networkMode === "YOUTUBE" ? "VIDEO OPS ACTIVE" : data.description}
+                              </span>
+                            </div>
+
+                            {isLocked && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                                <div className="border border-red-500/50 bg-red-950/80 px-4 py-2 rounded text-red-500 font-black uppercase tracking-widest text-sm">
+                                  Access Denied
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Hover Action Overlay */}
+                          {!isLocked && (
+                              <div className={cn(
+                                  "absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-sm translate-y-4 group-hover:translate-y-0",
+                                  networkMode === "YOUTUBE" ? "bg-red-900/80" : "bg-cyan-900/80"
+                              )}>
+                                  <HackerText text={networkMode === "YOUTUBE" ? "BROADCAST" : "DEPLOY"} className="text-4xl font-black uppercase tracking-widest text-white" />
+                                  <div className="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-[0.2em] text-white/80 border border-white/20 px-4 py-2 rounded-full">
+                                    <ChevronRight size={14} className="animate-ping" />
+                                    Click to Initialize
+                                  </div>
+                              </div>
+                          )}
+                      </button>
+                  );
+              })}
+            </div>
+          </ScrollArea>
 
         </section>
       </div>

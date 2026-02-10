@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image"; 
 import { 
-  Crosshair, Search, Loader2, Target, Skull, User, 
-  Wifi, Radar, ShieldAlert, Zap, Globe, RefreshCw
+  Crosshair, Search, Loader2, Target, Skull, 
+  Wifi, Radar, AlertTriangle, 
+  Flame, Swords, Radio, RefreshCw, Activity,
+  Ghost, Timer
 } from "lucide-react";
-import { collection, addDoc, getDocs, query, where, limit, orderBy } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, where, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/context/auth-context";
 import { toast } from "sonner";
@@ -17,6 +19,16 @@ import { SoundPrompter } from "@/components/ui/sound-prompter";
 import { useSfx } from "@/hooks/use-sfx";
 import { cn } from "@/lib/utils";
 import { HackerText } from "@/components/ui/hacker-text";
+import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+// MOCK: Global Activity Feed
+const FAKE_GLOBAL_KILLS = [
+  { killer: "NEON_VIPER", target: "GRID_RUNNER", amount: 150, time: "2m ago" },
+  { killer: "SHADOWREAPER", target: "DATA_THIEF", amount: 280, time: "5m ago" },
+  { killer: "CYBERWOLF", target: "N00B_HUNTER", amount: 90, time: "8m ago" },
+  { killer: "VOID_STALKER", target: "PHANTOM_X", amount: 420, time: "12m ago" },
+];
 
 export default function HitListPage() {
   const { userData, user } = useAuth();
@@ -28,63 +40,121 @@ export default function HitListPage() {
   // DATA
   const [targets, setTargets] = useState<any[]>([]);
   const [isScanning, setIsScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
   
   // TRACKING
   const [engagedTargets, setEngagedTargets] = useState<string[]>([]); 
   const [pendingClaims, setPendingClaims] = useState<string[]>([]);
-  const [killedTargets, setKilledTargets] = useState<string[]>([]); // Local state for "Stamp" effect
+  const [killedTargets, setKilledTargets] = useState<string[]>([]);
+  const [killStreak, setKillStreak] = useState(0);
+  const [totalBountiesClaimed, setTotalBountiesClaimed] = useState(0);
 
   // FORM DATA
   const [reportUrl, setReportUrl] = useState("");
   const [reporting, setReporting] = useState(false);
 
-  // 1. THE SCANNER LOGIC
+  // FX: Glitch
+  const [glitch, setGlitch] = useState(false);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (Math.random() < 0.08) {
+        setGlitch(true);
+        setTimeout(() => setGlitch(false), 300);
+      }
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // FX: Streak Tracker
+  useEffect(() => {
+    if (killedTargets.length > 0) {
+      setKillStreak(prev => prev + 1);
+      setTotalBountiesClaimed(prev => prev + 50);
+    }
+  }, [killedTargets.length]);
+
+  // 1. SCANNER LOGIC
   const performScan = async () => {
       if (!user) return;
       setIsScanning(true);
-      play("scan"); // Ensure you have a scan sound or use 'click' loop
+      setScanProgress(0);
+      play("scan");
       
-      // Artificial delay for immersion
+      const progressInterval = setInterval(() => {
+        setScanProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(progressInterval);
+            return 100;
+          }
+          return prev + Math.random() * 15 + 5;
+        });
+      }, 200);
+
       setTimeout(async () => {
           try {
-              // Fetch random active users (excluding self)
-              // In production, use more complex logic (e.g. within Rank range)
               const q = query(
                   collection(db, "users"), 
                   where("uid", "!=", user.uid),
-                  limit(10)
+                  limit(12) 
               );
               const snapshot = await getDocs(q);
-              const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+              
+              let data = snapshot.docs.map(doc => ({ 
+                id: doc.id, 
+                ...doc.data(),
+                threatLevel: Math.floor(Math.random() * 80) + 10,
+                bounty: 50 + Math.floor(Math.random() * 100),
+                isGhost: false
+              }));
+
+              if (Math.random() < 0.2) {
+                  const ghost = {
+                      id: "ghost_" + Date.now(),
+                      username: "UNKNOWN_SIGNAL",
+                      avatar: "/avatars/4.jpg",
+                      threatLevel: 99,
+                      bounty: 500,
+                      isGhost: true,
+                      membership: { tier: "SHADOW" },
+                      instagramHandle: "instagram"
+                  };
+                  data = [ghost, ...data];
+                  toast.warning("⚠ SHADOW SIGNAL DETECTED");
+              }
               
               setTargets(data);
               setMode("ENGAGE");
               play("success");
+              toast.success("MATCH FOUND // TARGETS LOCKED");
           } catch (e) {
-              toast.error("SCAN FAILED // SIGNAL JAMMED");
+              toast.error("SCAN DISRUPTED // RETRY");
           } finally {
               setIsScanning(false);
+              clearInterval(progressInterval);
+              setScanProgress(0);
           }
-      }, 2000);
+      }, 3000);
   };
 
-  // 2. EXECUTE (Open Link)
+  // 2. ENGAGE (Lock-On)
   const handleEngage = (id: string, handle: string) => {
       play("lock");
       if (handle) {
           window.open(`https://instagram.com/${handle.replace('@', '')}`, '_blank');
-          if (!engagedTargets.includes(id)) setEngagedTargets(prev => [...prev, id]);
+          if (!engagedTargets.includes(id)) {
+            setEngagedTargets(prev => [...prev, id]);
+            toast.info("LOCK-ON ACQUIRED // TRACKING ACTIVE");
+          }
       } else {
-          toast.info("NO DIGITAL FOOTPRINT // TARGET GHOSTED");
+          toast.info("GHOST PROTOCOL // NO TRACE");
       }
   };
 
-  // 3. CONFIRM KILL (The Dopamine Hit)
-  const handleConfirmKill = async (targetId: string, targetName: string) => {
+  // 3. CONFIRM KILL
+  const handleConfirmKill = async (targetId: string, targetName: string, bounty: number) => {
       if (!userData) return;
-      play("shot"); // LOUD SOUND
+      play("shot");
       
-      // Visual Feedback Immediately
       setKilledTargets(prev => [...prev, targetId]);
 
       try {
@@ -93,27 +163,28 @@ export default function HitListPage() {
               killerName: userData.username,
               targetId: targetId,
               targetName: targetName, 
-              amount: 50,
+              amount: bounty,
               status: "pending",
               timestamp: new Date().toISOString()
           });
           setPendingClaims(prev => [...prev, targetId]);
           
           setTimeout(() => {
-             toast.success("CONFIRMED // BOUNTY PENDING");
-          }, 500);
+             play("kaching");
+             toast.success(`ELIMINATION CONFIRMED // +${bounty} PC PENDING`);
+          }, 600);
 
       } catch (e) { 
-          toast.error("TRANSMISSION ERROR");
-          setKilledTargets(prev => prev.filter(id => id !== targetId)); // Revert if fail
+          toast.error("JAMMED // ABORT");
+          setKilledTargets(prev => prev.filter(id => id !== targetId)); 
       }
   };
 
-  // 4. REPORT TARGET
+  // 4. REPORT
   const handleReport = async (e: React.FormEvent) => {
       e.preventDefault();
       play("click");
-      if (!reportUrl.includes("instagram.com")) return toast.error("INVALID INTEL");
+      if (!reportUrl.includes("instagram.com")) return toast.error("INVALID COORDINATES");
       
       setReporting(true);
       try {
@@ -124,223 +195,284 @@ export default function HitListPage() {
               status: "pending",
               timestamp: new Date().toISOString()
           });
-          toast.success("INTEL UPLOADED");
+          toast.success("SCOUT REPORT TRANSMITTED // +25 PC BONUS");
           setReportUrl("");
           setMode("SCAN");
-      } catch (e) { toast.error("ERROR"); }
+      } catch (e) { toast.error("TRANSMISSION FAILURE"); }
       finally { setReporting(false); }
   };
 
   return (
-    <main className="relative min-h-screen bg-black text-white font-sans overflow-hidden flex flex-col items-center selection:bg-red-900 selection:text-white">
+    <main className={cn("relative min-h-screen bg-black text-white font-sans overflow-hidden flex flex-col selection:bg-red-900 selection:text-white", glitch && "animate-pulse")}>
       
       {/* ATMOSPHERE */}
       <div className="absolute inset-0 z-0 pointer-events-none">
-        <Image src="/images/radar-bg.jpg" alt="Grid" fill className="object-cover opacity-30 grayscale contrast-125" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black" />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
+        <Image src="/images/radar-bg.jpg" alt="Grid" fill className="object-cover opacity-20 grayscale contrast-150" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black via-black/40 to-black" />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-30 mix-blend-overlay animate-pulse" />
       </div>
       
       <SoundPrompter />
       <Background />
 
-      {/* --- HUD HEADER --- */}
-      <header className="flex-none h-20 w-full max-w-md px-6 flex items-end justify-between pb-4 border-b border-white/10 z-50">
-          <div>
-              <div className="flex items-center gap-2 text-red-500 animate-pulse mb-1">
-                  <Wifi size={12} />
-                  <span className="text-[8px] font-mono tracking-widest uppercase">Signal_Strength: 98%</span>
+      {/* TOP HUD (Sticky + Stacking Fix) */}
+      <header className="relative z-50 flex-none border-b-4 border-red-900/60 bg-black/90 backdrop-blur-2xl">
+        <div className="px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-4">
+          
+          {/* Left: Title */}
+          <div className="flex items-center gap-3 w-full md:w-auto justify-center md:justify-start">
+            <Skull size={28} className="text-red-500 animate-pulse shrink-0" />
+            <div>
+              <HackerText text="HIT_LIST" className="text-2xl font-black tracking-wider text-red-400" />
+              <span className="block text-[9px] font-mono text-red-300 uppercase tracking-widest">Global Bounty Protocol</span>
+            </div>
+          </div>
+
+          {/* Right: Stats (Wrap on mobile) */}
+          <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8 w-full md:w-auto">
+            <div className="text-center md:text-right">
+              <span className="text-[9px] font-mono text-neutral-500 uppercase block mb-1">Kill Streak</span>
+              <div className="flex items-center justify-center md:justify-end gap-2">
+                <Flame size={16} className={killStreak > 3 ? "text-orange-500 animate-pulse" : "text-neutral-600"} />
+                <span className="text-xl md:text-2xl font-black text-white leading-none">{killStreak}</span>
               </div>
-              <h1 className="text-2xl font-black font-sans uppercase italic text-white tracking-tighter leading-none">
-                  Hit_List
-              </h1>
+            </div>
+            
+            <div className="h-8 w-px bg-white/10 hidden md:block" />
+
+            <div className="text-center md:text-right">
+              <span className="text-[9px] font-mono text-neutral-500 uppercase block mb-1">Total Bounty</span>
+              <span className="text-xl md:text-2xl font-black text-yellow-500 leading-none">{totalBountiesClaimed} PC</span>
+            </div>
+            
+            <div className="h-8 w-px bg-white/10 hidden md:block" />
+
+            <div className="flex items-center gap-2 text-green-500 animate-pulse bg-green-950/20 px-3 py-1 rounded-full border border-green-500/20">
+              <Wifi size={14} />
+              <span className="text-[9px] font-mono uppercase font-bold tracking-widest">Online</span>
+            </div>
           </div>
-          <div className="flex gap-2">
-              <button 
-                  onClick={() => setMode("SCAN")}
-                  className={cn("w-10 h-10 border flex items-center justify-center transition-all", mode === "SCAN" || mode === "ENGAGE" ? "bg-white text-black border-white" : "bg-black text-neutral-500 border-white/20")}
-              >
-                  <Radar size={18} />
-              </button>
-              <button 
-                  onClick={() => setMode("REPORT")}
-                  className={cn("w-10 h-10 border flex items-center justify-center transition-all", mode === "REPORT" ? "bg-red-600 text-white border-red-600" : "bg-black text-neutral-500 border-white/20")}
-              >
-                  <Crosshair size={18} />
-              </button>
-          </div>
+        </div>
+
+        {/* Mode Tabs (Sticky Below Header) */}
+        <div className="flex border-t border-white/10">
+          <button 
+              onClick={() => setMode("SCAN")}
+              className={cn("flex-1 py-4 text-xs md:text-sm font-black uppercase tracking-widest transition-all", 
+                mode === "SCAN" || mode === "ENGAGE" ? "bg-red-950/40 text-red-400 border-b-4 border-red-500" : "text-neutral-600 hover:text-white hover:bg-white/5"
+              )}
+          >
+            <Radar size={16} className="inline mr-2 mb-0.5" /> Find_Match
+          </button>
+          <button 
+              onClick={() => setMode("REPORT")}
+              className={cn("flex-1 py-4 text-xs md:text-sm font-black uppercase tracking-widest transition-all", 
+                mode === "REPORT" ? "bg-yellow-950/30 text-yellow-400 border-b-4 border-yellow-500" : "text-neutral-600 hover:text-white hover:bg-white/5"
+              )}
+          >
+            <Target size={16} className="inline mr-2 mb-0.5" /> Scout_Target
+          </button>
+        </div>
       </header>
 
-      {/* --- MAIN VIEWPORT --- */}
-      <div className="relative z-40 w-full max-w-md flex-1 overflow-y-auto no-scrollbar p-6 space-y-6">
-          
-          {/* VIEW: SCANNER */}
-          {mode === "SCAN" && (
-              <div className="h-[60vh] flex flex-col items-center justify-center text-center space-y-8 animate-in fade-in zoom-in duration-500">
-                  <div className="relative w-64 h-64 border border-white/10 rounded-full flex items-center justify-center">
-                      {/* Radar Rings */}
-                      <div className={cn("absolute inset-0 border border-red-500/30 rounded-full", isScanning && "animate-ping")} />
-                      <div className={cn("absolute w-[80%] h-[80%] border border-red-500/20 rounded-full", isScanning && "animate-[spin_3s_linear_infinite]")} />
-                      
-                      {/* Center Icon */}
-                      <div className="relative z-10 bg-black p-4 border border-white/20 rounded-full">
-                          {isScanning ? <Loader2 size={32} className="text-red-500 animate-spin" /> : <Globe size={32} className="text-neutral-500" />}
-                      </div>
-                  </div>
+      {/* MAIN ARENA (Scrollable Container) */}
+      <div className="relative z-40 flex-1 overflow-hidden flex flex-col">
 
-                  <div className="space-y-2">
-                      <h2 className="text-xl font-black font-sans uppercase text-white">
-                          {isScanning ? <HackerText text="ACQUIRING_TARGETS..." speed={50} /> : "SECTOR SCAN READY"}
-                      </h2>
-                      <p className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest max-w-[200px] mx-auto">
-                          Scan the database for active bounties in your vicinity.
-                      </p>
-                  </div>
+        {/* 1. SCAN VIEW */}
+        {(mode === "SCAN" || (mode === "ENGAGE" && targets.length === 0)) && (
+          <div className="flex-1 flex flex-col items-center justify-center space-y-12 px-6 py-12 overflow-y-auto">
+            <div className="relative w-64 h-64 md:w-96 md:h-96 shrink-0">
+              {/* Pulsing Rings */}
+              <div className={cn("absolute inset-0 rounded-full border border-red-600/40", isScanning && "animate-ping")} />
+              <div className={cn("absolute inset-8 rounded-full border border-red-500/30", isScanning && "animate-ping delay-300")} />
+              <div className={cn("absolute inset-16 rounded-full border border-red-400/20", isScanning && "animate-[spin_8s_linear_infinite]")} />
+              
+              {/* Sweeping Radar Line */}
+              {isScanning && (
+                <div className="absolute inset-0 rounded-full overflow-hidden">
+                  <div className="absolute top-1/2 left-1/2 w-full h-1 bg-gradient-to-r from-transparent via-green-500 to-transparent -translate-x-1/2 -translate-y-1/2 origin-left animate-[spin_2s_linear_infinite]" />
+                </div>
+              )}
 
-                  <Button 
-                      onClick={performScan}
-                      disabled={isScanning}
-                      className="h-14 w-full bg-red-600 hover:bg-red-500 text-white font-black text-lg uppercase tracking-[0.2em] rounded-none clip-path-slant shadow-[0_0_30px_rgba(220,38,38,0.4)]"
-                  >
-                      {isScanning ? "SCANNING..." : "INITIATE SCAN"}
-                  </Button>
+              {/* Center */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="bg-black/80 border-4 border-red-600/60 rounded-full p-8 md:p-12 backdrop-blur-sm">
+                  {isScanning ? (
+                    <div className="text-center">
+                      <Loader2 size={48} className="text-red-500 animate-spin mx-auto mb-4" />
+                      <Progress value={scanProgress} className="w-32 md:w-48 h-2 mx-auto mb-4 bg-red-900/20" />
+                      <HackerText text="SEARCHING..." className="text-lg text-red-400" />
+                    </div>
+                  ) : (
+                    <Target size={64} className="text-neutral-500 mx-auto" />
+                  )}
+                </div>
               </div>
-          )}
+            </div>
 
-          {/* VIEW: ENGAGE (The List) */}
-          {mode === "ENGAGE" && (
-              <div className="space-y-4 animate-in slide-in-from-bottom-10 duration-500">
-                  <div className="flex items-center justify-between">
-                      <span className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest">Targets_Identified: {targets.length}</span>
-                      <button onClick={performScan} className="text-[9px] font-mono text-red-500 hover:text-white flex items-center gap-1 uppercase">
-                          <RefreshCw size={10} /> Refresh
-                      </button>
-                  </div>
+            <div className="text-center space-y-4 max-w-md px-4">
+              <HackerText text={isScanning ? "ACQUIRING LOCK..." : "READY FOR DEPLOYMENT"} className="text-2xl md:text-4xl font-black text-white" />
+              <p className="text-xs md:text-sm font-mono text-neutral-400 uppercase tracking-widest leading-relaxed">
+                Initiate scan to enter the arena. Lock onto rivals and claim bounties.
+              </p>
+            </div>
 
-                  {targets.map((target, i) => {
-                      const isPending = pendingClaims.includes(target.id);
-                      const isEngaged = engagedTargets.includes(target.id);
-                      const isKilled = killedTargets.includes(target.id);
-                      const avatar = target.avatar || "/avatars/1.jpg";
+            <Button 
+                onClick={performScan}
+                disabled={isScanning}
+                size="lg"
+                className="w-full max-w-xs h-16 text-lg font-black uppercase tracking-[0.3em] bg-gradient-to-r from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 shadow-2xl shadow-red-600/60 rounded-none clip-path-slant"
+            >
+                {isScanning ? "SCANNING..." : "ENTER ARENA"}
+            </Button>
+          </div>
+        )}
 
-                      return (
-                          <div 
-                              key={target.id} 
-                              className={cn(
-                                  "group relative bg-neutral-900/40 border backdrop-blur-md overflow-hidden transition-all duration-300",
-                                  isKilled ? "border-green-500 opacity-50 grayscale" : 
-                                  isEngaged ? "border-red-500 bg-red-950/10" : "border-white/10 hover:border-white/30"
-                              )}
-                          >
-                              {/* KILL STAMP */}
-                              {isKilled && (
-                                  <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
-                                      <div className="border-4 border-green-500 text-green-500 font-black text-2xl uppercase p-2 -rotate-12 animate-in zoom-in duration-200">
-                                          ELIMINATED
-                                      </div>
-                                  </div>
-                              )}
-
-                              <div className="flex p-4 gap-4 items-center">
-                                  {/* AVATAR */}
-                                  <div className="relative w-16 h-16 shrink-0 border border-white/10 group-hover:border-red-500/50 transition-colors">
-                                      <Image src={avatar} alt="Target" fill className="object-cover grayscale group-hover:grayscale-0 transition-all" />
-                                      {/* Rank Badge */}
-                                      <div className="absolute -bottom-2 -right-1 bg-black border border-white/20 px-1.5 py-0.5 text-[7px] font-mono text-white uppercase">
-                                          {target.membership?.tier || "Recruit"}
-                                      </div>
-                                  </div>
-
-                                  {/* INFO */}
-                                  <div className="flex-1 min-w-0">
-                                      <div className="flex justify-between items-start mb-1">
-                                          <h3 className="text-sm font-black font-sans uppercase text-white truncate">{target.username}</h3>
-                                          <div className="text-right">
-                                              <span className="block text-lg font-black font-mono text-yellow-500 leading-none">50</span>
-                                              <span className="text-[7px] font-mono text-neutral-500 uppercase">Bounty</span>
-                                          </div>
-                                      </div>
-                                      
-                                      <div className="flex items-center gap-2 text-[8px] font-mono text-neutral-400 uppercase">
-                                          <ShieldAlert size={10} className={isEngaged ? "text-red-500" : "text-neutral-600"} />
-                                          {isEngaged ? "STATUS: ENGAGED" : "STATUS: UNKNOWN"}
-                                      </div>
-                                  </div>
-                              </div>
-
-                              {/* ACTIONS */}
-                              <div className="grid grid-cols-2 border-t border-white/10">
-                                  <button 
-                                      onClick={() => handleEngage(target.id, target.instagramHandle)}
-                                      className="h-10 text-[9px] font-bold uppercase tracking-widest hover:bg-white hover:text-black transition-colors flex items-center justify-center gap-2 border-r border-white/10"
-                                  >
-                                      <Search size={10} /> LOCATE
-                                  </button>
-                                  
-                                  {isPending ? (
-                                      <div className="h-10 bg-yellow-500/10 flex items-center justify-center gap-2 text-[9px] font-bold text-yellow-500 uppercase cursor-wait">
-                                          <Loader2 size={10} className="animate-spin" /> VERIFYING
-                                      </div>
-                                  ) : (
-                                      <button 
-                                          onClick={() => handleConfirmKill(target.id, target.username)}
-                                          disabled={isKilled}
-                                          className={cn(
-                                              "h-10 text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2",
-                                              isEngaged ? "bg-red-600 text-white hover:bg-red-500" : "bg-black text-neutral-600 cursor-not-allowed"
-                                          )}
-                                      >
-                                          <Crosshair size={10} /> CONFIRM_KILL
-                                      </button>
-                                  )}
-                              </div>
-                          </div>
-                      );
-                  })}
+        {/* 2. ENGAGE VIEW (The List) */}
+        {mode === "ENGAGE" && targets.length > 0 && (
+          <div className="flex-1 flex flex-col h-full overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 bg-black/40 border-b border-white/5 shrink-0">
+              <div className="flex items-center gap-3">
+                <Target size={20} className="text-red-500 animate-pulse" />
+                <HackerText text={`ACTIVE TARGETS: ${targets.length}`} className="text-lg font-bold text-red-400" />
               </div>
-          )}
+              <button onClick={performScan} className="flex items-center gap-2 text-[10px] font-bold uppercase text-cyan-400 hover:text-cyan-300 bg-cyan-950/30 px-3 py-2 rounded border border-cyan-500/30 hover:border-cyan-500 transition-colors">
+                <RefreshCw size={12} className={isScanning ? "animate-spin" : ""} /> Rescan
+              </button>
+            </div>
 
-          {/* VIEW: REPORT (Intel) */}
-          {mode === "REPORT" && (
-              <div className="space-y-6 animate-in slide-in-from-right duration-500">
-                  <div className="p-6 bg-neutral-900/40 border border-white/10 backdrop-blur-xl">
-                      <div className="flex items-center gap-3 mb-4 text-white">
-                          <Target size={20} className="text-yellow-500" />
-                          <h2 className="text-lg font-black font-sans uppercase italic">Manual Entry</h2>
-                      </div>
-                      <p className="text-[10px] font-mono text-neutral-400 mb-6 uppercase leading-relaxed">
-                          Found a target not on the radar? <br/> Upload their coordinates (Instagram URL) for manual bounty assignment.
-                      </p>
+            <ScrollArea className="flex-1 p-4 md:p-6 pb-24 md:pb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20">
+                {targets.map((target, i) => {
+                    const isPending = pendingClaims.includes(target.id);
+                    const isEngaged = engagedTargets.includes(target.id);
+                    const isKilled = killedTargets.includes(target.id);
+                    const avatar = target.avatar || "/avatars/1.jpg";
+                    const isGhost = target.isGhost; 
 
-                      <form onSubmit={handleReport} className="space-y-4">
-                          <div className="space-y-1">
-                              <label className="text-[8px] font-mono text-neutral-500 uppercase tracking-widest">Target_Link</label>
-                              <Input 
-                                  placeholder="HTTPS://INSTAGRAM.COM/..." 
-                                  value={reportUrl} 
-                                  onChange={(e) => setReportUrl(e.target.value)} 
-                                  className="bg-black/50 border-white/10 text-[10px] h-12 text-white font-mono uppercase" 
-                              />
-                          </div>
-                          <Button 
-                              type="submit" 
-                              disabled={reporting} 
-                              className="w-full h-12 bg-white text-black font-black text-[9px] uppercase tracking-[0.2em] rounded-sm hover:bg-neutral-200"
-                          >
-                              {reporting ? "UPLOADING..." : "SUBMIT INTEL"}
-                          </Button>
-                      </form>
-                  </div>
+                    return (
+                        <div 
+                            key={target.id} 
+                            className={cn(
+                                "group relative bg-black/60 border-2 backdrop-blur-xl overflow-hidden rounded-xl transition-all duration-300 hover:shadow-2xl",
+                                isKilled ? "border-green-600 opacity-60 grayscale" : 
+                                isGhost ? "border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.3)]" :
+                                isEngaged ? "border-red-600 shadow-red-600/40" : "border-white/10 hover:border-red-500/50"
+                            )}
+                            style={{ animationDelay: `${i * 100}ms` }}
+                        >
+                            {/* STATUS OVERLAY */}
+                            {isKilled && (
+                                <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm pointer-events-none">
+                                    <div className="text-4xl font-black text-green-500 uppercase -rotate-12 border-4 border-green-500 p-4 animate-in zoom-in duration-300">
+                                        ELIMINATED
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="p-5 flex flex-col h-full justify-between gap-4">
+                                <div className="flex gap-4 items-start">
+                                    <div className={cn("relative w-16 h-16 shrink-0 rounded-lg overflow-hidden border-2", isGhost ? "border-purple-500" : "border-white/20")}>
+                                        <Image src={avatar} alt="Target" fill className="object-cover" />
+                                    </div>
+                                    
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex justify-between items-start mb-1">
+                                            <h3 className={cn("text-lg font-black uppercase truncate", isGhost ? "text-purple-400" : "text-white")}>{target.username}</h3>
+                                            <span className={cn("text-lg font-black", isGhost ? "text-purple-400" : "text-yellow-400")}>
+                                                {target.bounty} <span className="text-[10px] text-neutral-500">PC</span>
+                                            </span>
+                                        </div>
+                                        <div className="text-xs font-mono text-neutral-500 uppercase mb-2">Rank: {target.membership?.tier || "Recruit"}</div>
+                                        
+                                        <div className="w-full h-1 bg-neutral-800 rounded-full overflow-hidden">
+                                            <div className={cn("h-full transition-all duration-1000", isGhost ? "bg-purple-600" : "bg-red-600")} style={{ width: `${target.threatLevel}%` }} />
+                                        </div>
+                                        <div className="flex justify-between text-[9px] font-mono text-neutral-500 mt-1 uppercase">
+                                            <span>Threat Level</span>
+                                            <span>{target.threatLevel}%</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
+                                    <button 
+                                        onClick={() => handleEngage(target.id, target.instagramHandle)}
+                                        className="py-2.5 bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-400 font-bold uppercase text-[10px] tracking-widest border border-cyan-900 hover:border-cyan-500 transition-all rounded flex items-center justify-center gap-2"
+                                    >
+                                        <Search size={14} /> Lock On
+                                    </button>
+                                    
+                                    {isPending ? (
+                                        <div className="py-2.5 bg-yellow-950/40 text-yellow-500 font-bold uppercase text-[10px] tracking-widest border border-yellow-900 flex items-center justify-center gap-2 rounded">
+                                            <Loader2 size={14} className="animate-spin" /> Verifying
+                                        </div>
+                                    ) : (
+                                        <button 
+                                            onClick={() => handleConfirmKill(target.id, target.username, target.bounty || 50)}
+                                            disabled={!isEngaged || isKilled}
+                                            className={cn(
+                                                "py-2.5 font-bold uppercase text-[10px] tracking-widest border transition-all rounded flex items-center justify-center gap-2",
+                                                isEngaged && !isKilled 
+                                                    ? "bg-red-950/40 hover:bg-red-900/60 text-red-500 hover:text-white border-red-900 hover:border-red-500" 
+                                                    : "bg-neutral-900 text-neutral-600 border-neutral-800 cursor-not-allowed"
+                                            )}
+                                        >
+                                            <Crosshair size={14} /> Execute
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
               </div>
-          )}
+            </ScrollArea>
+          </div>
+        )}
+
+        {/* 3. REPORT VIEW */}
+        {mode === "REPORT" && (
+          <div className="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto">
+            <div className="w-full max-w-lg bg-black/80 border-2 border-yellow-600/60 backdrop-blur-xl rounded-2xl p-8 relative overflow-hidden shadow-2xl">
+              <div className="absolute top-0 left-0 w-full h-1 bg-yellow-500" />
+              
+              <div className="flex items-center gap-4 mb-6">
+                <Target size={32} className="text-yellow-500 animate-pulse" />
+                <HackerText text="Manual_Scouting" className="text-xl md:text-2xl font-black text-yellow-400" />
+              </div>
+
+              <p className="text-xs md:text-sm font-mono text-neutral-400 mb-8 uppercase leading-relaxed border-l-2 border-yellow-800 pl-4">
+                Found a target off the grid?<br/>
+                Submit their coordinates for manual review and bonus credits.
+              </p>
+
+              <form onSubmit={handleReport} className="space-y-6">
+                <div>
+                  <label className="block text-[10px] md:text-xs font-mono text-yellow-600 uppercase mb-2 tracking-widest">
+                    Target Coordinates (URL)
+                  </label>
+                  <Input 
+                      placeholder="HTTPS://INSTAGRAM.COM/..." 
+                      value={reportUrl} 
+                      onChange={(e) => setReportUrl(e.target.value)} 
+                      className="h-12 bg-black/50 border-2 border-yellow-600/30 text-white font-mono text-xs uppercase focus:border-yellow-500 rounded-none placeholder:text-neutral-700" 
+                  />
+                </div>
+
+                <Button 
+                    type="submit" 
+                    disabled={reporting}
+                    className="w-full h-12 text-sm font-black uppercase tracking-[0.2em] bg-yellow-600 hover:bg-yellow-500 text-black shadow-lg shadow-yellow-600/20 rounded-none"
+                >
+                    {reporting ? "TRANSMITTING..." : "UPLOAD INTEL"}
+                </Button>
+              </form>
+            </div>
+          </div>
+        )}
 
       </div>
-
-      <style jsx global>{`
-        .clip-path-slant {
-          clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%, 0 20%);
-        }
-      `}</style>
     </main>
   );
 }

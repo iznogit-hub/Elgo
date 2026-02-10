@@ -5,14 +5,15 @@ import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import Link from "next/link";
 import Image from "next/image"; 
-import { ShieldAlert, ArrowLeft, LockKeyhole, Radio } from "lucide-react";
+import { ShieldAlert, ArrowLeft, LockKeyhole, Radio, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { HackerText } from "@/components/ui/hacker-text";
-import { Background } from "@/components/ui/background"; // Remove if unused in new theme, or keep for subtle effect
+import { Background } from "@/components/ui/background";
 import { SoundPrompter } from "@/components/ui/sound-prompter";
+import { MagneticWrapper } from "@/components/ui/magnetic-wrapper";
 import { useSfx } from "@/hooks/use-sfx";
 import { cn } from "@/lib/utils";
 
@@ -56,106 +57,122 @@ export default function ResetPassword() {
           alt="Recovery Background"
           fill
           priority
-          className="object-cover opacity-30 grayscale contrast-125"
+          className="object-cover opacity-30 grayscale contrast-150"
         />
         {/* Noise & Vignette */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#000000_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(220,38,38,0.1),transparent_80%)] animate-pulse" />
       </div>
 
       <SoundPrompter />
+      <Background />
 
       {/* --- NAV --- */}
-      <nav className="fixed top-0 left-0 right-0 z-[100] p-6 flex items-center justify-between pointer-events-none">
+      <nav className="fixed top-0 left-0 right-0 z-[100] p-8 flex items-center justify-between pointer-events-none">
         <div className="pointer-events-auto">
-            <Link href="/auth/login" onClick={() => play("hover")} className="w-10 h-10 border border-white/10 bg-black/40 backdrop-blur-md flex items-center justify-center group hover:border-red-500 transition-all rounded-sm">
-              <ArrowLeft size={18} className="text-neutral-500 group-hover:text-red-500" />
+            <Link href="/auth/login" onClick={() => play("hover")} className="group">
+              <div className="w-16 h-16 border-4 border-red-600/40 bg-black/60 backdrop-blur-md flex items-center justify-center group-hover:border-red-400 transition-all rounded-sm">
+                <ArrowLeft size={40} className="text-red-500 group-hover:text-red-300" />
+              </div>
             </Link>
         </div>
-        <div className="px-3 py-1 bg-red-950/30 border border-red-900/50 backdrop-blur-md flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse shadow-[0_0_8px_red]" />
-            <span className="text-[8px] font-mono font-bold tracking-[0.2em] text-red-500 uppercase">Emergency_Channel</span>
+        
+        <div className="flex items-center gap-4 px-8 py-4 bg-red-950/80 border-4 border-red-600/60 backdrop-blur-2xl rounded-full shadow-2xl shadow-red-600/60 animate-pulse">
+            <AlertTriangle size={32} className="text-red-500" />
+            <span className="text-xl font-black font-mono tracking-widest text-red-400 uppercase hidden md:inline">EMERGENCY_CHANNEL</span>
         </div>
       </nav>
 
       {/* --- MAIN INTERFACE --- */}
-      <div className="relative z-50 w-full max-w-5xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center h-full">
+      <div className="relative z-50 w-full max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-20 items-center">
         
         {/* LEFT: STATUS DISPLAY */}
-        <div className="text-center md:text-left space-y-6">
-            <div className="inline-block relative">
+        <div className="text-center lg:text-left space-y-8">
+            <div className="inline-block relative group">
                 <div className={cn(
-                    "w-20 h-20 border-2 flex items-center justify-center transition-all duration-500 mb-4 rounded-sm",
-                    sent ? "border-green-500 bg-green-950/20" : "border-red-500 bg-red-950/20"
+                    "w-32 h-32 border-8 flex items-center justify-center transition-all duration-500 mb-4 rounded-3xl",
+                    sent ? "border-green-500 bg-green-950/40 shadow-[0_0_60px_rgba(34,197,94,0.4)]" : "border-red-500 bg-red-950/40 shadow-[0_0_60px_rgba(220,38,38,0.4)]"
                 )}>
-                    <LockKeyhole size={32} className={cn(
-                        "transition-colors duration-500",
-                        sent ? "text-green-500" : "text-red-500"
-                    )} />
+                    {sent ? (
+                       <CheckCircle2 size={64} className="text-green-500 animate-in zoom-in duration-500" />
+                    ) : (
+                       <LockKeyhole size={64} className="text-red-500 animate-pulse" />
+                    )}
                 </div>
             </div>
 
             <div>
-                <h1 className="text-4xl md:text-6xl font-black font-sans italic uppercase leading-[0.9] tracking-tighter">
-                    <HackerText text={sent ? "SIGNAL_LOCKED" : "RECOVER_ACCESS"} speed={40} />
-                </h1>
-                <p className="text-[10px] font-mono text-neutral-500 tracking-[0.2em] uppercase mt-2">
-                   Protocol: Lost_Credentials_V1
+                <HackerText 
+                  text={sent ? "SIGNAL_LOCKED" : "LOST_ACCESS?"} 
+                  className="text-6xl md:text-8xl font-black font-sans italic text-white leading-[0.9]"
+                />
+                <p className="text-xl font-mono text-neutral-400 tracking-[0.2em] uppercase mt-4 max-w-md">
+                   {sent ? "Recovery link deployed. Check your secure inbox immediately." : "Initiate emergency protocol to reclaim your operative status."}
                 </p>
             </div>
-
-            {sent && (
-                <div className="p-4 bg-green-950/30 border-l-2 border-green-500 backdrop-blur-sm animate-in slide-in-from-left-4 duration-500 max-w-xs">
-                    <p className="text-[9px] font-bold text-green-400 uppercase leading-relaxed tracking-widest flex items-start gap-2">
-                        <Radio size={12} className="mt-0.5 shrink-0" />
-                        <span>Transmission Successful.<br/>Check Secure Inbox.</span>
-                    </p>
-                    <Link href="/auth/login" className="block mt-4 text-[9px] text-neutral-400 hover:text-white uppercase tracking-widest underline decoration-neutral-700 hover:decoration-white transition-all">
-                       Return_To_Gateway &gt;&gt;
-                    </Link>
-                </div>
-            )}
         </div>
 
         {/* RIGHT: INPUT TERMINAL */}
-        <div className="w-full max-w-sm flex justify-center md:justify-end">
+        <div className="w-full flex justify-center lg:justify-end">
             {!sent ? (
-                <div className="w-full animate-in slide-in-from-right-10 fade-in duration-500">
-                    <div className="flex items-center justify-between mb-4 px-1">
-                      <h3 className="text-[10px] font-black font-mono tracking-widest text-white uppercase flex items-center gap-2">
-                         <ShieldAlert size={12} className="text-red-500"/> Identify_Target
+                <div className="w-full max-w-xl bg-black/80 border-4 border-white/10 backdrop-blur-xl p-10 md:p-14 shadow-2xl relative animate-in slide-in-from-right-10 fade-in duration-700">
+                    
+                    {/* Decorative Elements */}
+                    <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-red-500" />
+                    <div className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-red-500" />
+                    <div className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-red-500" />
+                    <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-red-500" />
+
+                    <div className="mb-10 flex items-center justify-between border-b-2 border-white/10 pb-6">
+                      <h3 className="text-lg font-black font-mono tracking-widest text-red-500 uppercase flex items-center gap-3">
+                          <Radio size={24} className="animate-pulse"/> Uplink_Ready
                       </h3>
-                      <div className="w-16 h-[1px] bg-white/20" />
+                      <div className="w-24 h-2 bg-red-900/50 overflow-hidden">
+                         <div className="h-full bg-red-500 w-1/2 animate-[shimmer_2s_infinite]" />
+                      </div>
                     </div>
 
-                    <form onSubmit={handleReset} className="p-6 bg-black/80 border border-white/10 backdrop-blur-xl space-y-6 shadow-2xl relative">
-                        {/* Corner Accents */}
-                        <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-white" />
-                        <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-white" />
-                        <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-white" />
-                        <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-white" />
-
-                        <div className="space-y-1">
-                            <label className="text-[7px] font-mono text-neutral-500 uppercase tracking-widest">Comms_Address</label>
+                    <form onSubmit={handleReset} className="space-y-10">
+                        <div className="space-y-4">
+                            <label className="block text-sm font-mono text-neutral-500 uppercase tracking-widest pl-1">
+                                Comms_Address
+                            </label>
                             <Input 
                                 type="email" 
                                 placeholder="OPERATIVE@GUILD.COM" 
-                                className="bg-neutral-900/50 border-neutral-800 text-[10px] h-12 font-mono text-white focus:border-red-500 uppercase placeholder:text-neutral-700 transition-colors"
+                                className="h-20 text-2xl md:text-3xl bg-black border-4 border-white/20 focus:border-red-500 font-mono text-white uppercase placeholder:text-neutral-700 transition-all rounded-none text-center"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                autoFocus
                             />
                         </div>
                         
-                        <Button 
-                            type="submit" 
-                            disabled={loading}
-                            className="w-full h-12 bg-white hover:bg-neutral-200 text-black font-black italic tracking-widest text-[9px] uppercase border border-white shadow-[0_0_20px_rgba(255,255,255,0.1)]"
-                        >
-                            {loading ? "Transmitting..." : "Transmit_Reset_Signal"}
-                        </Button>
+                        <MagneticWrapper>
+                            <Button 
+                                type="submit" 
+                                disabled={loading}
+                                className="w-full h-20 bg-white hover:bg-neutral-200 text-black font-black italic tracking-widest text-2xl uppercase border-4 border-white shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:shadow-red-500/40 hover:border-red-500 hover:text-red-600 transition-all"
+                            >
+                                {loading ? <Loader2 className="animate-spin w-8 h-8" /> : "TRANSMIT_SIGNAL"}
+                            </Button>
+                        </MagneticWrapper>
                     </form>
                 </div>
-            ) : null}
+            ) : (
+                <div className="w-full max-w-md p-10 bg-green-950/20 border-4 border-green-500/50 backdrop-blur-md animate-in zoom-in duration-500 text-center">
+                    <p className="text-xl font-bold text-green-400 uppercase leading-relaxed tracking-widest mb-8">
+                        Transmission Successful.<br/>Secure Channel Open.
+                    </p>
+                    <MagneticWrapper>
+                        <Link href="/auth/login">
+                            <Button className="w-full py-8 text-xl font-black bg-green-600 hover:bg-green-500 text-black uppercase tracking-widest shadow-lg shadow-green-600/20">
+                                RETURN TO GATEWAY
+                            </Button>
+                        </Link>
+                    </MagneticWrapper>
+                </div>
+            )}
         </div>
 
       </div>

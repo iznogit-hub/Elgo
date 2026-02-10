@@ -10,7 +10,8 @@ import { useAuth } from "@/lib/context/auth-context";
 import { 
   Terminal, Crown, Pencil, ArrowLeft, 
   LogOut, Instagram, CheckCircle2, ShieldCheck, 
-  UserCog, Shirt, Lock, Check, ShoppingCart, AlertTriangle
+  UserCog, Shirt, Lock, Check, ShoppingCart, AlertTriangle,
+  Zap, Flame, Trophy, Diamond, Skull, Radio, Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -22,94 +23,103 @@ import { TransitionLink } from "@/components/ui/transition-link";
 import { SoundPrompter } from "@/components/ui/sound-prompter";
 import { useSfx } from "@/hooks/use-sfx";
 import { cn } from "@/lib/utils";
+import { HackerText } from "@/components/ui/hacker-text";
+import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
-// --- SKINS DATABASE ---
-// In a real app, this should be fetched from a 'items' collection in Firestore
 const SKIN_DB = [
-  // TIER 1: STANDARD ISSUE (Free)
-  { id: "recruit_m1", src: "/avatars/1.jpg", name: "Recruit (M)", type: "standard", cost: 0 },
-  { id: "recruit_m2", src: "/avatars/2.jpg", name: "Soldier (M)", type: "standard", cost: 0 },
-  { id: "recruit_f1", src: "/avatars/3.jpg", name: "Recruit (F)", type: "standard", cost: 0 },
-  { id: "recruit_f2", src: "/avatars/4.jpg", name: "Soldier (F)", type: "standard", cost: 0 },
+  // TIER 1: STANDARD ISSUE
+  { id: "recruit_m1", src: "/avatars/1.jpg", name: "Recruit (M)", type: "standard", cost: 0, rarity: "common" },
+  { id: "recruit_m2", src: "/avatars/2.jpg", name: "Soldier (M)", type: "standard", cost: 0, rarity: "common" },
+  { id: "recruit_f1", src: "/avatars/3.jpg", name: "Recruit (F)", type: "standard", cost: 0, rarity: "common" },
+  { id: "recruit_f2", src: "/avatars/4.jpg", name: "Soldier (F)", type: "standard", cost: 0, rarity: "common" },
   
-  // TIER 2: BLACK MARKET (Purchasable)
-  { id: "cyber_1", src: "/avatars/cyber_1.jpg", name: "Neon Ronin", type: "premium", cost: 500, rarity: "rare" },
-  { id: "cyber_2", src: "/avatars/cyber_2.jpg", name: "Netrunner", type: "premium", cost: 500, rarity: "rare" },
-  { id: "assassin_1", src: "/avatars/assassin_1.jpg", name: "Night Ops", type: "premium", cost: 800, rarity: "epic" },
+  // TIER 2: BLACK MARKET
+  { id: "cyber_1", src: "/avatars/cyber_1.jpg", name: "Neon Ronin", type: "premium", cost: 800, rarity: "rare" },
+  { id: "cyber_2", src: "/avatars/cyber_2.jpg", name: "Netrunner", type: "premium", cost: 900, rarity: "rare" },
+  { id: "assassin_1", src: "/avatars/assassin_1.jpg", name: "Night Ops", type: "premium", cost: 1200, rarity: "epic" },
+  { id: "shadow_1", src: "/avatars/shadow_1.jpg", name: "Void Stalker", type: "premium", cost: 1500, rarity: "epic" },
 
-  // TIER 3: ELITE (Rank Locked or High Cost)
-  { id: "gold_1", src: "/avatars/gold_1.jpg", name: "The Executive", type: "elite", cost: 2000, rarity: "legendary" },
-  { id: "boss_1", src: "/avatars/boss_1.jpg", name: "Warlord", type: "elite", cost: 5000, rarity: "legendary" },
+  // TIER 3: LEGENDARY (High greed factor)
+  { id: "gold_1", src: "/avatars/gold_1.jpg", name: "The Executive", type: "elite", cost: 3000, rarity: "legendary" },
+  { id: "boss_1", src: "/avatars/boss_1.jpg", name: "Sector Warlord", type: "elite", cost: 6000, rarity: "legendary" },
+  { id: "glitch_1", src: "/avatars/glitch_1.jpg", name: "Glitch Phantom", type: "elite", cost: 8000, rarity: "mythic" },
 ];
+
+const getRarityStyle = (rarity: string) => {
+  switch (rarity) {
+    case "mythic": return { border: "border-purple-500/70", glow: "shadow-purple-500/60", tag: "bg-purple-600 text-white", pulse: "animate-pulse" };
+    case "legendary": return { border: "border-yellow-500/70", glow: "shadow-yellow-500/60", tag: "bg-yellow-600 text-black", pulse: "" };
+    case "epic": return { border: "border-purple-400/60", glow: "shadow-purple-400/40", tag: "bg-purple-500 text-white", pulse: "" };
+    case "rare": return { border: "border-cyan-500/50", glow: "shadow-cyan-500/30", tag: "bg-cyan-600 text-white", pulse: "" };
+    default: return { border: "border-white/20", glow: "", tag: "bg-neutral-700 text-neutral-400", pulse: "" };
+  }
+};
 
 export default function DossierPage() {
   const { userData, user } = useAuth();
   const { play } = useSfx();
   const router = useRouter();
   
-  // STATE
   const [activeTab, setActiveTab] = useState<"LOADOUT" | "SETTINGS">("LOADOUT");
   const [showNameEdit, setShowNameEdit] = useState(false);
   const [newUsername, setNewUsername] = useState("");
   const [igHandle, setIgHandle] = useState(userData?.instagramHandle || "");
   const [isBinding, setIsBinding] = useState(false);
   const [buyingId, setBuyingId] = useState<string | null>(null);
+  const [selectedSkin, setSelectedSkin] = useState<any>(null);
 
-  // DATA
   const tier = userData?.membership?.tier || "recruit";
   const popCoins = userData?.wallet?.popCoins || 0;
   const username = userData?.username || "OPERATIVE";
   const currentAvatar = userData?.avatar || "/avatars/1.jpg";
   const inventory = userData?.inventory || [];
+  const ownedCount = inventory.length;
+  const totalSkins = SKIN_DB.length;
 
-  // --- LOGIC: AVATAR TRANSACTION SYSTEM ---
   const handlePurchaseOrEquip = async (skin: any) => {
       if (!user) return;
 
-      // 1. Check Ownership
-      // Standard skins are always "owned". Premium ones check inventory.
       const isOwned = skin.type === "standard" || inventory.some((item: any) => item.itemId === skin.id);
 
-      // 2. EQUIP LOGIC (If Owned)
       if (isOwned) {
           play("click");
           try {
               await updateDoc(doc(db, "users", user.uid), { avatar: skin.src });
-              toast.success(`EQUIPPED: ${skin.name}`);
+              toast.success(`EQUIPPED // ${skin.name.toUpperCase()} ACTIVE`);
+              setSelectedSkin(skin);
           } catch (e) {
-              toast.error("EQUIP FAILED");
+              toast.error("EQUIP FAILED // SYSTEM ERROR");
           }
           return;
       }
 
-      // 3. PURCHASE LOGIC (If Not Owned)
       if (popCoins < skin.cost) {
           play("error");
-          toast.error(`INSUFFICIENT FUNDS // NEED ${skin.cost} PC`);
+          toast.error(`INSUFFICIENT PC // EARN MORE IN SECTORS`);
           return;
       }
 
-      // Confirm Purchase
-      if (!confirm(`PURCHASE ${skin.name} for ${skin.cost} PC?`)) return;
+      if (!confirm(`CONFIRM PURCHASE // ${skin.name.toUpperCase()} FOR ${skin.cost} PC?`)) return;
 
       setBuyingId(skin.id);
-      play("kaching"); // Cash register sound
+      play("kaching");
 
       try {
           await updateDoc(doc(db, "users", user.uid), {
               "wallet.popCoins": increment(-skin.cost),
               inventory: arrayUnion({ itemId: skin.id, name: skin.name, purchasedAt: new Date().toISOString() }),
-              avatar: skin.src // Auto-equip on buy
+              avatar: skin.src
           });
-          toast.success("TRANSACTION COMPLETE // ITEM EQUIPPED");
+          toast.success(`ACQUISITION COMPLETE // ${skin.name.toUpperCase()} DEPLOYED`);
+          setSelectedSkin(skin);
       } catch (e) {
-          toast.error("TRANSACTION FAILED");
+          toast.error("TRANSACTION ABORTED");
       } finally {
           setBuyingId(null);
       }
   };
 
-  // --- ACTIONS ---
   const handleLogout = async () => {
       play("off");
       await signOut(auth);
@@ -117,15 +127,15 @@ export default function DossierPage() {
   };
 
   const handleBindInstagram = async () => {
-      if (!igHandle.startsWith("@")) return toast.error("INVALID FORMAT // USE @HANDLE");
+      if (!igHandle.startsWith("@")) return toast.error("INVALID HANDLE FORMAT");
       if (!user) return;
       setIsBinding(true);
       play("click");
       try {
           await updateDoc(doc(db, "users", user.uid), { instagramHandle: igHandle });
-          toast.success("IDENTITY VERIFIED");
+          toast.success("DIGITAL FOOTPRINT LINKED");
           play("success");
-      } catch (e) { toast.error("CONNECTION FAILED"); } 
+      } catch (e) { toast.error("BINDING FAILED"); } 
       finally { setIsBinding(false); }
   };
 
@@ -134,228 +144,292 @@ export default function DossierPage() {
      play("click");
      try {
         await updateDoc(doc(db, "users", user.uid), { username: newUsername.trim().toUpperCase() });
-        toast.success("CODENAME REASSIGNED");
+        toast.success("CODENAME UPDATED");
         setShowNameEdit(false);
-        window.location.reload(); 
-     } catch (e) { toast.error("UPDATE ERROR"); }
+     } catch (e) { toast.error("UPDATE FAILED"); }
   };
 
   if (!userData) return null;
 
   return (
-    <main className="relative min-h-screen bg-black text-white font-sans overflow-hidden flex flex-col items-center selection:bg-red-900 selection:text-white">
+    <main className="relative min-h-screen bg-black text-white font-sans overflow-hidden flex flex-col selection:bg-red-900 selection:text-white">
       
       {/* ATMOSPHERE */}
       <div className="absolute inset-0 z-0 pointer-events-none">
-        <Image src="/images/profile-bg.jpg" alt="Dossier" fill priority className="object-cover opacity-20 grayscale contrast-125" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black" />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
+        <Image src="/images/profile-bg.jpg" alt="Dossier" fill priority className="object-cover opacity-15 grayscale contrast-150" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black via-black/60 to-black" />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay animate-pulse" />
       </div>
       <SoundPrompter />
+      <Background />
 
-      {/* NAV */}
-      <nav className="fixed top-0 left-0 right-0 z-[100] p-6 flex items-center justify-between pointer-events-none">
-        <div className="pointer-events-auto">
-            <TransitionLink href="/dashboard" onClick={() => play("hover")} className="w-10 h-10 border border-white/10 bg-black/40 backdrop-blur-md flex items-center justify-center group hover:border-red-500 transition-all rounded-sm">
-              <ArrowLeft size={18} className="text-neutral-500 group-hover:text-red-500" />
-            </TransitionLink>
-        </div>
-        <div className="px-3 py-1 bg-neutral-900/50 border border-white/10 backdrop-blur-md flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-            <span className="text-[8px] font-mono font-bold tracking-[0.2em] text-neutral-400 uppercase">Loadout_Config</span>
-        </div>
-      </nav>
-
-      {/* CONTENT GRID */}
-      <div className="relative z-40 w-full max-w-5xl h-screen pt-24 px-6 pb-12 flex flex-col md:flex-row gap-8 overflow-y-auto no-scrollbar">
-        
-        {/* --- LEFT COLUMN: ID CARD --- */}
-        <aside className="w-full md:w-1/3 flex flex-col gap-6">
-            
-            {/* ID CARD */}
-            <div className="w-full bg-neutral-900/60 border border-white/10 backdrop-blur-xl p-0 relative overflow-hidden group rounded-sm shadow-2xl">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent opacity-50 z-20" />
-                
-                <div className="flex flex-col items-center pt-8 pb-6 relative">
-                    {/* BIG AVATAR PREVIEW */}
-                    <div className="relative w-40 h-40 mb-4 group/avatar">
-                        <div className="absolute inset-0 rounded-full border-2 border-white/20 group-hover/avatar:border-red-500 transition-colors z-10" />
-                        <div className="absolute inset-0 rounded-full overflow-hidden">
-                            <Image src={currentAvatar} alt="Avatar" fill className="object-cover grayscale group-hover/avatar:grayscale-0 transition-all duration-500" />
-                        </div>
-                        {/* Edit Icon Overlay */}
-                        <div className="absolute bottom-2 right-2 bg-black border border-white/20 p-2 rounded-full z-20 text-white">
-                            <UserCog size={14} />
-                        </div>
-                    </div>
-
-                    {/* NAME */}
-                    <div onClick={() => { setNewUsername(username); setShowNameEdit(true); play("click"); }} className="flex items-center gap-2 cursor-pointer group/edit mb-2">
-                        <h1 className="text-3xl font-black font-sans italic uppercase text-white tracking-tighter leading-none">{username}</h1>
-                        <Pencil size={12} className="text-neutral-600 group-hover/edit:text-white transition-colors" />
-                    </div>
-                    
-                    <span className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest flex items-center gap-2 bg-black/40 px-2 py-1 rounded-sm border border-white/5">
-                       <ShieldCheck size={10} className={tier === "warlord" ? "text-yellow-500" : "text-white"} /> 
-                       Rank: <span className="text-white font-bold">{tier}</span>
-                    </span>
-                </div>
-
-                {/* STATS */}
-                <div className="grid grid-cols-2 border-t border-white/10 bg-black/40">
-                    <div className="p-4 border-r border-white/10 text-center">
-                        <span className="block text-[7px] font-mono text-neutral-500 uppercase tracking-widest mb-1">War_Chest</span>
-                        <span className="text-lg font-black text-yellow-500 uppercase tracking-wide">{popCoins.toLocaleString()}</span>
-                    </div>
-                    <div className="p-4 text-center">
-                        <span className="block text-[7px] font-mono text-neutral-500 uppercase tracking-widest mb-1">Kills_Confirmed</span>
-                        <span className="text-lg font-black text-white uppercase tracking-wide">{(userData as any).dailyTracker?.bountiesClaimed || 0}</span>
-                    </div>
-                </div>
+      {/* TOP HUD */}
+      <header className="relative z-50 flex-none border-b-4 border-red-900/60 bg-black/80 backdrop-blur-2xl">
+        <div className="px-8 py-6 flex items-center justify-between">
+          <TransitionLink href="/dashboard" className="flex items-center gap-4 group">
+            <div className="w-12 h-12 border-2 border-white/20 bg-black/60 backdrop-blur-md flex items-center justify-center group-hover:border-red-500 transition-all">
+              <ArrowLeft size={24} className="text-neutral-500 group-hover:text-red-500" />
             </div>
+            <span className="text-sm font-mono text-neutral-500 uppercase tracking-widest">Return to War Room</span>
+          </TransitionLink>
 
-            {/* QUICK ACTIONS */}
-            <div className="space-y-2">
-                <Button onClick={() => setActiveTab("LOADOUT")} className={cn("w-full justify-start h-12 text-[10px] tracking-widest font-bold uppercase rounded-sm border", activeTab === "LOADOUT" ? "bg-white text-black border-white" : "bg-transparent text-neutral-500 border-white/10 hover:text-white")}>
-                    <Shirt size={14} className="mr-3" /> Wardrobe
-                </Button>
-                <Button onClick={() => setActiveTab("SETTINGS")} className={cn("w-full justify-start h-12 text-[10px] tracking-widest font-bold uppercase rounded-sm border", activeTab === "SETTINGS" ? "bg-white text-black border-white" : "bg-transparent text-neutral-500 border-white/10 hover:text-white")}>
-                    <Terminal size={14} className="mr-3" /> System_Settings
-                </Button>
+          <div className="flex items-center gap-8">
+            <div className="text-right">
+              <span className="text-xs font-mono text-neutral-500 uppercase">War Chest</span>
+              <div className="flex items-center gap-3">
+                <Zap size={24} className="text-yellow-500 animate-pulse" />
+                <span className="text-3xl font-black text-yellow-400">{popCoins.toLocaleString()}</span>
+              </div>
             </div>
+            <div className="text-right">
+              <span className="text-xs font-mono text-neutral-500 uppercase">Collection</span>
+              <span className="text-3xl font-black text-cyan-400">{ownedCount}/{totalSkins}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex">
+          <button onClick={() => setActiveTab("LOADOUT")} className={cn("flex-1 py-5 text-lg font-black uppercase tracking-widest transition-all", activeTab === "LOADOUT" ? "bg-red-950/40 text-red-400 border-t-4 border-red-500" : "text-neutral-600")}>
+            <Shirt size={24} className="inline mr-3" /> Black_Market
+          </button>
+          <button onClick={() => setActiveTab("SETTINGS")} className={cn("flex-1 py-5 text-lg font-black uppercase tracking-widest transition-all", activeTab === "SETTINGS" ? "bg-neutral-900/40 text-cyan-400 border-t-4 border-cyan-500" : "text-neutral-600")}>
+            <Terminal size={24} className="inline mr-3" /> Protocols
+          </button>
+        </div>
+      </header>
+
+      {/* MAIN GRID */}
+      <div className="relative z-40 flex-1 flex flex-col lg:flex-row gap-10 p-8 overflow-hidden">
+
+        {/* LEFT: OPERATIVE DOSSIER + BIG PREVIEW */}
+        <aside className="w-full lg:w-1/2 flex flex-col gap-8">
+          
+          {/* MASSIVE AVATAR PREVIEW */}
+          <div className="relative bg-black/60 border-4 border-white/10 backdrop-blur-2xl rounded-3xl overflow-hidden shadow-2xl">
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black" />
+            <div className="relative z-10 p-12 flex flex-col items-center text-center">
+              <div className="relative w-80 h-80 mb-8">
+                <div className="absolute inset-0 rounded-full border-4 border-white/20 animate-pulse" />
+                <Image 
+                  src={currentAvatar} 
+                  alt="Current Loadout" 
+                  fill 
+                  className="object-cover rounded-full"
+                />
+                <div className="absolute inset-0 rounded-full bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                {selectedSkin && selectedSkin.rarity && (
+                  <div className={cn("absolute inset-0 rounded-full animate-ping opacity-30", getRarityStyle(selectedSkin.rarity).glow.replace("shadow-", "bg-"))} />
+                )}
+              </div>
+
+              <HackerText text={username} className="text-5xl font-black tracking-wider mb-4" />
+
+              <div className="flex items-center gap-6 mb-8">
+                <div className="flex items-center gap-3">
+                  <Crown size={32} className={tier === "warlord" ? "text-yellow-500 animate-pulse" : "text-neutral-600"} />
+                  <span className="text-2xl font-black uppercase">{tier}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Trophy size={32} className="text-yellow-500" />
+                  <span className="text-2xl font-black">{(userData as any).dailyTracker?.bountiesClaimed || 0} KILLS</span>
+                </div>
+              </div>
+
+              <Button 
+                onClick={() => { setNewUsername(username); setShowNameEdit(true); play("click"); }}
+                className="px-12 py-4 bg-neutral-900/60 border-2 border-white/30 hover:border-red-500 text-lg font-black uppercase tracking-widest"
+              >
+                <Pencil size={20} className="mr-3" /> Reassign Codename
+              </Button>
+            </div>
+          </div>
+
+          {/* QUICK STATS */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-gradient-to-br from-cyan-950/40 to-black border border-cyan-600/40 p-6 text-center backdrop-blur-md">
+              <Sparkles size={32} className="text-cyan-400 mx-auto mb-3" />
+              <span className="block text-xs font-mono text-cyan-300 uppercase">Owned Skins</span>
+              <span className="text-3xl font-black">{ownedCount}</span>
+            </div>
+            <div className="bg-gradient-to-br from-yellow-950/40 to-black border border-yellow-600/40 p-6 text-center backdrop-blur-md">
+              <Diamond size={32} className="text-yellow-400 mx-auto mb-3" />
+              <span className="block text-xs font-mono text-yellow-300 uppercase">PC Balance</span>
+              <span className="text-3xl font-black">{popCoins.toLocaleString()}</span>
+            </div>
+            <div className="bg-gradient-to-br from-red-950/40 to-black border border-red-600/40 p-6 text-center backdrop-blur-md">
+              <Flame size={32} className="text-red-400 mx-auto mb-3 animate-pulse" />
+              <span className="block text-xs font-mono text-red-300 uppercase">Threat Level</span>
+              <span className="text-3xl font-black">HIGH</span>
+            </div>
+          </div>
         </aside>
 
-        {/* --- RIGHT COLUMN: THE STORE / EDITOR --- */}
-        <section className="flex-1 bg-neutral-900/20 border border-white/5 backdrop-blur-md rounded-sm p-6 overflow-hidden flex flex-col">
-            
-            {/* HEADER */}
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/5">
-                <h2 className="text-xl font-black font-sans uppercase italic text-white flex items-center gap-2">
-                    {activeTab === "LOADOUT" ? "Visual_Customization" : "Account_Protocols"}
-                </h2>
-                {activeTab === "LOADOUT" && (
-                    <div className="flex items-center gap-2 px-3 py-1 bg-yellow-500/10 border border-yellow-500/20 rounded-sm">
-                        <ShoppingCart size={12} className="text-yellow-500" />
-                        <span className="text-[10px] font-mono font-bold text-yellow-500">{popCoins.toLocaleString()} PC AVAILABLE</span>
-                    </div>
-                )}
+        {/* RIGHT: BLACK MARKET ARMORY */}
+        {activeTab === "LOADOUT" && (
+          <section className="flex-1">
+            <div className="mb-8 flex items-center justify-between">
+              <HackerText text="Black_Market_Armory" className="text-4xl font-black text-red-400" />
+              <div className="text-right">
+                <span className="text-sm font-mono text-neutral-500 uppercase">Available Funds</span>
+                <div className="flex items-center gap-3">
+                  <Zap size={28} className="text-yellow-500 animate-pulse" />
+                  <span className="text-4xl font-black text-yellow-400">{popCoins.toLocaleString()} PC</span>
+                </div>
+              </div>
             </div>
 
-            {/* TAB: LOADOUT (THE STORE) */}
-            {activeTab === "LOADOUT" && (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto no-scrollbar pb-10">
-                    {SKIN_DB.map((skin) => {
-                        const isOwned = skin.type === "standard" || inventory.some((item: any) => item.itemId === skin.id);
-                        const isEquipped = currentAvatar === skin.src;
-                        const isAffordable = popCoins >= skin.cost;
-                        const isBuying = buyingId === skin.id;
+            <ScrollArea className="h-full pb-32">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+                {SKIN_DB.map((skin) => {
+                    const isOwned = skin.type === "standard" || inventory.some((item: any) => item.itemId === skin.id);
+                    const isEquipped = currentAvatar === skin.src;
+                    const isAffordable = popCoins >= skin.cost;
+                    const isBuying = buyingId === skin.id;
+                    const rarityStyle = getRarityStyle(skin.rarity || "common");
 
-                        // Rarity Colors
-                        const borderColor = skin.rarity === "legendary" ? "border-yellow-500/50" : skin.rarity === "epic" ? "border-purple-500/50" : "border-white/10";
-                        const bgGlow = skin.rarity === "legendary" ? "bg-yellow-500/5" : "bg-white/5";
-
-                        return (
-                            <div 
-                                key={skin.id} 
-                                onClick={() => handlePurchaseOrEquip(skin)}
-                                className={cn(
-                                    "relative aspect-[4/5] border flex flex-col justify-between group cursor-pointer transition-all overflow-hidden hover:scale-[1.02]",
-                                    isEquipped ? "border-green-500 bg-green-500/5" : borderColor,
-                                    bgGlow
-                                )}
-                            >
-                                {/* Image Layer */}
-                                <div className="absolute inset-0 z-0">
-                                    <Image 
-                                        src={skin.src} 
-                                        alt={skin.name} 
-                                        fill 
-                                        className={cn("object-cover transition-all duration-500", !isOwned && "grayscale opacity-60", "group-hover:grayscale-0 group-hover:opacity-100")} 
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-90" />
-                                </div>
-
-                                {/* Status Badges */}
-                                <div className="relative z-10 p-2 flex justify-between items-start">
-                                    {isEquipped && <div className="bg-green-500 text-black text-[8px] font-black px-1.5 py-0.5 uppercase tracking-widest">Equipped</div>}
-                                    {skin.rarity && !isEquipped && <div className={cn("text-[7px] font-black px-1.5 py-0.5 uppercase tracking-widest border", skin.rarity === "legendary" ? "text-yellow-500 border-yellow-500" : "text-neutral-400 border-neutral-600")}>{skin.rarity}</div>}
-                                </div>
-
-                                {/* Bottom Info */}
-                                <div className="relative z-10 p-3 text-center">
-                                    <h4 className="text-[10px] font-bold text-white uppercase truncate mb-1">{skin.name}</h4>
-                                    
-                                    {isBuying ? (
-                                        <span className="text-[9px] font-mono text-yellow-500 animate-pulse">PROCESSING...</span>
-                                    ) : isOwned ? (
-                                        <span className="text-[9px] font-mono text-neutral-400 uppercase flex items-center justify-center gap-1">
-                                            {isEquipped ? "ACTIVE" : "OWNED"}
-                                        </span>
-                                    ) : (
-                                        <div className={cn("text-[10px] font-mono font-bold flex items-center justify-center gap-1", isAffordable ? "text-yellow-500" : "text-red-500")}>
-                                            {isAffordable ? <ShoppingCart size={10} /> : <Lock size={10} />}
-                                            {skin.cost} PC
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )
-                    })}
-                </div>
-            )}
-
-            {/* TAB: SETTINGS */}
-            {activeTab === "SETTINGS" && (
-                <div className="space-y-6 max-w-md">
-                    {/* INSTAGRAM BIND */}
-                    <div className="space-y-2">
-                        <label className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest block">Digital_Footprint (Instagram)</label>
-                        <div className="flex gap-2">
-                            <Input 
-                                value={igHandle}
-                                onChange={(e) => setIgHandle(e.target.value)}
-                                placeholder="@HANDLE"
-                                disabled={!!userData?.instagramHandle}
-                                className="bg-black/50 border-white/10 text-[10px] h-10 font-mono text-white rounded-none"
+                    return (
+                        <div 
+                            key={skin.id} 
+                            onClick={() => handlePurchaseOrEquip(skin)}
+                            className={cn(
+                                "group relative aspect-square border-4 rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 hover:scale-105",
+                                isEquipped ? "border-green-500 shadow-2xl shadow-green-500/60" : rarityStyle.border,
+                                rarityStyle.glow && `shadow-2xl ${rarityStyle.glow} ${rarityStyle.pulse}`
+                            )}
+                        >
+                            {/* Image */}
+                            <Image 
+                                src={skin.src} 
+                                alt={skin.name} 
+                                fill 
+                                className={cn("object-cover transition-all duration-700", !isOwned && "grayscale opacity-70", "group-hover:grayscale-0 group-hover:opacity-100 group-hover:scale-110")} 
                             />
-                            {!userData?.instagramHandle && (
-                                <Button onClick={handleBindInstagram} disabled={isBinding} className="h-10 bg-white text-black font-bold text-[9px] w-24 rounded-none border border-white">
-                                    {isBinding ? "..." : "BIND"}
-                                </Button>
+
+                            {/* Gradient Overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+
+                            {/* Rarity Tag */}
+                            {skin.rarity && (
+                              <div className={cn("absolute top-4 left-4 px-3 py-1 text-xs font-black uppercase tracking-widest border", rarityStyle.tag)}>
+                                {skin.rarity}
+                              </div>
+                            )}
+
+                            {/* Equipped Badge */}
+                            {isEquipped && (
+                              <div className="absolute top-4 right-4 bg-green-600 text-black px-3 py-1 text-xs font-black uppercase">
+                                Deployed
+                              </div>
+                            )}
+
+                            {/* Bottom Panel */}
+                            <div className="absolute bottom-0 left-0 right-0 p-6 text-center">
+                              <h3 className="text-lg font-black uppercase mb-3 tracking-wider">{skin.name}</h3>
+                              
+                              {isBuying ? (
+                                <div className="text-yellow-400 font-black animate-pulse text-xl">PROCESSING...</div>
+                              ) : isOwned ? (
+                                <div className="text-cyan-400 font-black text-lg uppercase">
+                                  {isEquipped ? "ACTIVE" : "Tap to Equip"}
+                                </div>
+                              ) : (
+                                <div className={cn("text-2xl font-black flex items-center justify-center gap-3", isAffordable ? "text-yellow-400" : "text-red-500")}>
+                                  {isAffordable ? <ShoppingCart size={28} /> : <Lock size={28} />}
+                                  {skin.cost.toLocaleString()} PC
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Premium Pulse */}
+                            {!isOwned && skin.rarity && skin.rarity !== "common" && (
+                              <div className={cn("absolute inset-0 border-4 rounded-2xl animate-ping opacity-40", rarityStyle.border)} />
                             )}
                         </div>
-                        {userData?.instagramHandle && <p className="text-[8px] text-green-500 font-mono flex items-center gap-1"><CheckCircle2 size={10} /> LINK_ESTABLISHED</p>}
+                    );
+                })}
+              </div>
+            </ScrollArea>
+          </section>
+        )}
+
+        {/* SETTINGS TAB */}
+        {activeTab === "SETTINGS" && (
+          <section className="flex-1 flex items-center justify-center">
+            <div className="w-full max-w-2xl bg-black/70 border-4 border-cyan-600/50 backdrop-blur-2xl rounded-3xl p-12 space-y-12">
+              <HackerText text="System_Protocols" className="text-4xl font-black text-cyan-400 text-center" />
+
+              {/* Instagram Bind */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-6">
+                  <Instagram size={48} className="text-pink-500" />
+                  <div className="flex-1">
+                    <label className="block text-lg font-mono text-neutral-300 uppercase mb-3">
+                      Link Digital Footprint
+                    </label>
+                    <div className="flex gap-4">
+                      <Input 
+                          value={igHandle}
+                          onChange={(e) => setIgHandle(e.target.value)}
+                          placeholder="@YOURHANDLE"
+                          disabled={!!userData?.instagramHandle}
+                          className="h-16 text-xl bg-black/50 border-2 border-cyan-600/50 text-white font-mono uppercase focus:border-cyan-400"
+                      />
+                      {!userData?.instagramHandle && (
+                          <Button 
+                            onClick={handleBindInstagram} 
+                            disabled={isBinding}
+                            size="lg"
+                            className="px-12 text-lg font-black bg-gradient-to-r from-cyan-600 to-cyan-400 hover:from-cyan-500 hover:to-cyan-300"
+                          >
+                            {isBinding ? "BINDING..." : "VERIFY"}
+                          </Button>
+                      )}
                     </div>
-
-                    <div className="h-[1px] bg-white/10 w-full my-4" />
-
-                    <Button onClick={handleLogout} className="w-full h-12 bg-red-950/20 text-red-500 border border-red-900/30 hover:bg-red-900/20 hover:text-red-400 font-bold text-[10px] tracking-widest uppercase rounded-sm flex items-center gap-2">
-                        <LogOut size={14} /> Disconnect_System
-                    </Button>
+                    {userData?.instagramHandle && (
+                      <p className="mt-4 text-green-400 font-mono text-lg flex items-center gap-3">
+                        <CheckCircle2 size={28} /> FOOTPRINT LOCKED // @{userData.instagramHandle}
+                      </p>
+                    )}
+                  </div>
                 </div>
-            )}
+              </div>
 
-        </section>
+              <div className="h-px bg-white/10" />
 
+              <Button 
+                onClick={handleLogout} 
+                className="w-full py-8 text-2xl font-black uppercase tracking-widest bg-gradient-to-r from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 shadow-2xl shadow-red-600/60"
+              >
+                <LogOut size={32} className="mr-4" /> Disconnect From Grid
+              </Button>
+            </div>
+          </section>
+        )}
       </div>
 
-      {/* --- EDIT NAME MODAL --- */}
+      {/* NAME EDIT MODAL */}
       {showNameEdit && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-sm p-6">
-            <div className="w-full max-w-xs bg-neutral-900 border border-white/20 p-6 space-y-6 shadow-2xl relative">
-                <div className="absolute top-0 left-0 w-full h-1 bg-white" />
-                <h3 className="text-xs font-black font-sans text-white uppercase flex items-center gap-2 tracking-widest">
-                    <Terminal size={12} className="text-red-500" /> Reassign_Codename
-                </h3>
-                <Input value={newUsername} onChange={(e) => setNewUsername(e.target.value.toUpperCase())} className="bg-black border-white/10 text-white font-mono font-bold text-sm h-12 text-center uppercase rounded-none focus:border-red-500" placeholder="NEW_ALIAS" />
-                <div className="flex gap-2">
-                    <Button onClick={handleNameUpdate} className="flex-1 bg-white hover:bg-neutral-200 text-black font-bold text-[9px] h-10 uppercase rounded-none">Confirm</Button>
-                    <Button onClick={() => setShowNameEdit(false)} variant="ghost" className="text-[9px] uppercase font-bold text-neutral-500 hover:text-white rounded-none">Cancel</Button>
-                </div>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-xl p-8">
+          <div className="w-full max-w-lg bg-gradient-to-b from-neutral-900 to-black border-4 border-red-600/70 p-12 shadow-2xl">
+            <HackerText text="Codename Reassignment" className="text-4xl font-black text-red-400 mb-8 text-center" />
+            <Input 
+              value={newUsername} 
+              onChange={(e) => setNewUsername(e.target.value.toUpperCase())} 
+              className="h-20 text-3xl text-center bg-black/60 border-4 border-white/30 focus:border-red-500 font-black uppercase tracking-widest"
+              placeholder="NEW CODENAME"
+            />
+            <div className="flex gap-6 mt-12">
+              <Button onClick={handleNameUpdate} className="flex-1 py-8 text-2xl font-black bg-green-600 hover:bg-green-500">
+                Confirm
+              </Button>
+              <Button onClick={() => setShowNameEdit(false)} variant="ghost" className="flex-1 py-8 text-2xl font-black text-neutral-500 hover:text-white">
+                Abort
+              </Button>
             </div>
+          </div>
         </div>
       )}
-
     </main>
   );
 }

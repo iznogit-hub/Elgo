@@ -1,18 +1,25 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Image from "next/image"; 
-import { 
-  doc, updateDoc, arrayUnion, increment, onSnapshot, 
-  collection, query, where, getDocs, limit 
+import { useParams } from "next/navigation";
+import Image from "next/image";
+import {
+  doc,
+  updateDoc,
+  increment,
+  collection,
+  query,
+  where,
+  getDocs,
+  limit,
+  orderBy,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/context/auth-context";
-import { NICHE_DATA } from "@/lib/niche-data";
-import { 
-  ArrowLeft, Copy, Play, Lock, Crown, Users, 
-  Crosshair, ExternalLink, ShieldCheck, Zap, Share2, Music, FileText
+import { NICHE_DATA, MISSION_TYPES } from "@/lib/niche-data";
+import {
+  ArrowLeft, Zap, ShieldCheck, Skull, ExternalLink,
+  Loader2, CheckCircle2, Crown, Trophy, AlertTriangle
 } from "lucide-react";
 import { toast } from "sonner";
 import { Background } from "@/components/ui/background";
@@ -21,97 +28,115 @@ import { cn } from "@/lib/utils";
 import { TransitionLink } from "@/components/ui/transition-link";
 import { SoundPrompter } from "@/components/ui/sound-prompter";
 
-// --- FAKE ASSET DATA (Replace with Firestore 'sector_assets' later) ---
-const MOCK_ASSETS = {
-    scripts: [
-        { title: "The Controversy Hook", content: "Stop doing [TOPIC] like this. You are burning money. Here is the exact protocol the top 1% use..." },
-        { title: "The Storytime Framework", content: "I almost quit [TOPIC] yesterday. But then I found this glitch in the matrix..." },
-        { title: "The Value Stack", content: "3 Tools you need for [TOPIC] right now. Number 1 is obvious, but Number 3 is illegal in 4 countries..." },
-    ],
-    audio: [
-        { title: "Trending: Dark Phonk", url: "https://instagram.com/audio/12345" },
-        { title: "Trending: Motivational Speech", url: "https://instagram.com/audio/67890" },
-        { title: "Trending: Glitch Sound", url: "https://instagram.com/audio/11223" },
-    ]
-};
+// --- GAME CONSTANTS ---
+const MAX_ENERGY = 100;
+const ENERGY_REGEN_RATE = 1;
+const ENERGY_REGEN_INTERVAL = 6000; // 6s
 
 export default function NichePage() {
   const params = useParams();
-  const router = useRouter();
   const { user, userData, loading } = useAuth();
   const { play } = useSfx();
-  
+
   const id = params.id as string;
   const initialData = NICHE_DATA[id] || NICHE_DATA["general"];
-  const [nicheData, setNicheData] = useState<any>(initialData);
-  
-  // STATE
-  const [activeTab, setActiveTab] = useState<"ARMORY" | "RADAR">("ARMORY");
-  const [activePlayers, setActivePlayers] = useState<any[]>([]);
-  const [followedCreators, setFollowedCreators] = useState<string[]>([]);
-  
-  // MEMBERSHIP CHECK
-  const isElite = userData?.membership?.tier === "elite" || userData?.membership?.tier === "council";
+  const FactionIcon = initialData.icon;
 
-  // 1. FETCH REAL PLAYERS
+  // STATE
+  const [activeTab, setActiveTab] = useState<"OPS" | "WARZONE" | "LEADERBOARD">("OPS");
+  const [energy, setEnergy] = useState(MAX_ENERGY);
+  const [warlord, setWarlord] = useState<any>(null);
+  const [activePlayers, setActivePlayers] = useState<any[]>([]);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  
+  // JOB STATE
+  const [verifyingJob, setVerifyingJob] = useState<string | null>(null);
+  const [verifyStart, setVerifyStart] = useState<Record<string, number>>({});
+  const [cooldowns, setCooldowns] = useState<Record<string, number>>({});
+
+  // --- REGEN LOGIC ---
   useEffect(() => {
-    const fetchActiveUnits = async () => {
-        if (!user) return;
-        try {
-            const q = query(
-                collection(db, "users"),
-                where("unlockedNiches", "array-contains", id),
-                where("uid", "!=", user.uid),
-                limit(10)
-            );
-            const snapshot = await getDocs(q);
-            setActivePlayers(snapshot.empty ? [] : snapshot.docs.map(doc => doc.data()));
-        } catch (e) { console.error("Radar Offline", e); }
+    if (energy >= MAX_ENERGY) return;
+    const interval = setInterval(() => {
+      setEnergy((prev) => Math.min(MAX_ENERGY, prev + ENERGY_REGEN_RATE));
+    }, ENERGY_REGEN_INTERVAL);
+    return () => clearInterval(interval);
+  }, [energy]);
+
+  // --- DATA FETCH ---
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user) return;
+      try {
+        // Warlord
+        const qWarlord = query(collection(db, "users"), where("unlockedNiches", "array-contains", id), orderBy("wallet.popCoins", "desc"), limit(1));
+        const snapWarlord = await getDocs(qWarlord);
+        if (!snapWarlord.empty) setWarlord({ ...snapWarlord.docs[0].data(), uid: snapWarlord.docs[0].id });
+
+        // Rivals
+        const qRivals = query(collection(db, "users"), where("unlockedNiches", "array-contains", id), where("uid", "!=", user.uid), limit(8));
+        const snapRivals = await getDocs(qRivals);
+        setActivePlayers(snapRivals.docs.map((d) => ({ ...d.data(), uid: d.id })));
+
+        // Leaderboard
+        const qLeader = query(collection(db, "users"), where("unlockedNiches", "array-contains", id), orderBy("wallet.popCoins", "desc"), limit(10));
+        const snapLeader = await getDocs(qLeader);
+        setLeaderboard(snapLeader.docs.map((d) => ({ ...d.data(), uid: d.id })));
+      } catch (e) { console.error("Intel Failed", e); }
     };
-    fetchActiveUnits();
+    fetchData();
   }, [id, user]);
 
-  // 2. CONNECT TO PLAYER
-  const handleConnectPlayer = async (targetUser: any) => {
-      const handle = targetUser.instagramHandle;
-      if (!handle) return toast.error("NO COMMS LINK");
-      if (followedCreators.includes(handle)) return;
+  // --- HANDLERS ---
+  const handleStartMission = (job: any) => {
+    const cooldownEnd = cooldowns[job.id] || 0;
+    if (cooldownEnd > Date.now()) return toast.error("MISSION ON COOLDOWN");
+    if (energy < job.energy) return toast.error("ENERGY DEPLETED // REST REQUIRED");
 
-      play("click");
-      window.open(`https://instagram.com/${handle.replace('@', '')}`, '_blank');
-      
-      setTimeout(async () => {
-          if (confirm(`Link established? Claim 50 PC.`)) {
-             try {
-                 const userRef = doc(db, "users", user!.uid);
-                 await updateDoc(userRef, {
-                     "wallet.popCoins": increment(50),
-                     "followedCreators": arrayUnion(handle)
-                 });
-                 setFollowedCreators(prev => [...prev, handle]);
-                 toast.success(`LINK ESTABLISHED: +50 PC`);
-                 play("success");
-             } catch (e) { toast.error("CONNECTION FAILED"); }
-          }
-      }, 2000);
+    play("click");
+    
+    // Fallback URL logic
+    const targetUrl = warlord?.instagramHandle 
+        ? `https://instagram.com/${warlord.instagramHandle.replace('@','')}` 
+        : `https://instagram.com/explore/tags/${initialData.tags ? initialData.tags[0] : 'viral'}`;
+    
+    window.open(targetUrl, "_blank");
+    
+    setVerifyingJob(job.id);
+    setVerifyStart((prev) => ({ ...prev, [job.id]: Date.now() }));
+    toast.info("UPLINK ESTABLISHED // COMPLETE TASK THEN VERIFY");
   };
 
-  // 3. COPY REFERRAL LINK
-  const handleCopyReferral = () => {
-      const link = `${window.location.origin}/auth/signup?ref=${userData?.username}`;
-      navigator.clipboard.writeText(link);
-      play("click");
-      toast.success("RECRUITMENT LINK COPIED");
+  const handleCompleteMission = async (job: any) => {
+    const startTime = verifyStart[job.id] || 0;
+    const minTime = 5000; // 5s fake verify
+    if (Date.now() - startTime < minTime) return toast.error("TASK NOT VERIFIED // WAIT LONGER");
+
+    play("kaching");
+    setVerifyingJob(null);
+    setEnergy((prev) => Math.max(0, prev - job.energy));
+    setCooldowns((prev) => ({ ...prev, [job.id]: Date.now() + 60000 })); // 1 min cooldown for MVP
+
+    try {
+      const userRef = doc(db, "users", user!.uid);
+      await updateDoc(userRef, {
+        "wallet.popCoins": increment(job.reward),
+        "dailyTracker.bountiesClaimed": increment(1),
+      });
+      toast.success(`MISSION SUCCESS: +${job.reward} PC`);
+    } catch (e) { toast.error("SYNC FAILED"); }
   };
 
-  // 4. FAKE PAYMENT TRIGGER
-  const handlePayment = () => {
-      play("kaching");
-      // Integrate Razorpay/UPI Deep Link here
-      if(confirm("Open Payment Gateway for ₹99 Lifetime Access?")) {
-          // Redirect to payment logic
-          alert("Payment Gateway Initializing..."); 
-      }
+  const handleRaid = async (rival: any) => {
+    if (energy < 20) return toast.error("INSUFFICIENT ENERGY");
+    play("shot");
+    setEnergy((prev) => Math.max(0, prev - 20));
+    const stolen = Math.floor(Math.random() * 40) + 10;
+    
+    try {
+       await updateDoc(doc(db, "users", user!.uid), { "wallet.popCoins": increment(stolen) });
+       toast.success(`RAID SUCCESS // STOLE ${stolen} PC FROM ${rival.username}`);
+    } catch(e) { toast.error("RAID FAILED"); }
   };
 
   if (loading || !userData) return <div className="bg-black min-h-screen" />;
@@ -121,183 +146,200 @@ export default function NichePage() {
       
       {/* BACKGROUND */}
       <div className="absolute inset-0 z-0 pointer-events-none">
-        <Image src={nicheData.imageSrc || `/images/sectors/${id}.jpg`} alt="Sector" fill className="object-cover opacity-20 grayscale contrast-125" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black via-black/80 to-black z-10" />
+        <Image 
+            src={initialData.imageSrc || "/images/sectors/general.jpg"} 
+            alt="Sector" 
+            fill 
+            className="object-cover opacity-20 grayscale contrast-150" 
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black via-black/70 to-black" />
       </div>
       
       <SoundPrompter />
       <Background />
 
-      {/* --- HEADER --- */}
-      <header className="flex-none px-6 py-4 flex items-center justify-between border-b border-white/10 bg-black/80 backdrop-blur-xl z-50">
-          <div className="flex items-center gap-4">
-              <TransitionLink href="/dashboard" className="w-10 h-10 border border-white/10 bg-white/5 flex items-center justify-center hover:border-red-500 rounded-sm transition-all">
-                <ArrowLeft size={18} />
-              </TransitionLink>
-              <div>
-                  <h1 className="text-xl font-black font-sans uppercase italic leading-none">{nicheData.label}</h1>
-                  <span className={cn("text-[9px] font-mono tracking-widest uppercase flex items-center gap-2", isElite ? "text-yellow-500" : "text-neutral-500")}>
-                     {isElite ? <><Crown size={10} /> ELITE ACCESS</> : <><Lock size={10} /> RESTRICTED MODE</>}
-                  </span>
-              </div>
+      {/* HEADER */}
+      <header className="flex-none px-6 py-5 border-b border-white/10 bg-black/90 backdrop-blur-2xl z-50">
+        <div className="flex items-center justify-between mb-5">
+          <TransitionLink href="/dashboard" className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors">
+            <ArrowLeft size={18} /> <span className="text-[11px] font-mono uppercase tracking-widest">Base</span>
+          </TransitionLink>
+          
+          {/* Energy Bar */}
+          <div className="flex items-center gap-3 px-4 py-2 bg-black/60 border border-green-600/40 rounded-full">
+            <Zap size={16} className="text-green-500 animate-pulse fill-green-500/30" />
+            <div className="w-24 h-2 bg-neutral-800 rounded-full overflow-hidden">
+              <div className="h-full bg-green-500 transition-all duration-1000" style={{ width: `${(energy / MAX_ENERGY) * 100}%` }} />
+            </div>
+            <span className="text-xs font-mono text-green-400">{energy}</span>
           </div>
-          <div className="flex bg-neutral-900/50 p-1 rounded-sm border border-white/10">
-              <button onClick={() => setActiveTab("ARMORY")} className={cn("px-4 py-2 text-[9px] font-black uppercase rounded-sm transition-all flex items-center gap-2", activeTab === "ARMORY" ? "bg-white text-black" : "text-neutral-500 hover:text-white")}>
-                  <Zap size={12} /> Armory
-              </button>
-              <button onClick={() => setActiveTab("RADAR")} className={cn("px-4 py-2 text-[9px] font-black uppercase rounded-sm transition-all flex items-center gap-2", activeTab === "RADAR" ? "bg-red-600 text-white" : "text-neutral-500 hover:text-white")}>
-                  <Crosshair size={12} /> Radar
-              </button>
+        </div>
+
+        <div className="flex items-end justify-between">
+          <div>
+            <h1 className={cn("text-3xl md:text-5xl font-black uppercase italic leading-none tracking-tighter", initialData.color)}>
+              {initialData.label}
+            </h1>
+            <div className="flex items-center gap-2 mt-2">
+              <FactionIcon size={16} className="text-neutral-400" />
+              <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest">{initialData.category}</span>
+            </div>
           </div>
+          <div className="text-right">
+             <div className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest mb-1">Controlled By</div>
+             <div className="text-yellow-500 font-bold flex items-center justify-end gap-2">
+                {warlord?.username || "UNCLAIMED"} <Crown size={14} />
+             </div>
+          </div>
+        </div>
       </header>
 
-      {/* --- CONTENT --- */}
-      <div className="flex-1 overflow-y-auto p-6 pb-32 z-40 relative no-scrollbar">
-          
-          {/* TAB: ARMORY (Scripts & Audio) */}
-          {activeTab === "ARMORY" && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                  
-                  {/* SCRIPTS SECTION */}
-                  <section className="space-y-4">
-                      <div className="flex items-center gap-2 text-white/50 border-b border-white/10 pb-2">
-                          <FileText size={14} />
-                          <span className="text-[10px] font-black uppercase tracking-widest">Viral_Scripts</span>
-                      </div>
-                      <div className="grid gap-4">
-                          {MOCK_ASSETS.scripts.map((script, i) => {
-                              const isLocked = !isElite && i > 0; // Lock everything after 1st item
-                              return (
-                                  <div key={i} className="relative group">
-                                      <div className={cn("p-6 border rounded-sm transition-all", isLocked ? "bg-neutral-900/30 border-white/5 blur-[2px] opacity-50" : "bg-neutral-900/60 border-white/10 hover:border-white/30")}>
-                                          <h3 className="text-xs font-bold text-yellow-500 uppercase mb-3">{script.title}</h3>
-                                          <p className="text-lg md:text-xl font-mono leading-relaxed text-white select-all">{script.content}</p>
-                                          
-                                          {!isLocked && (
-                                              <button onClick={() => { navigator.clipboard.writeText(script.content); toast.success("COPIED"); }} className="absolute top-4 right-4 p-2 bg-white/5 rounded-sm hover:bg-white text-neutral-400 hover:text-black transition-all">
-                                                  <Copy size={14} />
-                                              </button>
-                                          )}
-                                      </div>
-                                      {/* LOCK OVERLAY */}
-                                      {isLocked && (
-                                          <div className="absolute inset-0 flex items-center justify-center z-10">
-                                              <Lock size={24} className="text-white/20" />
-                                          </div>
-                                      )}
-                                  </div>
-                              )
-                          })}
-                      </div>
-                  </section>
+      {/* TABS */}
+      <div className="flex border-b border-white/10 bg-black/80 z-40">
+        {["OPS", "WARZONE", "LEADERBOARD"].map((tab) => (
+          <button 
+            key={tab} 
+            onClick={() => setActiveTab(tab as any)} 
+            className={cn(
+                "flex-1 py-4 text-[10px] md:text-xs font-black uppercase tracking-widest transition-all hover:bg-white/5", 
+                activeTab === tab ? "border-b-4 border-white text-white" : "text-neutral-500"
+            )}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
 
-                  {/* AUDIO SECTION */}
-                  <section className="space-y-4">
-                      <div className="flex items-center gap-2 text-white/50 border-b border-white/10 pb-2">
-                          <Music size={14} />
-                          <span className="text-[10px] font-black uppercase tracking-widest">Trending_Audio</span>
-                      </div>
-                      <div className="grid gap-3">
-                          {MOCK_ASSETS.audio.map((track, i) => {
-                              const isLocked = !isElite && i > 0;
-                              return (
-                                  <div key={i} className={cn("flex items-center justify-between p-4 border rounded-sm transition-all", isLocked ? "bg-neutral-900/30 border-white/5 opacity-50" : "bg-neutral-900/60 border-white/10 hover:border-white/30")}>
-                                      <div className="flex items-center gap-3">
-                                          <div className="w-8 h-8 bg-white/5 rounded-full flex items-center justify-center">
-                                              {isLocked ? <Lock size={12} className="text-neutral-600"/> : <Play size={12} className="text-white"/>}
-                                          </div>
-                                          <div>
-                                              <h4 className="text-xs font-bold text-white uppercase">{track.title}</h4>
-                                              <span className="text-[8px] font-mono text-neutral-500">Instagram Reel Audio</span>
-                                          </div>
-                                      </div>
-                                      {!isLocked && (
-                                          <button onClick={() => window.open(track.url, '_blank')} className="px-3 py-1.5 bg-white text-black text-[9px] font-bold uppercase rounded-sm flex items-center gap-2">
-                                              USE AUDIO <ExternalLink size={10} />
-                                          </button>
-                                      )}
-                                  </div>
-                              )
-                          })}
-                      </div>
-                  </section>
+      {/* CONTENT SCROLL */}
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 pb-40 z-40 no-scrollbar">
+        
+        {/* --- OPERATIONS --- */}
+        {activeTab === "OPS" && (
+          <div className="space-y-4">
+            <h2 className="text-sm font-mono text-neutral-500 uppercase tracking-widest mb-4">Active Protocols</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {MISSION_TYPES.map((job) => {
+                const isVerifying = verifyingJob === job.id;
+                const cooldownEnd = cooldowns[job.id] || 0;
+                const isCooling = cooldownEnd > Date.now();
+                const canVerify = (Date.now() - (verifyStart[job.id] || 0)) >= 5000;
 
-                  {/* UPSELL FOOTER (If not Elite) */}
-                  {!isElite && (
-                      <div className="mt-8 p-6 bg-gradient-to-r from-yellow-900/20 to-black border border-yellow-500/30 rounded-sm text-center space-y-4">
-                          <div className="flex flex-col items-center gap-2">
-                              <Crown size={32} className="text-yellow-500 animate-pulse" />
-                              <h3 className="text-xl font-black font-sans uppercase italic text-white">Unlock The Full Armory</h3>
-                              <p className="text-[10px] font-mono text-yellow-500/80 uppercase tracking-widest max-w-sm">
-                                  Access all scripts, audios, and advanced radar data.
-                              </p>
-                          </div>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {/* OPTION 1: PAY */}
-                              <button onClick={handlePayment} className="group p-4 bg-yellow-500 hover:bg-yellow-400 text-black rounded-sm transition-all">
-                                  <div className="flex items-center justify-center gap-2 mb-1">
-                                      <span className="text-lg font-black uppercase">Buy License</span>
-                                  </div>
-                                  <span className="text-[10px] font-mono font-bold block opacity-70">₹99 LIFETIME ACCESS</span>
-                              </button>
+                return (
+                  <div key={job.id} className={cn("relative group bg-neutral-900/60 border border-white/10 rounded-xl overflow-hidden hover:border-white/30 transition-all flex", isCooling && "opacity-50 grayscale")}>
+                    
+                    {/* THUMBNAIL (Left Side) */}
+                    <div className="w-24 md:w-32 relative shrink-0 border-r border-white/10">
+                        <Image src={job.thumbnail || "/images/missions/default.jpg"} alt={job.title} fill className="object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-neutral-900/90" />
+                    </div>
 
-                              {/* OPTION 2: REFER */}
-                              <button onClick={handleCopyReferral} className="group p-4 bg-neutral-900 border border-white/20 hover:border-white text-white rounded-sm transition-all">
-                                  <div className="flex items-center justify-center gap-2 mb-1">
-                                      <Share2 size={16} />
-                                      <span className="text-lg font-black uppercase">Recruit & Earn</span>
-                                  </div>
-                                  <span className="text-[10px] font-mono font-bold block text-green-500">GET 10,000 PC PER FRIEND</span>
-                              </button>
-                          </div>
-                      </div>
-                  )}
-              </div>
-          )}
+                    {/* CONTENT (Right Side) */}
+                    <div className="flex-1 p-4 flex flex-col justify-between relative">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h3 className="text-sm font-black uppercase text-white leading-tight">{job.title}</h3>
+                                <p className="text-[10px] font-mono text-neutral-400 mt-1 leading-tight">{job.desc}</p>
+                            </div>
+                            <span className="text-yellow-500 font-bold text-sm">+{job.reward}</span>
+                        </div>
 
-          {/* TAB: RADAR (Targets) */}
-          {activeTab === "RADAR" && (
-              <div className="space-y-4 animate-in slide-in-from-right duration-500">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Sector_Hostiles</span>
-                      <span className="text-[9px] font-mono text-red-500 animate-pulse">{activePlayers.length} DETECTED</span>
+                        <div className="flex items-center justify-between mt-4">
+                            <span className="text-[10px] font-mono text-red-400 flex items-center gap-1">
+                                <Zap size={10} /> -{job.energy} NRG
+                            </span>
+
+                            {isVerifying ? (
+                                <button 
+                                    onClick={() => handleCompleteMission(job)} 
+                                    disabled={!canVerify}
+                                    className={cn(
+                                        "px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-2",
+                                        canVerify ? "bg-green-600 text-white animate-pulse" : "bg-neutral-800 text-neutral-500 cursor-not-allowed"
+                                    )}
+                                >
+                                    {canVerify ? <><CheckCircle2 size={12} /> Confirm</> : <><Loader2 size={12} className="animate-spin" /> Wait...</>}
+                                </button>
+                            ) : (
+                                <button 
+                                    onClick={() => handleStartMission(job)}
+                                    disabled={isCooling}
+                                    className={cn(
+                                        "px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-2",
+                                        isCooling ? "bg-neutral-800 text-neutral-600" : "bg-white text-black hover:bg-yellow-400"
+                                    )}
+                                >
+                                    {isCooling ? "Cooling..." : "Start"}
+                                </button>
+                            )}
+                        </div>
+                    </div>
                   </div>
-                  
-                  {activePlayers.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {activePlayers.map((player: any, i: number) => {
-                              const isFollowed = followedCreators.includes(player.instagramHandle);
-                              const avatar = player.avatar || "/avatars/1.jpg";
-                              return (
-                                  <div key={i} className="flex items-center justify-between p-3 bg-neutral-900/60 border border-white/10 rounded-sm">
-                                      <div className="flex items-center gap-3">
-                                          <div className="relative w-10 h-10 rounded-sm overflow-hidden border border-white/20">
-                                              <Image src={avatar} alt="Unit" fill className="object-cover" />
-                                          </div>
-                                          <div>
-                                              <h4 className="text-xs font-bold text-white uppercase">{player.username}</h4>
-                                              <span className="text-[8px] font-mono text-neutral-500">{player.membership?.tier || "RECRUIT"}</span>
-                                          </div>
-                                      </div>
-                                      <button 
-                                          onClick={() => handleConnectPlayer(player)}
-                                          disabled={isFollowed}
-                                          className={cn("px-3 py-1.5 text-[9px] font-bold uppercase rounded-sm border", isFollowed ? "bg-transparent text-green-500 border-green-500/50" : "bg-white text-black border-white hover:bg-neutral-200")}
-                                      >
-                                          {isFollowed ? "LINKED" : "CONNECT"}
-                                      </button>
-                                  </div>
-                              )
-                          })}
-                      </div>
-                  ) : (
-                      <div className="p-8 border border-dashed border-white/10 text-center text-[10px] text-neutral-500 font-mono">
-                          SCANNING... NO SIGNALS FOUND.
-                      </div>
-                  )}
-              </div>
-          )}
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* --- WARZONE --- */}
+        {activeTab === "WARZONE" && (
+          <div className="space-y-4">
+             <div className="p-4 bg-red-950/20 border border-red-900/50 rounded-lg flex items-center gap-4">
+                <Skull size={24} className="text-red-500" />
+                <div>
+                    <h3 className="text-sm font-bold text-red-400 uppercase">Hostile Zone</h3>
+                    <p className="text-[10px] text-neutral-400">Raid active players to steal PopCoins. High risk, high reward.</p>
+                </div>
+             </div>
+
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {activePlayers.length > 0 ? activePlayers.map((player) => (
+                    <div key={player.uid} className="flex items-center justify-between p-3 bg-neutral-900/60 border border-white/10 rounded-lg hover:border-red-500/50 transition-colors">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-neutral-800 overflow-hidden relative">
+                                <Image src={player.avatar || "/avatars/1.jpg"} alt="" fill className="object-cover" />
+                            </div>
+                            <div>
+                                <div className="text-xs font-bold text-white uppercase">{player.username}</div>
+                                <div className="text-[9px] text-neutral-500 font-mono">Inf: {(player.wallet.popCoins/10).toFixed(0)}</div>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => handleRaid(player)}
+                            className="px-3 py-1 bg-red-900/30 text-red-400 border border-red-900/50 text-[10px] font-bold uppercase rounded hover:bg-red-600 hover:text-white transition-all"
+                        >
+                            Raid
+                        </button>
+                    </div>
+                )) : (
+                    <div className="col-span-2 text-center py-10 text-neutral-600 text-xs uppercase font-mono">No hostiles found in this sector.</div>
+                )}
+             </div>
+          </div>
+        )}
+
+        {/* --- LEADERBOARD --- */}
+        {activeTab === "LEADERBOARD" && (
+          <div className="space-y-3">
+             {leaderboard.map((player, i) => (
+                 <div key={player.uid} className={cn("flex items-center p-3 rounded-lg border", player.uid === user?.uid ? "bg-yellow-950/10 border-yellow-600/30" : "bg-neutral-900/40 border-white/5")}>
+                     <div className="w-8 text-center text-sm font-black text-neutral-500">#{i + 1}</div>
+                     <div className="w-8 h-8 rounded-full bg-neutral-800 overflow-hidden relative mx-3">
+                         <Image src={player.avatar || "/avatars/1.jpg"} alt="" fill className="object-cover" />
+                     </div>
+                     <div className="flex-1">
+                         {/* FIXED: Added optional chain user?.uid */}
+                         <div className={cn("text-xs font-bold uppercase", player.uid === user?.uid ? "text-yellow-500" : "text-white")}>
+                             {player.username} {player.uid === user?.uid && "(YOU)"}
+                         </div>
+                     </div>
+                     <div className="text-right">
+                         <div className="text-xs font-black text-white">{player.wallet.popCoins}</div>
+                         <div className="text-[8px] text-neutral-500 uppercase">PopCoins</div>
+                     </div>
+                 </div>
+             ))}
+          </div>
+        )}
 
       </div>
     </main>
