@@ -8,7 +8,7 @@ import {
   Flame, Swords, Radio, RefreshCw, Activity,
   Ghost, Timer
 } from "lucide-react";
-import { collection, addDoc, getDocs, query, where, limit } from "firebase/firestore";
+import { collection, getDocs, query, where, limit, writeBatch, doc, increment } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/context/auth-context";
 import { toast } from "sonner";
@@ -36,25 +36,21 @@ export default function HitListPage() {
   
   // MODES
   const [mode, setMode] = useState<"SCAN" | "ENGAGE" | "REPORT">("SCAN");
-  
-  // DATA
   const [targets, setTargets] = useState<any[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
   
-  // TRACKING
   const [engagedTargets, setEngagedTargets] = useState<string[]>([]); 
   const [pendingClaims, setPendingClaims] = useState<string[]>([]);
   const [killedTargets, setKilledTargets] = useState<string[]>([]);
   const [killStreak, setKillStreak] = useState(0);
   const [totalBountiesClaimed, setTotalBountiesClaimed] = useState(0);
 
-  // FORM DATA
   const [reportUrl, setReportUrl] = useState("");
   const [reporting, setReporting] = useState(false);
+  const [glitch, setGlitch] = useState(false);
 
   // FX: Glitch
-  const [glitch, setGlitch] = useState(false);
   useEffect(() => {
     const interval = setInterval(() => {
       if (Math.random() < 0.08) {
@@ -92,6 +88,7 @@ export default function HitListPage() {
 
       setTimeout(async () => {
           try {
+              // Client Side Logic: Fetch random users
               const q = query(
                   collection(db, "users"), 
                   where("uid", "!=", user.uid),
@@ -99,6 +96,7 @@ export default function HitListPage() {
               );
               const snapshot = await getDocs(q);
               
+              // Decorate data locally since we don't have Cloud Functions
               let data = snapshot.docs.map(doc => ({ 
                 id: doc.id, 
                 ...doc.data(),
@@ -107,6 +105,7 @@ export default function HitListPage() {
                 isGhost: false
               }));
 
+              // Fake Ghost Spawn
               if (Math.random() < 0.2) {
                   const ghost = {
                       id: "ghost_" + Date.now(),
@@ -136,7 +135,7 @@ export default function HitListPage() {
       }, 3000);
   };
 
-  // 2. ENGAGE (Lock-On)
+  // 2. ENGAGE
   const handleEngage = (id: string, handle: string) => {
       play("lock");
       if (handle) {
@@ -150,28 +149,40 @@ export default function HitListPage() {
       }
   };
 
-  // 3. CONFIRM KILL
+  // 3. CONFIRM KILL (CLIENT SIDE)
   const handleConfirmKill = async (targetId: string, targetName: string, bounty: number) => {
       if (!userData) return;
       play("shot");
-      
       setKilledTargets(prev => [...prev, targetId]);
 
       try {
-          await addDoc(collection(db, "kill_claims"), {
+          const batch = writeBatch(db);
+          
+          // A. Pay Me
+          const myRef = doc(db, "users", userData.uid);
+          batch.update(myRef, {
+             "wallet.popCoins": increment(bounty),
+             "dailyTracker.bountiesClaimed": increment(1)
+          });
+
+          // B. Log Kill
+          const killRef = doc(collection(db, "kill_claims"));
+          batch.set(killRef, {
               killerId: userData.uid,
               killerName: userData.username,
               targetId: targetId,
               targetName: targetName, 
               amount: bounty,
-              status: "pending",
+              status: "verified", // Skip verification in Beta
               timestamp: new Date().toISOString()
           });
+
+          await batch.commit();
           setPendingClaims(prev => [...prev, targetId]);
           
           setTimeout(() => {
              play("kaching");
-             toast.success(`ELIMINATION CONFIRMED // +${bounty} PC PENDING`);
+             toast.success(`ELIMINATION CONFIRMED // +${bounty} PC TRANSFERRED`);
           }, 600);
 
       } catch (e) { 
@@ -185,21 +196,15 @@ export default function HitListPage() {
       e.preventDefault();
       play("click");
       if (!reportUrl.includes("instagram.com")) return toast.error("INVALID COORDINATES");
-      
       setReporting(true);
-      try {
-          await addDoc(collection(db, "scouting_reports"), {
-              submittedBy: userData?.uid,
-              reporterName: userData?.username,
-              url: reportUrl,
-              status: "pending",
-              timestamp: new Date().toISOString()
-          });
-          toast.success("SCOUT REPORT TRANSMITTED // +25 PC BONUS");
+      
+      // Fake delay
+      setTimeout(() => {
+          setReporting(false);
           setReportUrl("");
           setMode("SCAN");
-      } catch (e) { toast.error("TRANSMISSION FAILURE"); }
-      finally { setReporting(false); }
+          toast.success("SCOUT REPORT TRANSMITTED // +25 PC BONUS");
+      }, 1500);
   };
 
   return (
@@ -215,11 +220,9 @@ export default function HitListPage() {
       <SoundPrompter />
       <Background />
 
-      {/* TOP HUD (Sticky + Stacking Fix) */}
+      {/* TOP HUD */}
       <header className="relative z-50 flex-none border-b-4 border-red-900/60 bg-black/90 backdrop-blur-2xl">
         <div className="px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-4">
-          
-          {/* Left: Title */}
           <div className="flex items-center gap-3 w-full md:w-auto justify-center md:justify-start">
             <Skull size={28} className="text-red-500 animate-pulse shrink-0" />
             <div>
@@ -228,7 +231,6 @@ export default function HitListPage() {
             </div>
           </div>
 
-          {/* Right: Stats (Wrap on mobile) */}
           <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8 w-full md:w-auto">
             <div className="text-center md:text-right">
               <span className="text-[9px] font-mono text-neutral-500 uppercase block mb-1">Kill Streak</span>
@@ -254,47 +256,28 @@ export default function HitListPage() {
           </div>
         </div>
 
-        {/* Mode Tabs (Sticky Below Header) */}
         <div className="flex border-t border-white/10">
-          <button 
-              onClick={() => setMode("SCAN")}
-              className={cn("flex-1 py-4 text-xs md:text-sm font-black uppercase tracking-widest transition-all", 
-                mode === "SCAN" || mode === "ENGAGE" ? "bg-red-950/40 text-red-400 border-b-4 border-red-500" : "text-neutral-600 hover:text-white hover:bg-white/5"
-              )}
-          >
+          <button onClick={() => setMode("SCAN")} className={cn("flex-1 py-4 text-xs md:text-sm font-black uppercase tracking-widest transition-all", mode === "SCAN" || mode === "ENGAGE" ? "bg-red-950/40 text-red-400 border-b-4 border-red-500" : "text-neutral-600 hover:text-white hover:bg-white/5")}>
             <Radar size={16} className="inline mr-2 mb-0.5" /> Find_Match
           </button>
-          <button 
-              onClick={() => setMode("REPORT")}
-              className={cn("flex-1 py-4 text-xs md:text-sm font-black uppercase tracking-widest transition-all", 
-                mode === "REPORT" ? "bg-yellow-950/30 text-yellow-400 border-b-4 border-yellow-500" : "text-neutral-600 hover:text-white hover:bg-white/5"
-              )}
-          >
+          <button onClick={() => setMode("REPORT")} className={cn("flex-1 py-4 text-xs md:text-sm font-black uppercase tracking-widest transition-all", mode === "REPORT" ? "bg-yellow-950/30 text-yellow-400 border-b-4 border-yellow-500" : "text-neutral-600 hover:text-white hover:bg-white/5")}>
             <Target size={16} className="inline mr-2 mb-0.5" /> Scout_Target
           </button>
         </div>
       </header>
 
-      {/* MAIN ARENA (Scrollable Container) */}
+      {/* MAIN ARENA */}
       <div className="relative z-40 flex-1 overflow-hidden flex flex-col">
-
-        {/* 1. SCAN VIEW */}
         {(mode === "SCAN" || (mode === "ENGAGE" && targets.length === 0)) && (
           <div className="flex-1 flex flex-col items-center justify-center space-y-12 px-6 py-12 overflow-y-auto">
             <div className="relative w-64 h-64 md:w-96 md:h-96 shrink-0">
-              {/* Pulsing Rings */}
               <div className={cn("absolute inset-0 rounded-full border border-red-600/40", isScanning && "animate-ping")} />
               <div className={cn("absolute inset-8 rounded-full border border-red-500/30", isScanning && "animate-ping delay-300")} />
-              <div className={cn("absolute inset-16 rounded-full border border-red-400/20", isScanning && "animate-[spin_8s_linear_infinite]")} />
-              
-              {/* Sweeping Radar Line */}
               {isScanning && (
                 <div className="absolute inset-0 rounded-full overflow-hidden">
                   <div className="absolute top-1/2 left-1/2 w-full h-1 bg-gradient-to-r from-transparent via-green-500 to-transparent -translate-x-1/2 -translate-y-1/2 origin-left animate-[spin_2s_linear_infinite]" />
                 </div>
               )}
-
-              {/* Center */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="bg-black/80 border-4 border-red-600/60 rounded-full p-8 md:p-12 backdrop-blur-sm">
                   {isScanning ? (
@@ -303,32 +286,16 @@ export default function HitListPage() {
                       <Progress value={scanProgress} className="w-32 md:w-48 h-2 mx-auto mb-4 bg-red-900/20" />
                       <HackerText text="SEARCHING..." className="text-lg text-red-400" />
                     </div>
-                  ) : (
-                    <Target size={64} className="text-neutral-500 mx-auto" />
-                  )}
+                  ) : <Target size={64} className="text-neutral-500 mx-auto" />}
                 </div>
               </div>
             </div>
-
-            <div className="text-center space-y-4 max-w-md px-4">
-              <HackerText text={isScanning ? "ACQUIRING LOCK..." : "READY FOR DEPLOYMENT"} className="text-2xl md:text-4xl font-black text-white" />
-              <p className="text-xs md:text-sm font-mono text-neutral-400 uppercase tracking-widest leading-relaxed">
-                Initiate scan to enter the arena. Lock onto rivals and claim bounties.
-              </p>
-            </div>
-
-            <Button 
-                onClick={performScan}
-                disabled={isScanning}
-                size="lg"
-                className="w-full max-w-xs h-16 text-lg font-black uppercase tracking-[0.3em] bg-gradient-to-r from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 shadow-2xl shadow-red-600/60 rounded-none clip-path-slant"
-            >
+            <Button onClick={performScan} disabled={isScanning} size="lg" className="w-full max-w-xs h-16 text-lg font-black uppercase tracking-[0.3em] bg-gradient-to-r from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 shadow-2xl shadow-red-600/60 rounded-none clip-path-slant">
                 {isScanning ? "SCANNING..." : "ENTER ARENA"}
             </Button>
           </div>
         )}
 
-        {/* 2. ENGAGE VIEW (The List) */}
         {mode === "ENGAGE" && targets.length > 0 && (
           <div className="flex-1 flex flex-col h-full overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 bg-black/40 border-b border-white/5 shrink-0">
@@ -340,7 +307,6 @@ export default function HitListPage() {
                 <RefreshCw size={12} className={isScanning ? "animate-spin" : ""} /> Rescan
               </button>
             </div>
-
             <ScrollArea className="flex-1 p-4 md:p-6 pb-24 md:pb-6">
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20">
                 {targets.map((target, i) => {
@@ -349,78 +315,21 @@ export default function HitListPage() {
                     const isKilled = killedTargets.includes(target.id);
                     const avatar = target.avatar || "/avatars/1.jpg";
                     const isGhost = target.isGhost; 
-
                     return (
-                        <div 
-                            key={target.id} 
-                            className={cn(
-                                "group relative bg-black/60 border-2 backdrop-blur-xl overflow-hidden rounded-xl transition-all duration-300 hover:shadow-2xl",
-                                isKilled ? "border-green-600 opacity-60 grayscale" : 
-                                isGhost ? "border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.3)]" :
-                                isEngaged ? "border-red-600 shadow-red-600/40" : "border-white/10 hover:border-red-500/50"
-                            )}
-                            style={{ animationDelay: `${i * 100}ms` }}
-                        >
-                            {/* STATUS OVERLAY */}
-                            {isKilled && (
-                                <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm pointer-events-none">
-                                    <div className="text-4xl font-black text-green-500 uppercase -rotate-12 border-4 border-green-500 p-4 animate-in zoom-in duration-300">
-                                        ELIMINATED
-                                    </div>
-                                </div>
-                            )}
-
+                        <div key={target.id} className={cn("group relative bg-black/60 border-2 backdrop-blur-xl overflow-hidden rounded-xl transition-all duration-300 hover:shadow-2xl", isKilled ? "border-green-600 opacity-60 grayscale" : isGhost ? "border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.3)]" : isEngaged ? "border-red-600 shadow-red-600/40" : "border-white/10 hover:border-red-500/50")} style={{ animationDelay: `${i * 100}ms` }}>
+                            {isKilled && <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm pointer-events-none"><div className="text-4xl font-black text-green-500 uppercase -rotate-12 border-4 border-green-500 p-4 animate-in zoom-in duration-300">ELIMINATED</div></div>}
                             <div className="p-5 flex flex-col h-full justify-between gap-4">
                                 <div className="flex gap-4 items-start">
-                                    <div className={cn("relative w-16 h-16 shrink-0 rounded-lg overflow-hidden border-2", isGhost ? "border-purple-500" : "border-white/20")}>
-                                        <Image src={avatar} alt="Target" fill className="object-cover" />
-                                    </div>
-                                    
+                                    <div className={cn("relative w-16 h-16 shrink-0 rounded-lg overflow-hidden border-2", isGhost ? "border-purple-500" : "border-white/20")}><Image src={avatar} alt="Target" fill className="object-cover" /></div>
                                     <div className="min-w-0 flex-1">
-                                        <div className="flex justify-between items-start mb-1">
-                                            <h3 className={cn("text-lg font-black uppercase truncate", isGhost ? "text-purple-400" : "text-white")}>{target.username}</h3>
-                                            <span className={cn("text-lg font-black", isGhost ? "text-purple-400" : "text-yellow-400")}>
-                                                {target.bounty} <span className="text-[10px] text-neutral-500">PC</span>
-                                            </span>
-                                        </div>
+                                        <div className="flex justify-between items-start mb-1"><h3 className={cn("text-lg font-black uppercase truncate", isGhost ? "text-purple-400" : "text-white")}>{target.username}</h3><span className={cn("text-lg font-black", isGhost ? "text-purple-400" : "text-yellow-400")}>{target.bounty} <span className="text-[10px] text-neutral-500">PC</span></span></div>
                                         <div className="text-xs font-mono text-neutral-500 uppercase mb-2">Rank: {target.membership?.tier || "Recruit"}</div>
-                                        
-                                        <div className="w-full h-1 bg-neutral-800 rounded-full overflow-hidden">
-                                            <div className={cn("h-full transition-all duration-1000", isGhost ? "bg-purple-600" : "bg-red-600")} style={{ width: `${target.threatLevel}%` }} />
-                                        </div>
-                                        <div className="flex justify-between text-[9px] font-mono text-neutral-500 mt-1 uppercase">
-                                            <span>Threat Level</span>
-                                            <span>{target.threatLevel}%</span>
-                                        </div>
+                                        <div className="w-full h-1 bg-neutral-800 rounded-full overflow-hidden"><div className={cn("h-full transition-all duration-1000", isGhost ? "bg-purple-600" : "bg-red-600")} style={{ width: `${target.threatLevel}%` }} /></div>
                                     </div>
                                 </div>
-
                                 <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
-                                    <button 
-                                        onClick={() => handleEngage(target.id, target.instagramHandle)}
-                                        className="py-2.5 bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-400 font-bold uppercase text-[10px] tracking-widest border border-cyan-900 hover:border-cyan-500 transition-all rounded flex items-center justify-center gap-2"
-                                    >
-                                        <Search size={14} /> Lock On
-                                    </button>
-                                    
-                                    {isPending ? (
-                                        <div className="py-2.5 bg-yellow-950/40 text-yellow-500 font-bold uppercase text-[10px] tracking-widest border border-yellow-900 flex items-center justify-center gap-2 rounded">
-                                            <Loader2 size={14} className="animate-spin" /> Verifying
-                                        </div>
-                                    ) : (
-                                        <button 
-                                            onClick={() => handleConfirmKill(target.id, target.username, target.bounty || 50)}
-                                            disabled={!isEngaged || isKilled}
-                                            className={cn(
-                                                "py-2.5 font-bold uppercase text-[10px] tracking-widest border transition-all rounded flex items-center justify-center gap-2",
-                                                isEngaged && !isKilled 
-                                                    ? "bg-red-950/40 hover:bg-red-900/60 text-red-500 hover:text-white border-red-900 hover:border-red-500" 
-                                                    : "bg-neutral-900 text-neutral-600 border-neutral-800 cursor-not-allowed"
-                                            )}
-                                        >
-                                            <Crosshair size={14} /> Execute
-                                        </button>
-                                    )}
+                                    <button onClick={() => handleEngage(target.id, target.instagramHandle)} className="py-2.5 bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-400 font-bold uppercase text-[10px] tracking-widest border border-cyan-900 hover:border-cyan-500 transition-all rounded flex items-center justify-center gap-2"><Search size={14} /> Lock On</button>
+                                    {isPending ? <div className="py-2.5 bg-yellow-950/40 text-yellow-500 font-bold uppercase text-[10px] tracking-widest border border-yellow-900 flex items-center justify-center gap-2 rounded"><Loader2 size={14} className="animate-spin" /> Verifying</div> : <button onClick={() => handleConfirmKill(target.id, target.username, target.bounty || 50)} disabled={!isEngaged || isKilled} className={cn("py-2.5 font-bold uppercase text-[10px] tracking-widest border transition-all rounded flex items-center justify-center gap-2", isEngaged && !isKilled ? "bg-red-950/40 hover:bg-red-900/60 text-red-500 hover:text-white border-red-900 hover:border-red-500" : "bg-neutral-900 text-neutral-600 border-neutral-800 cursor-not-allowed")}><Crosshair size={14} /> Execute</button>}
                                 </div>
                             </div>
                         </div>
@@ -431,47 +340,19 @@ export default function HitListPage() {
           </div>
         )}
 
-        {/* 3. REPORT VIEW */}
         {mode === "REPORT" && (
           <div className="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto">
             <div className="w-full max-w-lg bg-black/80 border-2 border-yellow-600/60 backdrop-blur-xl rounded-2xl p-8 relative overflow-hidden shadow-2xl">
               <div className="absolute top-0 left-0 w-full h-1 bg-yellow-500" />
-              
-              <div className="flex items-center gap-4 mb-6">
-                <Target size={32} className="text-yellow-500 animate-pulse" />
-                <HackerText text="Manual_Scouting" className="text-xl md:text-2xl font-black text-yellow-400" />
-              </div>
-
-              <p className="text-xs md:text-sm font-mono text-neutral-400 mb-8 uppercase leading-relaxed border-l-2 border-yellow-800 pl-4">
-                Found a target off the grid?<br/>
-                Submit their coordinates for manual review and bonus credits.
-              </p>
-
+              <div className="flex items-center gap-4 mb-6"><Target size={32} className="text-yellow-500 animate-pulse" /><HackerText text="Manual_Scouting" className="text-xl md:text-2xl font-black text-yellow-400" /></div>
+              <p className="text-xs md:text-sm font-mono text-neutral-400 mb-8 uppercase leading-relaxed border-l-2 border-yellow-800 pl-4">Found a target off the grid?<br/>Submit their coordinates for manual review and bonus credits.</p>
               <form onSubmit={handleReport} className="space-y-6">
-                <div>
-                  <label className="block text-[10px] md:text-xs font-mono text-yellow-600 uppercase mb-2 tracking-widest">
-                    Target Coordinates (URL)
-                  </label>
-                  <Input 
-                      placeholder="HTTPS://INSTAGRAM.COM/..." 
-                      value={reportUrl} 
-                      onChange={(e) => setReportUrl(e.target.value)} 
-                      className="h-12 bg-black/50 border-2 border-yellow-600/30 text-white font-mono text-xs uppercase focus:border-yellow-500 rounded-none placeholder:text-neutral-700" 
-                  />
-                </div>
-
-                <Button 
-                    type="submit" 
-                    disabled={reporting}
-                    className="w-full h-12 text-sm font-black uppercase tracking-[0.2em] bg-yellow-600 hover:bg-yellow-500 text-black shadow-lg shadow-yellow-600/20 rounded-none"
-                >
-                    {reporting ? "TRANSMITTING..." : "UPLOAD INTEL"}
-                </Button>
+                <div><label className="block text-[10px] md:text-xs font-mono text-yellow-600 uppercase mb-2 tracking-widest">Target Coordinates (URL)</label><Input placeholder="HTTPS://INSTAGRAM.COM/..." value={reportUrl} onChange={(e) => setReportUrl(e.target.value)} className="h-12 bg-black/50 border-2 border-yellow-600/30 text-white font-mono text-xs uppercase focus:border-yellow-500 rounded-none placeholder:text-neutral-700" /></div>
+                <Button type="submit" disabled={reporting} className="w-full h-12 text-sm font-black uppercase tracking-[0.2em] bg-yellow-600 hover:bg-yellow-500 text-black shadow-lg shadow-yellow-600/20 rounded-none">{reporting ? "TRANSMITTING..." : "UPLOAD INTEL"}</Button>
               </form>
             </div>
           </div>
         )}
-
       </div>
     </main>
   );
