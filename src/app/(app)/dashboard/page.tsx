@@ -27,10 +27,10 @@ import { HackerText } from "@/components/ui/hacker-text";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 
-// --- 🛠️ GAME CONFIGURATION ---
+// --- GAME CONFIGURATION ---
 const MAX_TITHE = 100;
 
-// MOCK: Daily Quests (In V2, fetch from Firestore 'daily_tasks')
+// MOCK: Daily Quests 
 const DAILY_QUESTS = [
   { id: "login", label: "Login Mainframe", reward: 50, completed: true },
   { id: "scan", label: "Scan 5 Targets", reward: 100, completed: false, progress: 60 },
@@ -64,40 +64,36 @@ export default function Dashboard() {
   const rankTitle = userData?.membership?.tier?.toUpperCase() || "RECRUIT";
   const totalDailyReward = DAILY_QUESTS.reduce((sum, q) => sum + q.reward, 0);
 
-  // --- 1. FX: RANDOM GLITCH ---
+  // --- FX: RANDOM GLITCH ---
   useEffect(() => {
     const interval = setInterval(() => {
-      if (Math.random() < 0.05) { // 5% chance every 3s
+      if (Math.random() < 0.05) { 
         setGlitch(true);
-        play("error"); // Subtle glitch sound
         setTimeout(() => setGlitch(false), 150);
       }
     }, 3000);
     return () => clearInterval(interval);
-  }, [play]);
+  }, []);
 
-  // --- 2. MECHANIC: BLOOD TITHE (Countdown) ---
+  // --- MECHANIC: BLOOD TITHE ---
   useEffect(() => {
     const updateTithe = () => {
         const now = new Date();
         const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
-        const totalMs = 24 * 60 * 60 * 1000; // 24 hours
+        const totalMs = 24 * 60 * 60 * 1000; 
         const remaining = endOfDay.getTime() - Date.now();
-        
         const percent = Math.max(0, (remaining / totalMs) * 100);
         setTitheProgress(percent);
     };
-    
     updateTithe();
-    const interval = setInterval(updateTithe, 60000); // Update every minute
+    const interval = setInterval(updateTithe, 60000);
     return () => clearInterval(interval);
   }, []);
 
-  // --- 3. MECHANIC: DEFENSE SYSTEM (Real-time) ---
+  // --- MECHANIC: DEFENSE SYSTEM ---
   useEffect(() => {
     if (!userData?.username) return;
     
-    // Listen for attacks where I am the target
     const q = query(
         collection(db, "kill_claims"), 
         where("targetName", "==", userData.username),
@@ -110,7 +106,6 @@ export default function Dashboard() {
         
         if (attacks.length > 0) {
             play("error"); 
-            // Mobile Vibrate
             if (typeof navigator !== "undefined" && navigator.vibrate) {
                 navigator.vibrate([300, 100, 300, 100, 600]);
             }
@@ -125,16 +120,13 @@ export default function Dashboard() {
       play("click");
       try {
           const batch = writeBatch(db);
-          // Pay Killer
           const killerRef = doc(db, "users", claim.killerId);
           batch.update(killerRef, { 
               "wallet.popCoins": increment(claim.amount),
               "dailyTracker.bountiesClaimed": increment(1)
           });
-          // Pay Self (Consolation)
           const myRef = doc(db, "users", userData!.uid);
           batch.update(myRef, { "wallet.popCoins": increment(10) });
-          // Close Ticket
           const claimRef = doc(db, "kill_claims", claim.id);
           batch.update(claimRef, { status: "verified" });
           
@@ -167,7 +159,7 @@ export default function Dashboard() {
   return (
     <main className={cn(
         "relative min-h-screen w-full bg-black text-white font-sans overflow-hidden flex flex-col selection:bg-red-900 selection:text-white transition-all duration-100", 
-        glitch && "invert opacity-90" // The Glitch Effect
+        glitch && "invert opacity-90"
     )}>
       
       {/* BACKGROUND LAYER */}
@@ -183,7 +175,7 @@ export default function Dashboard() {
         <div className="absolute inset-0 bg-gradient-to-b from-black via-black/60 to-black" />
       </div>
 
-      {/* 🚨 CRITICAL ALERT BANNER (Attacks) */}
+      {/* 🚨 CRITICAL ALERT BANNER */}
       {incomingAttacks.length > 0 && (
          <div className="relative z-[200] bg-gradient-to-r from-red-900 via-red-600 to-red-900 text-white px-6 py-5 flex flex-col lg:flex-row items-center justify-between shadow-[0_0_80px_red] border-b-8 border-red-950 animate-in slide-in-from-top-full">
              <div className="flex items-center gap-6 mb-4 lg:mb-0">
@@ -226,7 +218,7 @@ export default function Dashboard() {
           {/* Player Card */}
           <PlayerStatusCard userData={userData} className="shadow-[0_0_60px_rgba(0,255,255,0.2)] border border-cyan-500/30" />
 
-          {/* 🩸 BLOOD TITHE (Retention Mechanic) */}
+          {/* 🩸 BLOOD TITHE */}
           <div className="bg-gradient-to-b from-red-950/40 to-black border-2 border-red-800/60 p-6 backdrop-blur-lg relative overflow-hidden rounded-2xl group">
             <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,rgba(255,0,0,0.6),transparent_70%)] group-hover:opacity-20 transition-opacity" />
             <div className="flex items-center justify-between mb-4">
@@ -239,19 +231,15 @@ export default function Dashboard() {
                 <p className="text-[10px] text-red-500 uppercase font-mono">Life Support</p>
               </div>
             </div>
-            <Progress 
-              value={titheProgress} 
-              className="h-4 bg-black/60 border border-red-900/50 mb-3"
-              // Custom indicator styling usually requires CSS modules or inline styles overrides in Shadcn
-            />
+            <Progress value={titheProgress} className="h-4 bg-black/60 border border-red-900/50 mb-3" />
             <div className="flex items-center gap-3 text-xs font-mono text-red-300 uppercase">
               <Skull size={16} className={titheProgress < 30 ? "animate-pulse" : ""} />
               <span>10% Decay at 00:00 // Spill Blood or Perish</span>
             </div>
           </div>
 
-          {/* 📋 DAILY DIRECTIVES (Quest Log) */}
-          <div className="bg-neutral-900/60 border border-yellow-600/30 p-6 backdrop-blur-lg flex-1 rounded-2xl flex flex-col">
+          {/* 📋 DAILY DIRECTIVES */}
+          <div className="bg-neutral-900/60 border border-yellow-600/30 p-6 backdrop-blur-lg flex-1 rounded-2xl flex flex-col min-h-[300px]">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <Target className="text-yellow-500" size={24} />
@@ -261,7 +249,7 @@ export default function Dashboard() {
                 POTENTIAL: {totalDailyReward} PC
               </span>
             </div>
-            <ScrollArea className="flex-1 pr-4 max-h-[300px]">
+            <ScrollArea className="flex-1 pr-4">
               <div className="space-y-3">
                 {DAILY_QUESTS.map((quest) => (
                   <div key={quest.id} className={cn("p-4 border rounded-lg transition-all", quest.completed ? "border-green-600/50 bg-green-950/20" : "border-white/10 bg-neutral-900/40")}>
@@ -281,8 +269,8 @@ export default function Dashboard() {
             </ScrollArea>
           </div>
 
-          {/* 💀 KILL FEED (Atmosphere) */}
-          <div className="bg-black/60 border border-red-900/40 p-5 backdrop-blur-md rounded-2xl overflow-hidden">
+          {/* 💀 KILL FEED */}
+          <div className="bg-black/60 border border-red-900/40 p-5 backdrop-blur-md rounded-2xl overflow-hidden hidden md:block">
             <div className="flex items-center gap-3 mb-4 border-b border-red-900/30 pb-2">
               <Radio className="text-red-500 animate-pulse" size={20} />
               <HackerText text="Global_Kill_Feed" className="text-lg text-red-400 font-bold" />
@@ -301,7 +289,7 @@ export default function Dashboard() {
         </aside>
 
         {/* --- CENTRAL BATTLE STATION (Map) --- */}
-        <section className="flex-1 flex flex-col gap-8 h-full">
+        <section className="flex-1 flex flex-col gap-8 h-full min-h-[500px]">
           
           <header className="flex flex-col md:flex-row items-end justify-between gap-4">
             <div>
@@ -318,7 +306,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* NETWORK SWITCH (Insta vs Youtube) */}
+            {/* NETWORK SWITCH */}
             <div className="bg-black/70 border-2 border-white/20 p-1.5 rounded-xl flex gap-2 backdrop-blur-xl shadow-2xl">
               <button 
                   onClick={() => toggleNetwork("INSTA")}
@@ -343,15 +331,17 @@ export default function Dashboard() {
             </div>
           </header>
 
-          {/* COLONY GRID SCROLLABLE */}
+          {/* COLONY GRID */}
           <ScrollArea className="flex-1 -mr-4 pr-4">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-32">
               {Object.entries(NICHE_DATA).map(([key, data]: [string, any], index) => {
                   const isLocked = !unlockedColonies.includes(key);
-                  // Simulating dynamic "War" stats for each colony
                   const threatLevel = Math.floor(Math.random() * 90) + 10; 
                   const activeOps = Math.floor(Math.random() * 500) + 50;
                   
+                  // FIX: Safely access icon component
+                  const SectorIcon = data.icon; 
+
                   return (
                       <button
                           key={key}
@@ -368,7 +358,6 @@ export default function Dashboard() {
                           )}
                           style={{ animationDelay: `${index * 100}ms` }}
                       >
-                          {/* Background Image */}
                           <div className="absolute inset-0 z-0">
                               {data.imageSrc && (
                                   <Image 
@@ -381,7 +370,6 @@ export default function Dashboard() {
                               <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
                           </div>
 
-                          {/* Overlay HUD Stats */}
                           {!isLocked && (
                             <div className="absolute top-3 left-3 right-3 flex justify-between text-[10px] font-mono font-bold z-20">
                               <div className="bg-black/80 px-2 py-1 rounded border border-white/10 backdrop-blur-sm text-red-400">
@@ -393,14 +381,12 @@ export default function Dashboard() {
                             </div>
                           )}
 
-                          {/* Main Content */}
                           <div className="absolute inset-0 z-10 p-6 flex flex-col justify-end">
-                            {/* Icon Box */}
                             <div className={cn(
                                 "w-12 h-12 rounded-lg flex items-center justify-center border-2 mb-4 backdrop-blur-md shadow-xl",
-                                isLocked ? "border-neutral-700 bg-neutral-900" : `border-${data.color}-500 bg-black/50 text-${data.color}-500`
+                                isLocked ? "border-neutral-700 bg-neutral-900" : `border-${data.color?.replace('text-', '')}-500 bg-black/50 ${data.color}`
                             )}>
-                                {isLocked ? <Lock size={20} /> : networkMode === "YOUTUBE" ? <Youtube size={24} className="text-red-500" /> : data.icon}
+                                {isLocked ? <Lock size={20} /> : networkMode === "YOUTUBE" ? <Youtube size={24} className="text-red-500" /> : <SectorIcon size={24} />}
                             </div>
 
                             <h3 className="text-3xl font-black uppercase italic leading-none mb-2 text-white drop-shadow-lg group-hover:translate-x-2 transition-transform">
@@ -410,7 +396,7 @@ export default function Dashboard() {
                             <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-neutral-300">
                               <div className={cn("w-2 h-2 rounded-full", isLocked ? "bg-red-600" : "bg-green-500 animate-pulse")} />
                               <span>
-                                {networkMode === "YOUTUBE" ? "VIDEO OPS ACTIVE" : data.description}
+                                {networkMode === "YOUTUBE" ? "VIDEO OPS ACTIVE" : data.category}
                               </span>
                             </div>
 
@@ -423,7 +409,6 @@ export default function Dashboard() {
                             )}
                           </div>
 
-                          {/* Hover Action Overlay */}
                           {!isLocked && (
                               <div className={cn(
                                   "absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-sm translate-y-4 group-hover:translate-y-0",

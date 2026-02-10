@@ -18,8 +18,8 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/context/auth-context";
 import { NICHE_DATA, MISSION_TYPES } from "@/lib/niche-data";
 import {
-  ArrowLeft, Zap, ShieldCheck, Skull, ExternalLink,
-  Loader2, CheckCircle2, Crown, Trophy, AlertTriangle
+  ArrowLeft, Zap, ShieldCheck, ExternalLink,
+  Loader2, CheckCircle2, Crown, Skull
 } from "lucide-react";
 import { toast } from "sonner";
 import { Background } from "@/components/ui/background";
@@ -33,14 +33,34 @@ const MAX_ENERGY = 100;
 const ENERGY_REGEN_RATE = 1;
 const ENERGY_REGEN_INTERVAL = 6000; // 6s
 
+// --- STYLING HELPERS ---
+const getPlatformStyle = (platform: string) => {
+  switch (platform) {
+    case "INSTAGRAM": return { icon: "text-pink-500", tag: "bg-pink-600" };
+    case "YOUTUBE": return { icon: "text-red-500", tag: "bg-red-600" };
+    case "TIKTOK": return { icon: "text-cyan-500", tag: "bg-cyan-600" };
+    default: return { icon: "text-yellow-500", tag: "bg-yellow-600" };
+  }
+};
+
+const getRarityStyle = (rarity = "common") => {
+  switch (rarity) {
+    case "rare": return "border-blue-500/30 bg-blue-900/10 hover:border-blue-500/60";
+    case "epic": return "border-purple-500/30 bg-purple-900/10 hover:border-purple-500/60";
+    case "legendary": return "border-yellow-500/40 bg-yellow-900/10 hover:border-yellow-500";
+    default: return "border-white/10 hover:border-white/30";
+  }
+};
+
 export default function NichePage() {
   const params = useParams();
   const { user, userData, loading } = useAuth();
   const { play } = useSfx();
 
+  // 1. SAFE DATA ACCESS
   const id = params.id as string;
   const initialData = NICHE_DATA[id] || NICHE_DATA["general"];
-  const FactionIcon = initialData.icon;
+  const FactionIcon = initialData.icon; // Capture Component for usage
 
   // STATE
   const [activeTab, setActiveTab] = useState<"OPS" | "WARZONE" | "LEADERBOARD">("OPS");
@@ -150,9 +170,9 @@ export default function NichePage() {
             src={initialData.imageSrc || "/images/sectors/general.jpg"} 
             alt="Sector" 
             fill 
-            className="object-cover opacity-20 grayscale contrast-150" 
+            className="object-cover opacity-15 grayscale contrast-150" 
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-black via-black/70 to-black" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black via-black/60 to-black" />
       </div>
       
       <SoundPrompter />
@@ -219,6 +239,8 @@ export default function NichePage() {
             <h2 className="text-sm font-mono text-neutral-500 uppercase tracking-widest mb-4">Active Protocols</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {MISSION_TYPES.map((job) => {
+                const MissionIcon = job.icon; // FIX: Assign component to Capitalized Variable
+                const platformStyle = getPlatformStyle(job.type); // Fixed lookup key
                 const isVerifying = verifyingJob === job.id;
                 const cooldownEnd = cooldowns[job.id] || 0;
                 const isCooling = cooldownEnd > Date.now();
@@ -231,6 +253,11 @@ export default function NichePage() {
                     <div className="w-24 md:w-32 relative shrink-0 border-r border-white/10">
                         <Image src={job.thumbnail || "/images/missions/default.jpg"} alt={job.title} fill className="object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent to-neutral-900/90" />
+                        <div className="absolute top-2 left-2 p-1 bg-black/60 rounded">
+                            <div className={cn(platformStyle.icon)}>
+                                <MissionIcon size={14} /> {/* FIX: Render as Element */}
+                            </div>
+                        </div>
                     </div>
 
                     {/* CONTENT (Right Side) */}
@@ -257,7 +284,7 @@ export default function NichePage() {
                                         canVerify ? "bg-green-600 text-white animate-pulse" : "bg-neutral-800 text-neutral-500 cursor-not-allowed"
                                     )}
                                 >
-                                    {canVerify ? <><CheckCircle2 size={12} /> Confirm</> : <><Loader2 size={12} className="animate-spin" /> Wait...</>}
+                                    {canVerify ? "Confirm" : "Wait..."}
                                 </button>
                             ) : (
                                 <button 
@@ -327,7 +354,6 @@ export default function NichePage() {
                          <Image src={player.avatar || "/avatars/1.jpg"} alt="" fill className="object-cover" />
                      </div>
                      <div className="flex-1">
-                         {/* FIXED: Added optional chain user?.uid */}
                          <div className={cn("text-xs font-bold uppercase", player.uid === user?.uid ? "text-yellow-500" : "text-white")}>
                              {player.username} {player.uid === user?.uid && "(YOU)"}
                          </div>
