@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import Image from "next/image"; 
-import { useAuth, UserData } from "@/lib/context/auth-context"; // Import UserData type
+import { useAuth, UserData } from "@/lib/context/auth-context"; 
 import { 
   collection, query, where, getDocs, limit, orderBy,
   onSnapshot, doc, updateDoc, increment, arrayUnion, writeBatch,
@@ -16,7 +16,7 @@ import { TransitionLink } from "@/components/ui/transition-link";
 import { SoundPrompter } from "@/components/ui/sound-prompter";
 import { 
   Users, ArrowLeft, Crown, ArrowRightLeft, Radar, MessageCircle,
-  Send, Trophy, Diamond, Copy, Globe, Ghost, ShieldCheck
+  Send, Trophy, Diamond, Copy, Globe, Ghost, ShieldCheck, Banknote, Search, Lock
 } from "lucide-react";
 import { toast } from "sonner";
 import { useSfx } from "@/hooks/use-sfx";
@@ -33,7 +33,6 @@ interface Message {
   timestamp: Timestamp;
 }
 
-// Define specific type for the view
 interface GuildMember extends UserData {
   id: string;
   online: boolean;
@@ -44,7 +43,7 @@ export default function GuildLobbyPage() {
   const { play } = useSfx();
   
   // STATE
-  const [activeTab, setActiveTab] = useState<"MEMBERS" | "CHAT" | "RADAR" | "BANK">("MEMBERS");
+  const [activeTab, setActiveTab] = useState<"ROSTER" | "COMMS" | "ACQUISITION" | "TREASURY">("ROSTER");
   const [guildMembers, setGuildMembers] = useState<GuildMember[]>([]);
   const [radarTargets, setRadarTargets] = useState<any[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -53,7 +52,7 @@ export default function GuildLobbyPage() {
   const [sending, setSending] = useState(false);
   
   // Guild Data
-  const guildName = userData?.guildName || "SHADOW_SYNDICATE";
+  const guildName = userData?.guildName || "GLOBAL_FEDERATION_01";
   const guildId = userData?.guildId || user?.uid; 
   const isGuildLeader = userData?.uid === userData?.guildLeader;
   const [guildBank, setGuildBank] = useState(0);
@@ -66,7 +65,7 @@ export default function GuildLobbyPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const popCoins = userData?.wallet?.popCoins ?? 0;
 
-  // --- 1. FETCH GUILD MEMBERS + REAL-TIME SYNC ---
+  // --- 1. FETCH GUILD MEMBERS ---
   useEffect(() => {
     if (!userData) return;
 
@@ -77,7 +76,6 @@ export default function GuildLobbyPage() {
     );
 
     const unsubscribe = onSnapshot(q, (snap) => {
-      // FIX: Explicitly cast doc.data() to UserData
       const members = snap.docs.map(doc => {
         const data = doc.data() as UserData;
         return {
@@ -87,10 +85,7 @@ export default function GuildLobbyPage() {
         };
       });
       
-      // Sort by Wealth (Leaderboard) - Now TypeScript knows 'wallet' exists
       setGuildMembers(members.sort((a, b) => (b.wallet?.popCoins || 0) - (a.wallet?.popCoins || 0)));
-      
-      // Calculate Guild Bank - Now TypeScript knows 'guildBankContribution' exists
       const totalBank = members.reduce((sum, m) => sum + (m.guildBankContribution || 0), 0);
       setGuildBank(totalBank);
     });
@@ -100,7 +95,7 @@ export default function GuildLobbyPage() {
 
   // --- 2. REAL-TIME CHAT ---
   useEffect(() => {
-    if (activeTab !== "CHAT") return;
+    if (activeTab !== "COMMS") return;
 
     const chatQuery = query(
       collection(db, `guilds/${guildId}/messages`),
@@ -129,7 +124,7 @@ export default function GuildLobbyPage() {
 
     try {
       await addDoc(collection(db, `guilds/${guildId}/messages`), {
-        text: newMessage.trim().toUpperCase(),
+        text: newMessage.trim(),
         senderId: userData.uid,
         senderName: userData.username,
         timestamp: serverTimestamp()
@@ -137,13 +132,13 @@ export default function GuildLobbyPage() {
       setNewMessage("");
       play("success"); 
     } catch (e) {
-      toast.error("COMMS DOWN // RETRY");
+      toast.error("NETWORK INTERFERENCE // COMMS DOWN");
     } finally {
       setSending(false);
     }
   };
 
-  // --- 4. RADAR SCAN (Recruiting) ---
+  // --- 4. RADAR SCAN (Acquisition) ---
   const scanRadar = async () => {
     if (!user) return;
     setLoading(true);
@@ -158,13 +153,13 @@ export default function GuildLobbyPage() {
       const snap = await getDocs(q);
       
       const targets = snap.docs
-        .map(doc => ({ id: doc.id, ...doc.data() } as any)) // Cast for radar targets
+        .map(doc => ({ id: doc.id, ...doc.data() } as any))
         .filter((u: any) => u.id !== user.uid);
 
       setRadarTargets(targets);
       play("success");
     } catch (e) {
-      toast.error("RADAR JAMMED");
+      toast.error("SCANNER JAMMED // RETRY PROTOCOL");
     } finally {
       setLoading(false);
     }
@@ -173,20 +168,20 @@ export default function GuildLobbyPage() {
   // --- 5. RECRUIT ACTION ---
   const handleRecruit = async (target: any) => {
     play("click");
-    if (confirm(`SEND GUILD INVITE TO ${target.username}?`)) {
+    if (confirm(`INITIATE ACQUISITION OFFER FOR NODE ${target.username}?`)) {
        try {
          await updateDoc(doc(db, "users", target.id), { guildId: guildId });
-         toast.success(`${target.username} ASSIMILATED`);
+         toast.success(`ASSET ACQUIRED // ${target.username} INTEGRATED`);
          play("success");
          setRadarTargets(prev => prev.filter(u => u.id !== target.id));
-       } catch(e) { toast.error("RECRUITMENT FAILED"); }
+       } catch(e) { toast.error("ACQUISITION FAILED"); }
     }
   };
 
   // --- 6. BANK DEPOSIT ---
   const handleDeposit = async () => {
     const amount = parseInt(depositAmount);
-    if (isNaN(amount) || amount <= 0 || amount > popCoins) return toast.error("INVALID FUNDS");
+    if (isNaN(amount) || amount <= 0 || amount > popCoins) return toast.error("INVALID FUND ALLOCATION");
 
     play("kaching");
     try {
@@ -197,7 +192,7 @@ export default function GuildLobbyPage() {
       });
       await batch.commit();
       
-      toast.success(`DEPOSITED ${amount} PC`);
+      toast.success(`CAPITAL DEPOSITED // ${amount} PC`);
       setDepositAmount("");
     } catch (e) { toast.error("TRANSACTION FAILED"); }
   };
@@ -206,7 +201,7 @@ export default function GuildLobbyPage() {
   const handleTransfer = async () => {
     if (!transferTarget || !user) return;
     const amount = parseInt(transferAmount);
-    if (isNaN(amount) || amount <= 0 || amount > popCoins) return toast.error("INVALID FUNDS");
+    if (isNaN(amount) || amount <= 0 || amount > popCoins) return toast.error("INVALID FUND ALLOCATION");
 
     play("kaching");
     try {
@@ -215,258 +210,327 @@ export default function GuildLobbyPage() {
       batch.update(doc(db, "users", transferTarget.id), { "wallet.popCoins": increment(amount) });
       await batch.commit();
       
-      toast.success(`SENT ${amount} PC TO ${transferTarget.username}`);
+      toast.success(`FUNDS CLEARED // ${amount} PC TO ${transferTarget.username}`);
       setTransferTarget(null);
       setTransferAmount("");
-    } catch (e) { toast.error("TRANSFER FAILED"); }
+    } catch (e) { toast.error("WIRE TRANSFER FAILED"); }
   };
 
   const getGuildLink = () => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://boyzngalz.com';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://portalz.network';
     return `${origin}/auth/signup?ref=${user?.uid}`;
   };
 
   return (
-    <main className="relative min-h-screen bg-black text-white font-sans overflow-hidden flex flex-col selection:bg-cyan-900 selection:text-white">
+    <main className="relative min-h-screen bg-[#050505] text-[#f0f0f0] font-sans overflow-hidden flex flex-col selection:bg-white selection:text-black">
       
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <Image src="/images/referral-bg.jpg" alt="Grid" fill priority className="object-cover opacity-15 grayscale contrast-150" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black via-black/60 to-black" />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay animate-pulse" />
+      {/* ATMOSPHERE - Brutalist Data Treatment */}
+      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+        <Image src="/images/referral-bg.jpg" alt="Data Grid" fill priority className="object-cover opacity-10 grayscale contrast-150 mix-blend-screen" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#050505]/95 via-[#050505]/80 to-[#050505]" />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
       </div>
 
       <SoundPrompter />
       <Background />
 
-      {/* TOP HUD */}
-      <header className="relative z-50 flex-none border-b-4 border-cyan-900/60 bg-black/90 backdrop-blur-2xl">
-        <div className="px-6 py-6 flex flex-col md:flex-row items-center justify-between gap-6">
+      {/* TOP HUD - 1px Grid Architecture */}
+      <header className="relative z-50 flex-none border-b border-white/10 bg-[#050505]/90 backdrop-blur-md">
+        <div className="px-6 md:px-10 py-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           
-          <TransitionLink href="/dashboard" className="flex items-center gap-4 group self-start md:self-center">
-            <div className="w-12 h-12 border-2 border-cyan-600/40 bg-black/60 backdrop-blur-md flex items-center justify-center group-hover:border-cyan-400 transition-all rounded-lg">
-              <ArrowLeft size={24} className="text-neutral-500 group-hover:text-cyan-400" />
+          <TransitionLink href="/dashboard" className="flex items-center gap-4 group">
+            <div className="w-12 h-12 border border-white/20 bg-white/5 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-colors">
+              <ArrowLeft size={20} />
             </div>
-            <span className="text-sm font-mono text-neutral-400 uppercase tracking-widest hidden md:inline">Back to Base</span>
+            <span className="text-xs font-mono text-neutral-400 uppercase tracking-widest hidden md:inline group-hover:text-white transition-colors">
+              Return to Terminal
+            </span>
           </TransitionLink>
 
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-3 mb-2">
-              <ShieldCheck size={32} className="text-cyan-500" />
-              <HackerText text={guildName} className="text-3xl md:text-4xl font-black text-cyan-400" />
+          <div className="text-left md:text-center">
+            <div className="flex items-center justify-start md:justify-center gap-4 mb-2">
+              <ShieldCheck size={24} className="text-white/50" />
+              <HackerText text={guildName} className="text-2xl md:text-3xl font-medium tracking-widest uppercase" />
             </div>
-            <div className="flex items-center justify-center gap-6 text-xs font-mono text-cyan-600 uppercase">
-              <span>{guildMembers.length} Operatives</span>
+            <div className="flex items-center justify-start md:justify-center gap-6 text-[10px] font-mono text-neutral-400 uppercase tracking-widest">
+              <span>{guildMembers.length} Active Nodes</span>
               <span>•</span>
-              <span className="text-yellow-500">Vault: {guildBank.toLocaleString()} PC</span>
+              <span className="text-white">Pool: {guildBank.toLocaleString()}</span>
             </div>
           </div>
 
-          <div className="flex gap-2 self-end md:self-center">
-             <div className="bg-cyan-950/30 border border-cyan-500/30 px-4 py-2 rounded text-xs font-mono text-cyan-400 flex items-center gap-2">
-                <Globe size={14} /> Global Rank: #42
+          <div className="flex items-center gap-4 border border-white/10 p-2 bg-white/5">
+             <div className="text-right px-4">
+                <span className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest block mb-1">Global Standing</span>
+                <div className="flex items-center gap-2">
+                    <Globe size={14} className="text-white/50" />
+                    <span className="text-lg font-mono text-white leading-none">Tier 1</span>
+                </div>
              </div>
           </div>
+
         </div>
 
-        {/* TABS */}
-        <div className="flex border-t border-white/10 overflow-x-auto no-scrollbar">
-          <button onClick={() => setActiveTab("MEMBERS")} className={cn("flex-1 min-w-[100px] py-4 text-sm font-black uppercase tracking-widest transition-all border-b-4", activeTab === "MEMBERS" ? "bg-cyan-950/40 text-cyan-400 border-cyan-500" : "text-neutral-600 border-transparent hover:text-white")}>
-            <Users size={18} className="inline mr-2" /> Roster
+        {/* TABS - 1px Architectural Grid */}
+        <div className="flex border-t border-white/10 overflow-x-auto no-scrollbar bg-[#050505]">
+          <button onClick={() => setActiveTab("ROSTER")} className={cn("flex-1 min-w-[120px] py-4 text-[10px] md:text-xs font-mono uppercase tracking-[0.2em] transition-colors border-r border-white/10", activeTab === "ROSTER" ? "bg-white text-black font-bold" : "text-neutral-500 hover:text-white hover:bg-white/5")}>
+            <Users size={14} className="inline mr-2 mb-0.5" /> Node_Roster
           </button>
-          <button onClick={() => setActiveTab("CHAT")} className={cn("flex-1 min-w-[100px] py-4 text-sm font-black uppercase tracking-widest transition-all border-b-4", activeTab === "CHAT" ? "bg-green-950/40 text-green-400 border-green-500" : "text-neutral-600 border-transparent hover:text-white")}>
-            <MessageCircle size={18} className="inline mr-2" /> Comms
+          <button onClick={() => setActiveTab("COMMS")} className={cn("flex-1 min-w-[120px] py-4 text-[10px] md:text-xs font-mono uppercase tracking-[0.2em] transition-colors border-r border-white/10", activeTab === "COMMS" ? "bg-white text-black font-bold" : "text-neutral-500 hover:text-white hover:bg-white/5")}>
+            <MessageCircle size={14} className="inline mr-2 mb-0.5" /> Secure_Comms
           </button>
-          <button onClick={() => { setActiveTab("RADAR"); scanRadar(); }} className={cn("flex-1 min-w-[100px] py-4 text-sm font-black uppercase tracking-widest transition-all border-b-4", activeTab === "RADAR" ? "bg-red-950/40 text-red-400 border-red-500" : "text-neutral-600 border-transparent hover:text-white")}>
-            <Radar size={18} className="inline mr-2" /> Recruit
+          <button onClick={() => { setActiveTab("ACQUISITION"); scanRadar(); }} className={cn("flex-1 min-w-[120px] py-4 text-[10px] md:text-xs font-mono uppercase tracking-[0.2em] transition-colors border-r border-white/10", activeTab === "ACQUISITION" ? "bg-white text-black font-bold" : "text-neutral-500 hover:text-white hover:bg-white/5")}>
+            <Search size={14} className="inline mr-2 mb-0.5" /> Acquisition
           </button>
-          <button onClick={() => setActiveTab("BANK")} className={cn("flex-1 min-w-[100px] py-4 text-sm font-black uppercase tracking-widest transition-all border-b-4", activeTab === "BANK" ? "bg-yellow-950/40 text-yellow-400 border-yellow-500" : "text-neutral-600 border-transparent hover:text-white")}>
-            <Diamond size={18} className="inline mr-2" /> Vault
+          <button onClick={() => setActiveTab("TREASURY")} className={cn("flex-1 min-w-[120px] py-4 text-[10px] md:text-xs font-mono uppercase tracking-[0.2em] transition-colors", activeTab === "TREASURY" ? "bg-white text-black font-bold" : "text-neutral-500 hover:text-white hover:bg-white/5")}>
+            <Banknote size={14} className="inline mr-2 mb-0.5" /> Treasury
           </button>
         </div>
       </header>
 
-      {/* MAIN LOBBY CONTENT */}
-      <div className="relative z-40 flex-1 p-4 md:p-8 overflow-hidden flex flex-col">
+      {/* MAIN CONTENT AREA */}
+      <div className="relative z-40 flex-1 overflow-hidden flex flex-col bg-[#050505]">
 
         {/* 1. ROSTER TAB */}
-        {activeTab === "MEMBERS" && (
-          <div className="h-full flex flex-col">
-            <div className="flex justify-between items-center mb-6">
-                <HackerText text="ACTIVE_OPERATIVES" className="text-2xl font-black text-cyan-500" />
-                <Button onClick={() => { play("click"); navigator.clipboard.writeText(getGuildLink()); toast.success("INVITE COPIED"); }} size="sm" className="bg-cyan-900/50 border border-cyan-500/50 text-cyan-400 hover:bg-cyan-500 hover:text-black">
-                    <Copy size={16} className="mr-2" /> Invite Link
+        {activeTab === "ROSTER" && (
+          <div className="h-full flex flex-col p-6 md:p-10">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 pb-4 border-b border-white/10">
+                <HackerText text="Federation_Roster" className="text-xl font-medium tracking-widest uppercase" />
+                <Button 
+                    onClick={() => { play("click"); navigator.clipboard.writeText(getGuildLink()); toast.success("UPLINK KEY COPIED"); }} 
+                    className="bg-transparent border border-white/20 text-white hover:bg-white hover:text-black font-mono text-[10px] uppercase tracking-widest rounded-none h-10 transition-colors"
+                >
+                    <Copy size={14} className="mr-3" /> Copy Uplink Key
                 </Button>
             </div>
             
             <ScrollArea className="flex-1 -mr-4 pr-4">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {guildMembers.map((member) => (
-                  <div key={member.id} className="bg-neutral-900/60 border border-white/10 p-4 rounded-xl flex items-center justify-between group hover:border-cyan-500/50 transition-all">
-                    <div className="flex items-center gap-4">
-                      <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-white/20">
-                        <Image src={member.avatar || "/avatars/1.jpg"} alt="" fill className="object-cover" />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-white/10 border border-white/10 pb-20">
+                {guildMembers.map((member, i) => (
+                  <div key={member.id} className="bg-[#050505] p-6 flex flex-col justify-between hover:bg-white/5 transition-colors group h-48" style={{ animationDelay: `${i * 50}ms` }}>
+                    
+                    <div className="flex items-start gap-4">
+                      <div className="relative w-12 h-12 border border-white/20 shrink-0">
+                        <Image src={member.avatar || "/avatars/1.jpg"} alt="" fill className="object-cover grayscale" />
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-black text-white uppercase">{member.username}</span>
-                          {member.id === userData?.guildLeader && <Crown size={14} className="text-yellow-500" />}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-bold text-white uppercase tracking-widest truncate text-sm">{member.username}</span>
+                          {member.id === userData?.guildLeader && <Crown size={12} className="text-white/50 shrink-0" />}
                         </div>
-                        <div className="text-[10px] font-mono text-neutral-500 uppercase flex gap-2">
-                            <span>{member.membership?.tier || "RECRUIT"}</span>
-                            <span className="text-cyan-600">•</span>
-                            <span>{member.wallet?.popCoins?.toLocaleString() || 0} PC</span>
+                        <div className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest">
+                            Class: {member.membership?.tier || "Standard Node"}
                         </div>
                       </div>
                     </div>
                     
-                    {member.id !== user?.uid && (
-                        <Button 
-                            size="sm" 
-                            onClick={() => setTransferTarget(member)}
-                            className="bg-black border border-white/20 hover:bg-cyan-900/50 hover:text-cyan-400 text-[10px] uppercase font-bold h-8"
-                        >
-                            Transfer Funds
-                        </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-          </div>
-        )}
+                    <div className="mt-auto pt-4 border-t border-white/10 flex items-end justify-between">
+                        <div>
+                            <span className="block text-[8px] font-mono text-neutral-600 uppercase tracking-widest mb-1">Liquid Capital</span>
+                            <span className="font-mono text-white">{member.wallet?.popCoins?.toLocaleString() || 0}</span>
+                        </div>
 
-        {/* 2. CHAT TAB */}
-        {activeTab === "CHAT" && (
-          <div className="h-full flex flex-col max-w-4xl mx-auto w-full bg-black/40 border border-green-900/30 rounded-2xl overflow-hidden">
-            <div className="p-4 border-b border-green-900/30 bg-green-950/10 flex justify-between items-center">
-                <span className="text-xs font-mono text-green-500 uppercase tracking-widest flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" /> Secure Channel Active
-                </span>
-            </div>
-            
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-4">
-                {messages.map((msg) => (
-                  <div key={msg.id} className={cn("flex flex-col max-w-[80%]", msg.senderId === user?.uid ? "self-end items-end" : "self-start items-start")}>
-                    <span className="text-[9px] font-mono text-neutral-500 mb-1 uppercase">{msg.senderName}</span>
-                    <div className={cn("px-4 py-2 rounded-lg text-sm font-mono", msg.senderId === user?.uid ? "bg-green-600 text-black" : "bg-neutral-800 text-gray-200 border border-white/10")}>
-                      {msg.text}
+                        {member.id !== user?.uid && (
+                            <button 
+                                onClick={() => setTransferTarget(member)}
+                                className="text-[10px] font-mono uppercase tracking-widest text-neutral-400 hover:text-white flex items-center gap-2 transition-colors"
+                            >
+                                <ArrowRightLeft size={12} /> Transfer
+                            </button>
+                        )}
                     </div>
                   </div>
                 ))}
-                <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
+          </div>
+        )}
 
-            <div className="p-4 bg-black/60 border-t border-green-900/30 flex gap-3">
-              <Input 
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-                placeholder="ENTER ENCRYPTED MESSAGE..."
-                className="bg-transparent border-green-900/50 text-green-400 font-mono placeholder:text-green-900/50 focus:border-green-500"
-                disabled={sending}
-              />
-              <Button onClick={sendMessage} disabled={sending} className="bg-green-600 hover:bg-green-500 text-black w-12">
-                <Send size={18} />
-              </Button>
+        {/* 2. COMMS TAB (Secure Chat) */}
+        {activeTab === "COMMS" && (
+          <div className="h-full flex flex-col max-w-4xl mx-auto w-full p-6 md:p-10">
+            <div className="flex-1 flex flex-col border border-white/10 bg-[#050505]">
+                
+                <div className="p-4 border-b border-white/10 bg-white/5 flex justify-between items-center shrink-0">
+                    <span className="text-[10px] font-mono text-white uppercase tracking-widest flex items-center gap-3">
+                        <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" /> 
+                        Encrypted Ledger Comms
+                    </span>
+                    <Lock size={14} className="text-white/30" />
+                </div>
+                
+                <ScrollArea className="flex-1 p-6">
+                  <div className="space-y-6">
+                    {messages.map((msg) => (
+                      <div key={msg.id} className={cn("flex flex-col max-w-[85%]", msg.senderId === user?.uid ? "self-end items-end" : "self-start items-start")}>
+                        <span className="text-[8px] font-mono text-neutral-500 mb-2 uppercase tracking-widest">{msg.senderName}</span>
+                        <div className={cn(
+                            "px-4 py-3 text-sm font-mono tracking-tight", 
+                            msg.senderId === user?.uid 
+                                ? "bg-white text-black" 
+                                : "bg-transparent border border-white/20 text-neutral-300"
+                        )}>
+                          {msg.text}
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={messagesEndRef} />
+                  </div>
+                </ScrollArea>
+
+                <div className="p-4 bg-white/5 border-t border-white/10 flex gap-4 shrink-0">
+                  <Input 
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                    placeholder="ENTER PROTOCOL MESSAGE..."
+                    className="bg-transparent border-white/20 text-white font-mono text-xs placeholder:text-neutral-600 focus:border-white rounded-none h-12"
+                    disabled={sending}
+                  />
+                  <Button 
+                    onClick={sendMessage} 
+                    disabled={sending} 
+                    className="bg-white hover:bg-neutral-200 text-black rounded-none h-12 px-6"
+                  >
+                    <Send size={16} />
+                  </Button>
+                </div>
             </div>
           </div>
         )}
 
-        {/* 3. RADAR TAB */}
-        {activeTab === "RADAR" && (
-          <div className="h-full flex flex-col">
-             <div className="text-center mb-8">
-                <Radar size={48} className="text-red-500 mx-auto mb-4 animate-spin-slow" />
-                <HackerText text="GLOBAL RECRUITMENT SCANNER" className="text-2xl font-black text-red-500" />
+        {/* 3. ACQUISITION TAB (Radar) */}
+        {activeTab === "ACQUISITION" && (
+          <div className="h-full flex flex-col p-6 md:p-10">
+             <div className="flex items-center gap-4 mb-8 pb-4 border-b border-white/10">
+                <Search size={20} className="text-white/50" />
+                <HackerText text="Talent_Acquisition_Scanner" className="text-xl font-medium uppercase tracking-widest" />
              </div>
 
              {loading ? (
-                 <div className="flex-1 flex items-center justify-center">
-                     <HackerText text="SCANNING_SECTOR_7G..." className="text-xl text-red-800 animate-pulse" />
+                 <div className="flex-1 flex flex-col items-center justify-center border border-white/10 bg-white/5">
+                     <div className="w-full max-w-xs h-1 bg-white/20 overflow-hidden mb-6">
+                         <div className="h-full bg-white w-1/2 animate-[scan_1.5s_ease-in-out_infinite_alternate]" />
+                     </div>
+                     <HackerText text="SCANNING_GLOBAL_NETWORK..." className="text-xs font-mono tracking-widest text-neutral-500 uppercase" />
                  </div>
              ) : (
-                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-y-auto pb-20">
-                     {radarTargets.length > 0 ? radarTargets.map((target) => (
-                         <div key={target.id} className="bg-red-950/10 border border-red-900/40 p-6 rounded-xl flex flex-col items-center text-center hover:bg-red-950/30 transition-all group">
-                             <div className="w-16 h-16 rounded-full bg-black border-2 border-red-800 overflow-hidden mb-4 grayscale group-hover:grayscale-0 transition-all">
-                                <Image src={target.avatar || "/avatars/1.jpg"} alt="" width={64} height={64} className="object-cover h-full w-full" />
+                 <ScrollArea className="flex-1 -mr-4 pr-4">
+                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-px bg-white/10 border border-white/10 pb-20">
+                         {radarTargets.length > 0 ? radarTargets.map((target) => (
+                             <div key={target.id} className="bg-[#050505] p-8 flex flex-col items-center text-center hover:bg-white/5 transition-colors group">
+                                 <div className="w-16 h-16 border border-white/20 overflow-hidden mb-6 grayscale group-hover:grayscale-0 transition-all shrink-0">
+                                    <Image src={target.avatar || "/avatars/1.jpg"} alt="" width={64} height={64} className="object-cover h-full w-full" />
+                                 </div>
+                                 <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-2 truncate w-full">{target.username}</h3>
+                                 <p className="text-[10px] font-mono text-neutral-500 uppercase mb-8">Capital: {target.wallet?.popCoins || 0}</p>
+                                 <Button 
+                                    onClick={() => handleRecruit(target)} 
+                                    className="w-full bg-transparent border border-white/20 text-white hover:bg-white hover:text-black font-mono uppercase text-[10px] tracking-widest rounded-none transition-colors"
+                                 >
+                                     Initiate Offer
+                                 </Button>
                              </div>
-                             <h3 className="text-lg font-black text-white uppercase mb-1">{target.username}</h3>
-                             <p className="text-xs font-mono text-red-400 mb-6">Freelancer // {target.wallet?.popCoins || 0} PC</p>
-                             <Button onClick={() => handleRecruit(target)} className="w-full bg-red-700 hover:bg-red-600 text-white font-black uppercase text-xs tracking-widest">
-                                 Assimilate
-                             </Button>
-                         </div>
-                     )) : (
-                         <div className="col-span-3 text-center text-neutral-600 font-mono py-20">
-                             NO FREE AGENTS DETECTED. RESCANNING RECOMMENDED.
-                         </div>
-                     )}
-                 </div>
+                         )) : (
+                             <div className="col-span-full flex items-center justify-center h-64 bg-[#050505] text-neutral-600 font-mono text-xs uppercase tracking-widest border border-white/10">
+                                 NO UNATTACHED ASSETS DETECTED IN THIS SECTOR.
+                             </div>
+                         )}
+                     </div>
+                 </ScrollArea>
              )}
           </div>
         )}
 
-        {/* 4. BANK TAB */}
-        {activeTab === "BANK" && (
-          <div className="h-full flex flex-col items-center justify-center max-w-2xl mx-auto w-full">
-             <div className="relative mb-12">
-                <div className="absolute inset-0 bg-yellow-500/20 blur-[60px] rounded-full animate-pulse" />
-                <Diamond size={100} className="text-yellow-400 relative z-10" />
-             </div>
+        {/* 4. TREASURY TAB (Bank) */}
+        {activeTab === "TREASURY" && (
+          <div className="h-full flex flex-col items-center justify-center p-6 md:p-10">
              
-             <h2 className="text-5xl font-black text-white mb-2 tabular-nums tracking-tighter">
-                {guildBank.toLocaleString()} <span className="text-yellow-500">PC</span>
-             </h2>
-             <p className="text-sm font-mono text-neutral-400 uppercase tracking-widest mb-12">Total Syndicate Holdings</p>
+             <div className="w-full max-w-2xl bg-[#050505] border border-white/20 p-10 md:p-16 relative">
+                 
+                 <div className="absolute top-0 left-0 p-4 border-b border-r border-white/10">
+                    <Banknote size={20} className="text-white/30" />
+                 </div>
 
-             <div className="w-full bg-neutral-900/80 border border-yellow-600/30 p-8 rounded-2xl">
-                <label className="block text-xs font-mono text-yellow-500 uppercase mb-4 text-center">Deposit Personal Funds</label>
-                <div className="flex gap-4">
-                    <Input 
-                        type="number"
-                        value={depositAmount}
-                        onChange={(e) => setDepositAmount(e.target.value)}
-                        placeholder="AMOUNT"
-                        className="bg-black border-2 border-white/10 focus:border-yellow-500 text-2xl font-black text-center h-16"
-                    />
-                    <Button onClick={handleDeposit} className="h-16 px-8 bg-yellow-600 hover:bg-yellow-500 text-black font-black text-xl uppercase">
-                        Deposit
-                    </Button>
-                </div>
-                <div className="mt-4 text-center">
-                    <span className="text-xs text-neutral-500 uppercase">Available: {popCoins.toLocaleString()} PC</span>
-                </div>
+                 <div className="text-center mb-16 mt-4">
+                     <p className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest mb-4">Federation Treasury Holdings</p>
+                     <h2 className="text-[8vw] md:text-6xl font-medium text-white leading-none tracking-tighter">
+                        {guildBank.toLocaleString()}
+                     </h2>
+                 </div>
+
+                 <div className="border-t border-white/10 pt-10">
+                    <label className="block text-[10px] font-mono text-neutral-400 uppercase tracking-widest mb-4">
+                        Capital Injection (Personal Funds)
+                    </label>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <Input 
+                            type="number"
+                            value={depositAmount}
+                            onChange={(e) => setDepositAmount(e.target.value)}
+                            placeholder="AMOUNT"
+                            className="flex-1 bg-transparent border border-white/20 focus:border-white text-lg font-mono uppercase rounded-none h-14 transition-colors placeholder:text-neutral-700"
+                        />
+                        <Button 
+                            onClick={handleDeposit} 
+                            className="h-14 px-8 bg-white hover:bg-neutral-200 text-black font-mono text-[10px] font-bold uppercase tracking-[0.2em] rounded-none transition-colors"
+                        >
+                            Authorize Transfer
+                        </Button>
+                    </div>
+                    <div className="mt-4 text-left">
+                        <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest">
+                            Available Liquidity: <span className="text-white">{popCoins.toLocaleString()}</span>
+                        </span>
+                    </div>
+                 </div>
+
              </div>
           </div>
         )}
 
       </div>
 
-      {/* TRANSFER MODAL OVERLAY */}
+      {/* TRANSFER MODAL OVERLAY - Brutalist Architecture */}
       {transferTarget && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in zoom-in duration-200">
-            <div className="w-full max-w-sm bg-neutral-900 border border-cyan-500/50 p-8 rounded-2xl shadow-2xl">
-                <h3 className="text-xl font-black text-cyan-400 uppercase text-center mb-6">Wire Transfer</h3>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#050505]/95 backdrop-blur-md p-6">
+            <div className="w-full max-w-md bg-[#050505] border border-white/20 p-10 relative">
                 
-                <div className="bg-black p-4 rounded-lg border border-white/10 mb-6 text-center">
-                    <span className="text-[10px] font-mono text-neutral-500 uppercase">Recipient</span>
-                    <div className="text-2xl font-black text-white">{transferTarget.username}</div>
+                <h3 className="text-lg font-medium text-white uppercase tracking-widest mb-8 border-b border-white/10 pb-4">
+                    Wire Transfer Protocol
+                </h3>
+                
+                <div className="bg-white/5 border border-white/10 p-6 mb-8 flex items-center justify-between">
+                    <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest">Recipient Node</span>
+                    <div className="text-sm font-bold text-white uppercase tracking-widest">{transferTarget.username}</div>
                 </div>
 
-                <Input 
-                    type="number" 
-                    value={transferAmount} 
-                    onChange={(e) => setTransferAmount(e.target.value)} 
-                    placeholder="AMOUNT"
-                    className="h-14 text-center text-xl font-black bg-cyan-950/20 border-cyan-900/50 focus:border-cyan-500 mb-6"
-                />
+                <div className="space-y-3 mb-10">
+                    <label className="block text-[10px] font-mono text-neutral-500 uppercase tracking-widest">
+                        Transfer Amount
+                    </label>
+                    <Input 
+                        type="number" 
+                        value={transferAmount} 
+                        onChange={(e) => setTransferAmount(e.target.value)} 
+                        placeholder="ENTER AMOUNT"
+                        className="h-14 text-sm font-mono bg-transparent border border-white/20 focus:border-white uppercase rounded-none placeholder:text-neutral-700 transition-colors"
+                    />
+                </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                    <Button onClick={() => setTransferTarget(null)} variant="ghost" className="uppercase font-bold text-neutral-500">Cancel</Button>
-                    <Button onClick={handleTransfer} className="bg-cyan-600 hover:bg-cyan-500 text-black font-black uppercase">Send Funds</Button>
+                <div className="flex gap-4">
+                    <Button 
+                        onClick={handleTransfer} 
+                        className="flex-1 h-14 bg-white text-black hover:bg-neutral-200 font-mono text-[10px] uppercase tracking-[0.2em] rounded-none transition-colors"
+                    >
+                        Execute
+                    </Button>
+                    <Button 
+                        onClick={() => setTransferTarget(null)} 
+                        className="flex-1 h-14 bg-transparent border border-white/20 text-neutral-400 hover:text-white hover:border-white font-mono text-[10px] uppercase tracking-[0.2em] rounded-none transition-colors"
+                    >
+                        Abort
+                    </Button>
                 </div>
             </div>
         </div>

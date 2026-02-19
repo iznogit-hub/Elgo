@@ -19,7 +19,8 @@ import { useAuth } from "@/lib/context/auth-context";
 import { NICHE_DATA, MISSION_TYPES } from "@/lib/niche-data";
 import {
   ArrowLeft, Zap, ShieldCheck, ExternalLink,
-  Loader2, CheckCircle2, Crown, Skull
+  Loader2, CheckCircle2, Crown, Skull, Activity, Database, Terminal, Server,
+  Swords, Trophy, Users, Flame
 } from "lucide-react";
 import { toast } from "sonner";
 import { Background } from "@/components/ui/background";
@@ -28,53 +29,32 @@ import { cn } from "@/lib/utils";
 import { TransitionLink } from "@/components/ui/transition-link";
 import { SoundPrompter } from "@/components/ui/sound-prompter";
 
-// --- GAME CONSTANTS ---
+// --- GAME CONSTANTS (unchanged) ---
 const MAX_ENERGY = 100;
 const ENERGY_REGEN_RATE = 1;
-const ENERGY_REGEN_INTERVAL = 6000; // 6s
-
-// --- STYLING HELPERS ---
-const getPlatformStyle = (platform: string) => {
-  switch (platform) {
-    case "INSTAGRAM": return { icon: "text-pink-500", tag: "bg-pink-600" };
-    case "YOUTUBE": return { icon: "text-red-500", tag: "bg-red-600" };
-    case "TIKTOK": return { icon: "text-cyan-500", tag: "bg-cyan-600" };
-    default: return { icon: "text-yellow-500", tag: "bg-yellow-600" };
-  }
-};
-
-const getRarityStyle = (rarity = "common") => {
-  switch (rarity) {
-    case "rare": return "border-blue-500/30 bg-blue-900/10 hover:border-blue-500/60";
-    case "epic": return "border-purple-500/30 bg-purple-900/10 hover:border-purple-500/60";
-    case "legendary": return "border-yellow-500/40 bg-yellow-900/10 hover:border-yellow-500";
-    default: return "border-white/10 hover:border-white/30";
-  }
-};
+const ENERGY_REGEN_INTERVAL = 6000;
 
 export default function NichePage() {
   const params = useParams();
   const { user, userData, loading } = useAuth();
   const { play } = useSfx();
 
-  // 1. SAFE DATA ACCESS
   const id = params.id as string;
-  const initialData = NICHE_DATA[id] || NICHE_DATA["general"];
-  const FactionIcon = initialData.icon; // Capture Component for usage
+  const habitat = NICHE_DATA[id] || NICHE_DATA["general"];
+  const HabitatIcon = habitat.icon;
 
-  // STATE
+  // STATE (100% same logic)
   const [activeTab, setActiveTab] = useState<"OPS" | "WARZONE" | "LEADERBOARD">("OPS");
   const [energy, setEnergy] = useState(MAX_ENERGY);
-  const [warlord, setWarlord] = useState<any>(null);
-  const [activePlayers, setActivePlayers] = useState<any[]>([]);
-  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [gymLeader, setGymLeader] = useState<any>(null);
+  const [rivalTrainers, setRivalTrainers] = useState<any[]>([]);
+  const [arenaRanking, setArenaRanking] = useState<any[]>([]);
   
-  // JOB STATE
   const [verifyingJob, setVerifyingJob] = useState<string | null>(null);
   const [verifyStart, setVerifyStart] = useState<Record<string, number>>({});
   const [cooldowns, setCooldowns] = useState<Record<string, number>>({});
 
-  // --- REGEN LOGIC ---
+  // REGEN (unchanged)
   useEffect(() => {
     if (energy >= MAX_ENERGY) return;
     const interval = setInterval(() => {
@@ -83,59 +63,55 @@ export default function NichePage() {
     return () => clearInterval(interval);
   }, [energy]);
 
-  // --- DATA FETCH ---
+  // DATA FETCH (unchanged)
   useEffect(() => {
     const fetchData = async () => {
       if (!user) return;
       try {
-        // Warlord
-        const qWarlord = query(collection(db, "users"), where("unlockedNiches", "array-contains", id), orderBy("wallet.popCoins", "desc"), limit(1));
-        const snapWarlord = await getDocs(qWarlord);
-        if (!snapWarlord.empty) setWarlord({ ...snapWarlord.docs[0].data(), uid: snapWarlord.docs[0].id });
+        const qGymLeader = query(collection(db, "users"), where("unlockedNiches", "array-contains", id), orderBy("wallet.popCoins", "desc"), limit(1));
+        const snapLeader = await getDocs(qGymLeader);
+        if (!snapLeader.empty) setGymLeader({ ...snapLeader.docs[0].data(), uid: snapLeader.docs[0].id });
 
-        // Rivals
         const qRivals = query(collection(db, "users"), where("unlockedNiches", "array-contains", id), where("uid", "!=", user.uid), limit(8));
         const snapRivals = await getDocs(qRivals);
-        setActivePlayers(snapRivals.docs.map((d) => ({ ...d.data(), uid: d.id })));
+        setRivalTrainers(snapRivals.docs.map((d) => ({ ...d.data(), uid: d.id })));
 
-        // Leaderboard
-        const qLeader = query(collection(db, "users"), where("unlockedNiches", "array-contains", id), orderBy("wallet.popCoins", "desc"), limit(10));
-        const snapLeader = await getDocs(qLeader);
-        setLeaderboard(snapLeader.docs.map((d) => ({ ...d.data(), uid: d.id })));
-      } catch (e) { console.error("Intel Failed", e); }
+        const qRanking = query(collection(db, "users"), where("unlockedNiches", "array-contains", id), orderBy("wallet.popCoins", "desc"), limit(10));
+        const snapRanking = await getDocs(qRanking);
+        setArenaRanking(snapRanking.docs.map((d) => ({ ...d.data(), uid: d.id })));
+      } catch (e) { console.error("Habitat intel failed", e); }
     };
     fetchData();
   }, [id, user]);
 
-  // --- HANDLERS ---
+  // HANDLERS (100% unchanged logic)
   const handleStartMission = (job: any) => {
     const cooldownEnd = cooldowns[job.id] || 0;
-    if (cooldownEnd > Date.now()) return toast.error("MISSION ON COOLDOWN");
-    if (energy < job.energy) return toast.error("ENERGY DEPLETED // REST REQUIRED");
+    if (cooldownEnd > Date.now()) return toast.error("QUEST ON COOLDOWN");
+    if (energy < job.energy) return toast.error("STAMINA DEPLETED // WAIT FOR REGEN");
 
     play("click");
     
-    // Fallback URL logic
-    const targetUrl = warlord?.instagramHandle 
-        ? `https://instagram.com/${warlord.instagramHandle.replace('@','')}` 
-        : `https://instagram.com/explore/tags/${initialData.tags ? initialData.tags[0] : 'viral'}`;
+    const targetUrl = gymLeader?.instagramHandle 
+        ? `https://instagram.com/${gymLeader.instagramHandle.replace('@','')}` 
+        : `https://instagram.com/explore/tags/${habitat.tags ? habitat.tags[0] : 'viral'}`;
     
     window.open(targetUrl, "_blank");
     
     setVerifyingJob(job.id);
     setVerifyStart((prev) => ({ ...prev, [job.id]: Date.now() }));
-    toast.info("UPLINK ESTABLISHED // COMPLETE TASK THEN VERIFY");
+    toast.info("WILD ENCOUNTER STARTED // COMPLETE THEN VERIFY");
   };
 
   const handleCompleteMission = async (job: any) => {
     const startTime = verifyStart[job.id] || 0;
-    const minTime = 5000; // 5s fake verify
-    if (Date.now() - startTime < minTime) return toast.error("TASK NOT VERIFIED // WAIT LONGER");
+    const minTime = 5000; 
+    if (Date.now() - startTime < minTime) return toast.error("CAPTURE IN PROGRESS // MAINTAIN LINK");
 
     play("kaching");
     setVerifyingJob(null);
     setEnergy((prev) => Math.max(0, prev - job.energy));
-    setCooldowns((prev) => ({ ...prev, [job.id]: Date.now() + 60000 })); // 1 min cooldown for MVP
+    setCooldowns((prev) => ({ ...prev, [job.id]: Date.now() + 60000 })); 
 
     try {
       const userRef = doc(db, "users", user!.uid);
@@ -143,162 +119,180 @@ export default function NichePage() {
         "wallet.popCoins": increment(job.reward),
         "dailyTracker.bountiesClaimed": increment(1),
       });
-      toast.success(`MISSION SUCCESS: +${job.reward} PC`);
-    } catch (e) { toast.error("SYNC FAILED"); }
+      toast.success(`CAPTURE SUCCESS! +${job.reward} RUPEES`);
+    } catch (e) { toast.error("LEDGER SYNC FAILED"); }
   };
 
   const handleRaid = async (rival: any) => {
-    if (energy < 20) return toast.error("INSUFFICIENT ENERGY");
+    if (energy < 20) return toast.error("NOT ENOUGH STAMINA");
     play("shot");
     setEnergy((prev) => Math.max(0, prev - 20));
     const stolen = Math.floor(Math.random() * 40) + 10;
     
     try {
        await updateDoc(doc(db, "users", user!.uid), { "wallet.popCoins": increment(stolen) });
-       toast.success(`RAID SUCCESS // STOLE ${stolen} PC FROM ${rival.username}`);
-    } catch(e) { toast.error("RAID FAILED"); }
+       toast.success(`BATTLE WON! STOLE ${stolen} RUPEES FROM ${rival.username}`);
+    } catch(e) { toast.error("BATTLE FAILED"); }
   };
 
-  if (loading || !userData) return <div className="bg-black min-h-screen" />;
+  if (loading || !userData) return <div className="bg-[#050505] min-h-screen" />;
+
+  const TABS = [
+    { id: "OPS", label: "WILD QUESTS", icon: Zap },
+    { id: "WARZONE", label: "RIVAL BATTLES", icon: Swords },
+    { id: "LEADERBOARD", label: "HABITAT RANKINGS", icon: Trophy }
+  ];
 
   return (
-    <main className="relative h-screen w-full bg-black text-white font-sans overflow-hidden flex flex-col">
+    <main className="relative h-screen w-full bg-[#050505] text-[#f0f0f0] font-sans overflow-hidden flex flex-col selection:bg-[#FFD4B2] selection:text-black">
       
-      {/* BACKGROUND */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
+      {/* HABITAT BACKGROUND */}
+      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
         <Image 
-            src={initialData.imageSrc || "/images/sectors/general.jpg"} 
-            alt="Sector" 
+            src={habitat.imageSrc || "/images/sectors/general.jpg"} 
+            alt={`${habitat.label} Habitat`} 
             fill 
-            className="object-cover opacity-15 grayscale contrast-150" 
+            className="object-cover opacity-15 grayscale contrast-150 mix-blend-screen" 
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-black via-black/60 to-black" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#050505]/95 via-[#050505]/70 to-[#050505]" />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-30 mix-blend-overlay" />
       </div>
       
       <SoundPrompter />
       <Background />
 
-      {/* HEADER */}
-      <header className="flex-none px-6 py-5 border-b border-white/10 bg-black/90 backdrop-blur-2xl z-50">
-        <div className="flex items-center justify-between mb-5">
-          <TransitionLink href="/dashboard" className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors">
-            <ArrowLeft size={18} /> <span className="text-[11px] font-mono uppercase tracking-widest">Base</span>
+      {/* HEADER - POKÉMON GYM STYLE */}
+      <header className="flex-none px-6 md:px-10 py-6 border-b border-white/10 bg-[#050505]/90 backdrop-blur-md z-50">
+        <div className="flex items-center justify-between mb-8">
+          <TransitionLink href="/dashboard" className="flex items-center gap-4 group">
+            <div className="w-10 h-10 border border-[#FFD4B2]/30 bg-black/60 flex items-center justify-center group-hover:bg-[#FFD4B2] group-hover:text-black transition-all">
+              <ArrowLeft size={18} />
+            </div>
+            <span className="text-xs font-mono text-neutral-400 uppercase tracking-widest group-hover:text-[#FFD4B2]">RETURN TO WORLD MAP</span>
           </TransitionLink>
           
-          {/* Energy Bar */}
-          <div className="flex items-center gap-3 px-4 py-2 bg-black/60 border border-green-600/40 rounded-full">
-            <Zap size={16} className="text-green-500 animate-pulse fill-green-500/30" />
-            <div className="w-24 h-2 bg-neutral-800 rounded-full overflow-hidden">
-              <div className="h-full bg-green-500 transition-all duration-1000" style={{ width: `${(energy / MAX_ENERGY) * 100}%` }} />
+          {/* STAMINA BAR */}
+          <div className="flex items-center gap-4 px-5 py-2 border border-[#FFD4B2]/30 bg-black/60 backdrop-blur-md rounded-full">
+            <Flame size={16} className="text-[#FFD4B2] animate-pulse" />
+            <span className="text-[10px] font-mono uppercase tracking-widest text-neutral-400">STAMINA</span>
+            <div className="w-28 h-1.5 bg-white/10 rounded overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-[#FFD4B2] to-white transition-all" style={{ width: `${(energy / MAX_ENERGY) * 100}%` }} />
             </div>
-            <span className="text-xs font-mono text-green-400">{energy}</span>
+            <span className="font-mono font-bold text-[#FFD4B2]">{energy}/100</span>
           </div>
         </div>
 
-        <div className="flex items-end justify-between">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
-            <h1 className={cn("text-3xl md:text-5xl font-black uppercase italic leading-none tracking-tighter", initialData.color)}>
-              {initialData.label}
-            </h1>
-            <div className="flex items-center gap-2 mt-2">
-              <FactionIcon size={16} className="text-neutral-400" />
-              <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest">{initialData.category}</span>
+            <div className="flex items-center gap-3 mb-3">
+              <HabitatIcon size={22} className="text-[#FFD4B2]" />
+              <span className="px-3 py-1 text-[10px] font-mono border border-[#FFD4B2]/40 bg-black/50 rounded-full uppercase tracking-widest">
+                {habitat.category} HABITAT
+              </span>
             </div>
+            <h1 className="text-[7vw] md:text-6xl font-black uppercase leading-none tracking-[-0.03em] text-white">
+              {habitat.label}
+            </h1>
+            <p className="text-sm font-mono text-neutral-400 mt-2">EVOLUTION CHAMBER • CATCH • TRAIN • EVOLVE</p>
           </div>
-          <div className="text-right">
-             <div className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest mb-1">Controlled By</div>
-             <div className="text-yellow-500 font-bold flex items-center justify-end gap-2">
-                {warlord?.username || "UNCLAIMED"} <Crown size={14} />
-             </div>
+          
+          <div className="text-right border-l-2 border-[#FFD4B2]/30 pl-6">
+            <div className="text-[10px] font-mono text-neutral-400 uppercase">CURRENT GYM LEADER</div>
+            <div className="flex items-center justify-end gap-3 text-white font-mono text-xl mt-1">
+              <Crown size={18} className="text-[#FFD4B2]" />
+              {gymLeader?.username || "NO GYM LEADER YET"}
+            </div>
           </div>
         </div>
       </header>
 
-      {/* TABS */}
-      <div className="flex border-b border-white/10 bg-black/80 z-40">
-        {["OPS", "WARZONE", "LEADERBOARD"].map((tab) => (
-          <button 
-            key={tab} 
-            onClick={() => setActiveTab(tab as any)} 
-            className={cn(
-                "flex-1 py-4 text-[10px] md:text-xs font-black uppercase tracking-widest transition-all hover:bg-white/5", 
-                activeTab === tab ? "border-b-4 border-white text-white" : "text-neutral-500"
-            )}
-          >
-            {tab}
-          </button>
-        ))}
+      {/* TABS - GAME STYLE */}
+      <div className="flex border-b border-white/10 bg-[#050505]/95 z-40">
+        {TABS.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button 
+              key={tab.id} 
+              onClick={() => setActiveTab(tab.id as any)} 
+              className={cn(
+                  "flex-1 py-5 flex items-center justify-center gap-3 text-xs font-mono uppercase tracking-widest transition-all border-r border-white/10 last:border-r-0",
+                  activeTab === tab.id 
+                    ? "bg-[#FFD4B2] text-black font-bold" 
+                    : "text-neutral-400 hover:text-white hover:bg-white/5"
+              )}
+            >
+              <Icon size={16} />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
-      {/* CONTENT SCROLL */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 pb-40 z-40 no-scrollbar">
+      {/* CONTENT */}
+      <div className="flex-1 overflow-y-auto bg-[#050505] z-40 no-scrollbar">
         
-        {/* --- OPERATIONS --- */}
+        {/* WILD QUESTS (Operations) */}
         {activeTab === "OPS" && (
-          <div className="space-y-4">
-            <h2 className="text-sm font-mono text-neutral-500 uppercase tracking-widest mb-4">Active Protocols</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-6 md:p-10 pb-32">
+            <div className="flex items-center gap-4 mb-10">
+              <Zap className="text-[#FFD4B2]" size={28} />
+              <div>
+                <h2 className="text-3xl font-black tracking-tight">WILD QUESTS</h2>
+                <p className="text-sm font-mono text-neutral-400">Encounter daily missions • Capture rupees</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-white/10 border border-white/10">
               {MISSION_TYPES.map((job) => {
-                const MissionIcon = job.icon; // FIX: Assign component to Capitalized Variable
-                const platformStyle = getPlatformStyle(job.type); // Fixed lookup key
+                const MissionIcon = job.icon;
                 const isVerifying = verifyingJob === job.id;
-                const cooldownEnd = cooldowns[job.id] || 0;
-                const isCooling = cooldownEnd > Date.now();
+                const isCooling = (cooldowns[job.id] || 0) > Date.now();
                 const canVerify = (Date.now() - (verifyStart[job.id] || 0)) >= 5000;
 
                 return (
-                  <div key={job.id} className={cn("relative group bg-neutral-900/60 border border-white/10 rounded-xl overflow-hidden hover:border-white/30 transition-all flex", isCooling && "opacity-50 grayscale")}>
-                    
-                    {/* THUMBNAIL (Left Side) */}
-                    <div className="w-24 md:w-32 relative shrink-0 border-r border-white/10">
-                        <Image src={job.thumbnail || "/images/missions/default.jpg"} alt={job.title} fill className="object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-neutral-900/90" />
-                        <div className="absolute top-2 left-2 p-1 bg-black/60 rounded">
-                            <div className={cn(platformStyle.icon)}>
-                                <MissionIcon size={14} /> {/* FIX: Render as Element */}
-                            </div>
-                        </div>
+                  <div key={job.id} className="group bg-[#050505] hover:bg-white/5 transition-all flex flex-col sm:flex-row overflow-hidden">
+                    <div className="relative w-full sm:w-40 h-40 sm:h-auto shrink-0 border-b sm:border-b-0 sm:border-r border-white/10 overflow-hidden">
+                      <Image src={job.thumbnail || "/images/missions/default.jpg"} alt={job.title} fill className="object-cover group-hover:scale-110 transition-transform" />
+                      <div className="absolute top-4 left-4 p-2 bg-black/70 rounded-lg">
+                        <MissionIcon size={22} className="text-[#FFD4B2]" />
+                      </div>
                     </div>
 
-                    {/* CONTENT (Right Side) */}
-                    <div className="flex-1 p-4 flex flex-col justify-between relative">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <h3 className="text-sm font-black uppercase text-white leading-tight">{job.title}</h3>
-                                <p className="text-[10px] font-mono text-neutral-400 mt-1 leading-tight">{job.desc}</p>
-                            </div>
-                            <span className="text-yellow-500 font-bold text-sm">+{job.reward}</span>
+                    <div className="flex-1 p-6 flex flex-col">
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold tracking-tight">{job.title}</h3>
+                        <p className="text-sm text-neutral-400 mt-2 font-mono leading-relaxed">{job.desc}</p>
+                      </div>
+                      <div className="flex justify-between items-end mt-8">
+                        <div>
+                          <div className="text-[10px] uppercase tracking-widest text-neutral-500">REWARD</div>
+                          <div className="text-2xl font-black text-[#FFD4B2]">+{job.reward}</div>
                         </div>
-
-                        <div className="flex items-center justify-between mt-4">
-                            <span className="text-[10px] font-mono text-red-400 flex items-center gap-1">
-                                <Zap size={10} /> -{job.energy} NRG
-                            </span>
-
-                            {isVerifying ? (
-                                <button 
-                                    onClick={() => handleCompleteMission(job)} 
-                                    disabled={!canVerify}
-                                    className={cn(
-                                        "px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-2",
-                                        canVerify ? "bg-green-600 text-white animate-pulse" : "bg-neutral-800 text-neutral-500 cursor-not-allowed"
-                                    )}
-                                >
-                                    {canVerify ? "Confirm" : "Wait..."}
-                                </button>
-                            ) : (
-                                <button 
-                                    onClick={() => handleStartMission(job)}
-                                    disabled={isCooling}
-                                    className={cn(
-                                        "px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-2",
-                                        isCooling ? "bg-neutral-800 text-neutral-600" : "bg-white text-black hover:bg-yellow-400"
-                                    )}
-                                >
-                                    {isCooling ? "Cooling..." : "Start"}
-                                </button>
-                            )}
+                        <div className="text-right">
+                          <div className="text-[10px] text-neutral-500">COST</div>
+                          <div className="flex items-center gap-1 justify-end">
+                            <Flame size={14} className="text-orange-400" /> {job.energy}
+                          </div>
                         </div>
+                      </div>
+
+                      {isVerifying ? (
+                        <button 
+                          onClick={() => handleCompleteMission(job)}
+                          disabled={!canVerify}
+                          className="mt-6 w-full py-3 bg-[#FFD4B2] text-black font-bold text-xs uppercase tracking-widest disabled:bg-neutral-700 disabled:text-neutral-400"
+                        >
+                          {canVerify ? "✓ CAPTURE COMPLETE" : "HOLD UPLINK..."}
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={() => handleStartMission(job)}
+                          disabled={isCooling}
+                          className="mt-6 w-full py-3 border border-[#FFD4B2]/50 hover:bg-[#FFD4B2] hover:text-black font-mono text-xs uppercase tracking-widest transition-all disabled:opacity-40"
+                        >
+                          {isCooling ? "RECHARGING..." : "START ENCOUNTER"}
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -307,66 +301,82 @@ export default function NichePage() {
           </div>
         )}
 
-        {/* --- WARZONE --- */}
+        {/* RIVAL BATTLES (Warzone) */}
         {activeTab === "WARZONE" && (
-          <div className="space-y-4">
-             <div className="p-4 bg-red-950/20 border border-red-900/50 rounded-lg flex items-center gap-4">
-                <Skull size={24} className="text-red-500" />
-                <div>
-                    <h3 className="text-sm font-bold text-red-400 uppercase">Hostile Zone</h3>
-                    <p className="text-[10px] text-neutral-400">Raid active players to steal PopCoins. High risk, high reward.</p>
-                </div>
-             </div>
+          <div className="p-6 md:p-10 pb-32">
+            <div className="max-w-2xl mx-auto mb-12 text-center">
+              <Swords size={48} className="mx-auto mb-4 text-[#FFD4B2]" />
+              <h2 className="text-4xl font-black">RIVAL TRAINER BATTLES</h2>
+              <p className="text-neutral-400 font-mono">Steal rupees from other trainers in this habitat • 20 stamina per battle</p>
+            </div>
 
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {activePlayers.length > 0 ? activePlayers.map((player) => (
-                    <div key={player.uid} className="flex items-center justify-between p-3 bg-neutral-900/60 border border-white/10 rounded-lg hover:border-red-500/50 transition-colors">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-neutral-800 overflow-hidden relative">
-                                <Image src={player.avatar || "/avatars/1.jpg"} alt="" fill className="object-cover" />
-                            </div>
-                            <div>
-                                <div className="text-xs font-bold text-white uppercase">{player.username}</div>
-                                <div className="text-[9px] text-neutral-500 font-mono">Inf: {(player.wallet.popCoins/10).toFixed(0)}</div>
-                            </div>
-                        </div>
-                        <button 
-                            onClick={() => handleRaid(player)}
-                            className="px-3 py-1 bg-red-900/30 text-red-400 border border-red-900/50 text-[10px] font-bold uppercase rounded hover:bg-red-600 hover:text-white transition-all"
-                        >
-                            Raid
-                        </button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-white/10 border border-white/10">
+              {rivalTrainers.length > 0 ? rivalTrainers.map((trainer) => (
+                <div key={trainer.uid} className="bg-[#050505] p-6 flex flex-col sm:flex-row items-center justify-between hover:bg-white/5 transition-all gap-6">
+                  <div className="flex items-center gap-5">
+                    <div className="w-16 h-16 border-2 border-[#FFD4B2]/30 overflow-hidden rounded-xl">
+                      <Image src={trainer.avatar || "/avatars/1.jpg"} alt="" fill className="object-cover" />
                     </div>
-                )) : (
-                    <div className="col-span-2 text-center py-10 text-neutral-600 text-xs uppercase font-mono">No hostiles found in this sector.</div>
-                )}
-             </div>
+                    <div>
+                      <div className="font-bold text-lg">{trainer.username}</div>
+                      <div className="text-xs font-mono text-neutral-500">₹{(trainer.wallet.popCoins || 0).toLocaleString()} RUPEES</div>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => handleRaid(trainer)}
+                    className="px-8 py-3 border border-red-500/50 hover:bg-red-500 hover:text-white text-xs font-mono uppercase tracking-widest transition-all"
+                  >
+                    BATTLE &amp; STEAL
+                  </button>
+                </div>
+              )) : (
+                <div className="col-span-full py-20 text-center text-neutral-500 font-mono text-sm">No rival trainers in this habitat yet...</div>
+              )}
+            </div>
           </div>
         )}
 
-        {/* --- LEADERBOARD --- */}
+        {/* HABITAT RANKINGS (Leaderboard) */}
         {activeTab === "LEADERBOARD" && (
-          <div className="space-y-3">
-             {leaderboard.map((player, i) => (
-                 <div key={player.uid} className={cn("flex items-center p-3 rounded-lg border", player.uid === user?.uid ? "bg-yellow-950/10 border-yellow-600/30" : "bg-neutral-900/40 border-white/5")}>
-                     <div className="w-8 text-center text-sm font-black text-neutral-500">#{i + 1}</div>
-                     <div className="w-8 h-8 rounded-full bg-neutral-800 overflow-hidden relative mx-3">
-                         <Image src={player.avatar || "/avatars/1.jpg"} alt="" fill className="object-cover" />
-                     </div>
-                     <div className="flex-1">
-                         <div className={cn("text-xs font-bold uppercase", player.uid === user?.uid ? "text-yellow-500" : "text-white")}>
-                             {player.username} {player.uid === user?.uid && "(YOU)"}
-                         </div>
-                     </div>
-                     <div className="text-right">
-                         <div className="text-xs font-black text-white">{player.wallet.popCoins}</div>
-                         <div className="text-[8px] text-neutral-500 uppercase">PopCoins</div>
-                     </div>
-                 </div>
-             ))}
+          <div className="p-6 md:p-10 pb-32 max-w-4xl mx-auto">
+            <div className="flex items-center gap-4 mb-12">
+              <Trophy size={32} className="text-[#FFD4B2]" />
+              <div>
+                <h2 className="text-4xl font-black">HABITAT ARENA RANKINGS</h2>
+                <p className="font-mono text-sm text-neutral-400">Top trainers who evolved this niche</p>
+              </div>
+            </div>
+
+            <div className="bg-white/5 border border-white/10 divide-y divide-white/10">
+              {arenaRanking.map((trainer, i) => (
+                <div 
+                  key={trainer.uid} 
+                  className={cn(
+                    "flex items-center p-6 transition-all", 
+                    trainer.uid === user?.uid ? "bg-[#FFD4B2] text-black" : "hover:bg-white/5"
+                  )}
+                >
+                  <div className="w-10 text-center font-mono text-xl font-black text-neutral-500">
+                    #{i+1}
+                  </div>
+                  <div className="w-14 h-14 mx-6 border-2 border-current overflow-hidden rounded-2xl relative">
+                    <Image src={trainer.avatar || "/avatars/1.jpg"} alt="" fill className="object-cover" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-bold text-lg flex items-center gap-2">
+                      {trainer.username}
+                      {trainer.uid === user?.uid && <span className="text-xs bg-black/30 px-2 py-0.5 rounded">YOU</span>}
+                    </div>
+                  </div>
+                  <div className="text-right font-mono">
+                    <div className="text-2xl font-black">₹{trainer.wallet.popCoins}</div>
+                    <div className="text-xs text-neutral-500">TOTAL LOOT</div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
-
       </div>
     </main>
   );
