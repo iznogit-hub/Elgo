@@ -16,11 +16,11 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/context/auth-context";
-import { NICHE_DATA, MISSION_TYPES } from "@/lib/niche-data";
+import { MARKETING_PACKAGES } from "@/lib/niche-data";
 import {
-  ArrowLeft, Zap, ShieldCheck, ExternalLink,
-  Loader2, CheckCircle2, Crown, Skull, Activity, Database, Terminal, Server,
-  Swords, Trophy, Users, Flame
+  ArrowLeft, Zap, ExternalLink,
+  CheckCircle2, Server, Terminal,
+  Users, Activity, Lock, Target, Workflow, Briefcase
 } from "lucide-react";
 import { toast } from "sonner";
 import { Background } from "@/components/ui/background";
@@ -29,184 +29,199 @@ import { cn } from "@/lib/utils";
 import { TransitionLink } from "@/components/ui/transition-link";
 import { SoundPrompter } from "@/components/ui/sound-prompter";
 
-// --- GAME CONSTANTS (unchanged) ---
-const MAX_ENERGY = 100;
-const ENERGY_REGEN_RATE = 1;
-const ENERGY_REGEN_INTERVAL = 6000;
+// --- OPERATIONAL CONSTANTS ---
+const MAX_BANDWIDTH = 100; // Replaced Energy
+const BANDWIDTH_REGEN_RATE = 1;
+const BANDWIDTH_REGEN_INTERVAL = 6000;
 
-export default function NichePage() {
+// Mocking the specific fulfillment tasks for the packages. 
+// In production, this would be fetched from a 'client_orders' Firebase collection.
+const FULFILLMENT_STAGES = [
+  {
+    id: "stage_1_intake",
+    title: "Client Asset Intake & Audit",
+    desc: "Extract raw assets, branding guidelines, and account access from the client dossier.",
+    bandwidth: 10,
+    reward: 0, // No payout until milestone completion
+    icon: Users,
+    status: "pending"
+  },
+  {
+    id: "stage_2_strategy",
+    title: "Strategy Architecture",
+    desc: "Draft the campaign hooks, SEO keywords, and PR distribution matrix for client approval.",
+    bandwidth: 25,
+    reward: 5000, // Milestone 1 Cleared
+    icon: Workflow,
+    status: "locked"
+  },
+  {
+    id: "stage_3_execution",
+    title: "Asset Production & Editing",
+    desc: "Compile short-form videos, draft press releases, and spin up programmatic landing pages.",
+    bandwidth: 40,
+    reward: 0,
+    icon: Terminal,
+    status: "locked"
+  },
+  {
+    id: "stage_4_deployment",
+    title: "Live Deployment & Handover",
+    desc: "Push assets to live servers, schedule Meta ads, and finalize the PR wire distribution.",
+    bandwidth: 25,
+    reward: 14999, // Final Payout Cleared
+    icon: Zap,
+    status: "locked"
+  }
+];
+
+export default function FulfillmentPage() {
   const params = useParams();
   const { user, userData, loading } = useAuth();
   const { play } = useSfx();
 
   const id = params.id as string;
-  const habitat = NICHE_DATA[id] || NICHE_DATA["general"];
-  const HabitatIcon = habitat.icon;
+  // Fallback to a default package if the ID doesn't match perfectly during testing
+  const packageData = MARKETING_PACKAGES[id] || MARKETING_PACKAGES["reels_engine"];
+  const PackageIcon = packageData.icon || Target;
 
-  // STATE (100% same logic)
-  const [activeTab, setActiveTab] = useState<"OPS" | "WARZONE" | "LEADERBOARD">("OPS");
-  const [energy, setEnergy] = useState(MAX_ENERGY);
-  const [gymLeader, setGymLeader] = useState<any>(null);
-  const [rivalTrainers, setRivalTrainers] = useState<any[]>([]);
-  const [arenaRanking, setArenaRanking] = useState<any[]>([]);
+  // STATE
+  const [activeTab, setActiveTab] = useState<"TASKS" | "CLIENT_COMMS" | "LEDGER">("TASKS");
+  const [bandwidth, setBandwidth] = useState(MAX_BANDWIDTH);
+  const [assignedOperatives, setAssignedOperatives] = useState<any[]>([]);
   
-  const [verifyingJob, setVerifyingJob] = useState<string | null>(null);
-  const [verifyStart, setVerifyStart] = useState<Record<string, number>>({});
-  const [cooldowns, setCooldowns] = useState<Record<string, number>>({});
+  const [executingTask, setExecutingTask] = useState<string | null>(null);
+  const [executionStart, setExecutionStart] = useState<Record<string, number>>({});
+  const [completedTasks, setCompletedTasks] = useState<string[]>([]);
 
-  // REGEN (unchanged)
+  // BANDWIDTH REGEN (formerly stamina/energy)
   useEffect(() => {
-    if (energy >= MAX_ENERGY) return;
+    if (bandwidth >= MAX_BANDWIDTH) return;
     const interval = setInterval(() => {
-      setEnergy((prev) => Math.min(MAX_ENERGY, prev + ENERGY_REGEN_RATE));
-    }, ENERGY_REGEN_INTERVAL);
+      setBandwidth((prev) => Math.min(MAX_BANDWIDTH, prev + BANDWIDTH_REGEN_RATE));
+    }, BANDWIDTH_REGEN_INTERVAL);
     return () => clearInterval(interval);
-  }, [energy]);
+  }, [bandwidth]);
 
-  // DATA FETCH (unchanged)
+  // DATA FETCH (Simulating pulling operative data)
   useEffect(() => {
     const fetchData = async () => {
       if (!user) return;
       try {
-        const qGymLeader = query(collection(db, "users"), where("unlockedNiches", "array-contains", id), orderBy("wallet.popCoins", "desc"), limit(1));
-        const snapLeader = await getDocs(qGymLeader);
-        if (!snapLeader.empty) setGymLeader({ ...snapLeader.docs[0].data(), uid: snapLeader.docs[0].id });
-
-        const qRivals = query(collection(db, "users"), where("unlockedNiches", "array-contains", id), where("uid", "!=", user.uid), limit(8));
-        const snapRivals = await getDocs(qRivals);
-        setRivalTrainers(snapRivals.docs.map((d) => ({ ...d.data(), uid: d.id })));
-
-        const qRanking = query(collection(db, "users"), where("unlockedNiches", "array-contains", id), orderBy("wallet.popCoins", "desc"), limit(10));
-        const snapRanking = await getDocs(qRanking);
-        setArenaRanking(snapRanking.docs.map((d) => ({ ...d.data(), uid: d.id })));
-      } catch (e) { console.error("Habitat intel failed", e); }
+        const qOps = query(collection(db, "users"), limit(4));
+        const snapOps = await getDocs(qOps);
+        setAssignedOperatives(snapOps.docs.map((d) => ({ ...d.data(), uid: d.id })));
+      } catch (e) { console.error("Operative intel failed", e); }
     };
     fetchData();
-  }, [id, user]);
+  }, [user]);
 
-  // HANDLERS (100% unchanged logic)
-  const handleStartMission = (job: any) => {
-    const cooldownEnd = cooldowns[job.id] || 0;
-    if (cooldownEnd > Date.now()) return toast.error("QUEST ON COOLDOWN");
-    if (energy < job.energy) return toast.error("STAMINA DEPLETED // WAIT FOR REGEN");
+  // HANDLERS
+  const handleStartTask = (task: any) => {
+    if (bandwidth < task.bandwidth) return toast.error("BANDWIDTH DEPLETED // WAIT FOR REGEN");
 
     play("click");
     
-    const targetUrl = gymLeader?.instagramHandle 
-        ? `https://instagram.com/${gymLeader.instagramHandle.replace('@','')}` 
-        : `https://instagram.com/explore/tags/${habitat.tags ? habitat.tags[0] : 'viral'}`;
+    // Simulating opening the relevant tool (e.g., Notion, CapCut, Meta Ads Manager)
+    // window.open("https://notion.so", "_blank");
     
-    window.open(targetUrl, "_blank");
-    
-    setVerifyingJob(job.id);
-    setVerifyStart((prev) => ({ ...prev, [job.id]: Date.now() }));
-    toast.info("WILD ENCOUNTER STARTED // COMPLETE THEN VERIFY");
+    setExecutingTask(task.id);
+    setExecutionStart((prev) => ({ ...prev, [task.id]: Date.now() }));
+    toast.info("PROTOCOL INITIATED // COMPLETE OFF-SITE THEN VERIFY");
   };
 
-  const handleCompleteMission = async (job: any) => {
-    const startTime = verifyStart[job.id] || 0;
-    const minTime = 5000; 
-    if (Date.now() - startTime < minTime) return toast.error("CAPTURE IN PROGRESS // MAINTAIN LINK");
+  const handleVerifyTask = async (task: any) => {
+    const startTime = executionStart[task.id] || 0;
+    const minTime = 3000; // Minimum time to pretend they did the work
+    if (Date.now() - startTime < minTime) return toast.error("VERIFICATION REJECTED // WORK IN PROGRESS");
 
     play("kaching");
-    setVerifyingJob(null);
-    setEnergy((prev) => Math.max(0, prev - job.energy));
-    setCooldowns((prev) => ({ ...prev, [job.id]: Date.now() + 60000 })); 
+    setExecutingTask(null);
+    setBandwidth((prev) => Math.max(0, prev - task.bandwidth));
+    setCompletedTasks((prev) => [...prev, task.id]);
 
-    try {
-      const userRef = doc(db, "users", user!.uid);
-      await updateDoc(userRef, {
-        "wallet.popCoins": increment(job.reward),
-        "dailyTracker.bountiesClaimed": increment(1),
-      });
-      toast.success(`CAPTURE SUCCESS! +${job.reward} RUPEES`);
-    } catch (e) { toast.error("LEDGER SYNC FAILED"); }
-  };
-
-  const handleRaid = async (rival: any) => {
-    if (energy < 20) return toast.error("NOT ENOUGH STAMINA");
-    play("shot");
-    setEnergy((prev) => Math.max(0, prev - 20));
-    const stolen = Math.floor(Math.random() * 40) + 10;
-    
-    try {
-       await updateDoc(doc(db, "users", user!.uid), { "wallet.popCoins": increment(stolen) });
-       toast.success(`BATTLE WON! STOLE ${stolen} RUPEES FROM ${rival.username}`);
-    } catch(e) { toast.error("BATTLE FAILED"); }
+    if (task.reward > 0) {
+      try {
+        const userRef = doc(db, "users", user!.uid);
+        await updateDoc(userRef, {
+          "wallet.clearedFunds": increment(task.reward), // Using clearedFunds instead of popCoins
+          "dailyTracker.tasksCompleted": increment(1),
+        });
+        toast.success(`MILESTONE CLEARED! ₹${task.reward} TRANSFERRED TO LEDGER`);
+      } catch (e) { toast.error("LEDGER SYNC FAILED"); }
+    } else {
+        toast.success("STAGE FINALIZED // AWAITING NEXT PROTOCOL");
+    }
   };
 
   if (loading || !userData) return <div className="bg-[#050505] min-h-screen" />;
 
   const TABS = [
-    { id: "OPS", label: "WILD QUESTS", icon: Zap },
-    { id: "WARZONE", label: "RIVAL BATTLES", icon: Swords },
-    { id: "LEADERBOARD", label: "HABITAT RANKINGS", icon: Trophy }
+    { id: "TASKS", label: "DEPLOYMENT PHASES", icon: Activity },
+    { id: "CLIENT_COMMS", label: "CLIENT DOSSIER", icon: Users },
+    { id: "LEDGER", label: "REVENUE LEDGER", icon: Briefcase }
   ];
 
   return (
-    <main className="relative h-screen w-full bg-[#050505] text-[#f0f0f0] font-sans overflow-hidden flex flex-col selection:bg-[#FFD4B2] selection:text-black">
+    <main className="relative h-screen w-full bg-[#050505] text-[#f0f0f0] font-sans overflow-hidden flex flex-col selection:bg-cyan-500 selection:text-black">
       
-      {/* HABITAT BACKGROUND */}
+      {/* HUD BACKGROUND */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-        <Image 
-            src={habitat.imageSrc || "/images/sectors/general.jpg"} 
-            alt={`${habitat.label} Habitat`} 
-            fill 
-            className="object-cover opacity-15 grayscale contrast-150 mix-blend-screen" 
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#050505]/95 via-[#050505]/70 to-[#050505]" />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-30 mix-blend-overlay" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#050505]/95 via-[#050505]/80 to-[#050505]" />
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
       </div>
       
       <SoundPrompter />
       <Background />
 
-      {/* HEADER - POKÉMON GYM STYLE */}
+      {/* HEADER - AGENCY HUD STYLE */}
       <header className="flex-none px-6 md:px-10 py-6 border-b border-white/10 bg-[#050505]/90 backdrop-blur-md z-50">
         <div className="flex items-center justify-between mb-8">
           <TransitionLink href="/dashboard" className="flex items-center gap-4 group">
-            <div className="w-10 h-10 border border-[#FFD4B2]/30 bg-black/60 flex items-center justify-center group-hover:bg-[#FFD4B2] group-hover:text-black transition-all">
+            <div className="w-10 h-10 border border-cyan-500/30 bg-black/60 flex items-center justify-center group-hover:bg-cyan-500 group-hover:text-black transition-all">
               <ArrowLeft size={18} />
             </div>
-            <span className="text-xs font-mono text-neutral-400 uppercase tracking-widest group-hover:text-[#FFD4B2]">RETURN TO WORLD MAP</span>
+            <span className="text-xs font-mono text-neutral-400 uppercase tracking-widest group-hover:text-cyan-400">ABORT TO HQ</span>
           </TransitionLink>
           
-          {/* STAMINA BAR */}
-          <div className="flex items-center gap-4 px-5 py-2 border border-[#FFD4B2]/30 bg-black/60 backdrop-blur-md rounded-full">
-            <Flame size={16} className="text-[#FFD4B2] animate-pulse" />
-            <span className="text-[10px] font-mono uppercase tracking-widest text-neutral-400">STAMINA</span>
+          {/* BANDWIDTH BAR */}
+          <div className="flex items-center gap-4 px-5 py-2 border border-cyan-500/30 bg-black/60 backdrop-blur-md rounded-full">
+            <Server size={16} className="text-cyan-400 animate-pulse" />
+            <span className="text-[10px] font-mono uppercase tracking-widest text-neutral-400">BANDWIDTH</span>
             <div className="w-28 h-1.5 bg-white/10 rounded overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-[#FFD4B2] to-white transition-all" style={{ width: `${(energy / MAX_ENERGY) * 100}%` }} />
+              <div className="h-full bg-gradient-to-r from-cyan-600 to-cyan-300 transition-all duration-500" style={{ width: `${(bandwidth / MAX_BANDWIDTH) * 100}%` }} />
             </div>
-            <span className="font-mono font-bold text-[#FFD4B2]">{energy}/100</span>
+            <span className="font-mono font-bold text-cyan-400">{bandwidth}/100</span>
           </div>
         </div>
 
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
             <div className="flex items-center gap-3 mb-3">
-              <HabitatIcon size={22} className="text-[#FFD4B2]" />
-              <span className="px-3 py-1 text-[10px] font-mono border border-[#FFD4B2]/40 bg-black/50 rounded-full uppercase tracking-widest">
-                {habitat.category} HABITAT
+              <PackageIcon size={22} className={packageData.textColor} />
+              <span className={`px-3 py-1 text-[10px] font-mono border ${packageData.borderColor} bg-black/50 rounded-full uppercase tracking-widest`}>
+                {packageData.category}
+              </span>
+              <span className="px-3 py-1 text-[10px] font-mono border border-emerald-500/40 text-emerald-400 bg-black/50 rounded-full uppercase tracking-widest">
+                ACTIVE CONTRACT
               </span>
             </div>
-            <h1 className="text-[7vw] md:text-6xl font-black uppercase leading-none tracking-[-0.03em] text-white">
-              {habitat.label}
+            <h1 className="text-[6vw] md:text-5xl font-black uppercase leading-none tracking-[-0.03em] text-white">
+              {packageData.label}
             </h1>
-            <p className="text-sm font-mono text-neutral-400 mt-2">EVOLUTION CHAMBER • CATCH • TRAIN • EVOLVE</p>
+            <p className="text-sm font-mono text-neutral-400 mt-2">CLIENT ID: #XJ-8922 • STATUS: DEPLOYMENT IN PROGRESS</p>
           </div>
           
-          <div className="text-right border-l-2 border-[#FFD4B2]/30 pl-6">
-            <div className="text-[10px] font-mono text-neutral-400 uppercase">CURRENT GYM LEADER</div>
-            <div className="flex items-center justify-end gap-3 text-white font-mono text-xl mt-1">
-              <Crown size={18} className="text-[#FFD4B2]" />
-              {gymLeader?.username || "NO GYM LEADER YET"}
+          <div className="text-right border-l-2 border-white/10 pl-6 hidden md:block">
+            <div className="text-[10px] font-mono text-neutral-400 uppercase">CONTRACT VALUE</div>
+            <div className="text-white font-mono text-2xl font-black mt-1">
+              ₹{packageData.basePrice.toLocaleString()}
             </div>
           </div>
         </div>
       </header>
 
-      {/* TABS - GAME STYLE */}
+      {/* TABS */}
       <div className="flex border-b border-white/10 bg-[#050505]/95 z-40">
         {TABS.map((tab) => {
           const Icon = tab.icon;
@@ -215,10 +230,10 @@ export default function NichePage() {
               key={tab.id} 
               onClick={() => setActiveTab(tab.id as any)} 
               className={cn(
-                  "flex-1 py-5 flex items-center justify-center gap-3 text-xs font-mono uppercase tracking-widest transition-all border-r border-white/10 last:border-r-0",
+                  "flex-1 py-4 flex items-center justify-center gap-3 text-xs font-mono uppercase tracking-widest transition-all border-r border-white/10 last:border-r-0",
                   activeTab === tab.id 
-                    ? "bg-[#FFD4B2] text-black font-bold" 
-                    : "text-neutral-400 hover:text-white hover:bg-white/5"
+                    ? "bg-white text-black font-bold" 
+                    : "text-neutral-500 hover:text-white hover:bg-white/5"
               )}
             >
               <Icon size={16} />
@@ -231,68 +246,98 @@ export default function NichePage() {
       {/* CONTENT */}
       <div className="flex-1 overflow-y-auto bg-[#050505] z-40 no-scrollbar">
         
-        {/* WILD QUESTS (Operations) */}
-        {activeTab === "OPS" && (
-          <div className="p-6 md:p-10 pb-32">
-            <div className="flex items-center gap-4 mb-10">
-              <Zap className="text-[#FFD4B2]" size={28} />
-              <div>
-                <h2 className="text-3xl font-black tracking-tight">WILD QUESTS</h2>
-                <p className="text-sm font-mono text-neutral-400">Encounter daily missions • Capture rupees</p>
+        {/* DEPLOYMENT TASKS */}
+        {activeTab === "TASKS" && (
+          <div className="p-6 md:p-10 pb-32 max-w-5xl mx-auto">
+            <div className="flex items-center justify-between mb-10">
+              <div className="flex items-center gap-4">
+                <Terminal className="text-cyan-500" size={28} />
+                <div>
+                  <h2 className="text-3xl font-black tracking-tight">FULFILLMENT PROTOCOL</h2>
+                  <p className="text-sm font-mono text-neutral-400">Complete stages to release client funds from escrow.</p>
+                </div>
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-white/10 border border-white/10">
-              {MISSION_TYPES.map((job) => {
-                const MissionIcon = job.icon;
-                const isVerifying = verifyingJob === job.id;
-                const isCooling = (cooldowns[job.id] || 0) > Date.now();
-                const canVerify = (Date.now() - (verifyStart[job.id] || 0)) >= 5000;
+            <div className="space-y-4">
+              {FULFILLMENT_STAGES.map((task, index) => {
+                const TaskIcon = task.icon;
+                const isExecuting = executingTask === task.id;
+                const isCompleted = completedTasks.includes(task.id);
+                // Logic to lock tasks if the previous one isn't finished
+                const isLocked = index > 0 && !completedTasks.includes(FULFILLMENT_STAGES[index - 1].id);
+                const canVerify = (Date.now() - (executionStart[task.id] || 0)) >= 3000;
 
                 return (
-                  <div key={job.id} className="group bg-[#050505] hover:bg-white/5 transition-all flex flex-col sm:flex-row overflow-hidden">
-                    <div className="relative w-full sm:w-40 h-40 sm:h-auto shrink-0 border-b sm:border-b-0 sm:border-r border-white/10 overflow-hidden">
-                      <Image src={job.thumbnail || "/images/missions/default.jpg"} alt={job.title} fill className="object-cover group-hover:scale-110 transition-transform" />
-                      <div className="absolute top-4 left-4 p-2 bg-black/70 rounded-lg">
-                        <MissionIcon size={22} className="text-[#FFD4B2]" />
-                      </div>
+                  <div 
+                    key={task.id} 
+                    className={cn(
+                        "relative bg-[#050505] border transition-all p-6 flex flex-col md:flex-row gap-6 items-start md:items-center",
+                        isCompleted ? "border-emerald-500/30 opacity-60" : 
+                        isLocked ? "border-white/5 opacity-40 grayscale" : 
+                        "border-cyan-500/50 hover:bg-cyan-900/10"
+                    )}
+                  >
+                    {/* Status Indicator */}
+                    <div className="flex-none flex items-center justify-center w-12 h-12 rounded-full bg-black border border-white/10">
+                        {isCompleted ? <CheckCircle2 className="text-emerald-500" /> :
+                         isLocked ? <Lock className="text-neutral-600" /> :
+                         <TaskIcon className="text-cyan-400" />}
                     </div>
 
-                    <div className="flex-1 p-6 flex flex-col">
-                      <div className="flex-1">
-                        <h3 className="text-xl font-bold tracking-tight">{job.title}</h3>
-                        <p className="text-sm text-neutral-400 mt-2 font-mono leading-relaxed">{job.desc}</p>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-1">
+                        <div className="text-[10px] font-mono text-neutral-500 uppercase">STAGE 0{index + 1}</div>
+                        {isCompleted && <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-sm font-mono">CLEARED</span>}
                       </div>
-                      <div className="flex justify-between items-end mt-8">
-                        <div>
-                          <div className="text-[10px] uppercase tracking-widest text-neutral-500">REWARD</div>
-                          <div className="text-2xl font-black text-[#FFD4B2]">+{job.reward}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-[10px] text-neutral-500">COST</div>
-                          <div className="flex items-center gap-1 justify-end">
-                            <Flame size={14} className="text-orange-400" /> {job.energy}
-                          </div>
-                        </div>
-                      </div>
+                      <h3 className="text-xl font-bold tracking-tight">{task.title}</h3>
+                      <p className="text-sm text-neutral-400 mt-1 font-mono leading-relaxed">{task.desc}</p>
+                    </div>
 
-                      {isVerifying ? (
-                        <button 
-                          onClick={() => handleCompleteMission(job)}
-                          disabled={!canVerify}
-                          className="mt-6 w-full py-3 bg-[#FFD4B2] text-black font-bold text-xs uppercase tracking-widest disabled:bg-neutral-700 disabled:text-neutral-400"
-                        >
-                          {canVerify ? "✓ CAPTURE COMPLETE" : "HOLD UPLINK..."}
-                        </button>
-                      ) : (
-                        <button 
-                          onClick={() => handleStartMission(job)}
-                          disabled={isCooling}
-                          className="mt-6 w-full py-3 border border-[#FFD4B2]/50 hover:bg-[#FFD4B2] hover:text-black font-mono text-xs uppercase tracking-widest transition-all disabled:opacity-40"
-                        >
-                          {isCooling ? "RECHARGING..." : "START ENCOUNTER"}
-                        </button>
-                      )}
+                    <div className="flex-none w-full md:w-auto flex flex-col items-end gap-4 mt-4 md:mt-0 md:pl-8 md:border-l border-white/10">
+                        
+                        <div className="w-full flex justify-between md:justify-end gap-6 items-center">
+                            <div className="text-left md:text-right">
+                                <div className="text-[10px] uppercase text-neutral-500 font-mono">BANDWIDTH</div>
+                                <div className="text-sm font-bold flex items-center gap-1 md:justify-end">
+                                    <Server size={12} className="text-cyan-500"/> -{task.bandwidth}
+                                </div>
+                            </div>
+                            {task.reward > 0 && (
+                                <div className="text-left md:text-right">
+                                    <div className="text-[10px] uppercase text-emerald-500 font-mono">ESCROW RELEASE</div>
+                                    <div className="text-sm font-bold text-emerald-400">+₹{task.reward.toLocaleString()}</div>
+                                </div>
+                            )}
+                        </div>
+
+                      {/* Action Buttons */}
+                      <div className="w-full">
+                        {isCompleted ? (
+                            <button disabled className="w-full py-2 bg-emerald-500/10 text-emerald-500 font-mono text-xs uppercase tracking-widest border border-emerald-500/20">
+                                COMPLETED
+                            </button>
+                        ) : isLocked ? (
+                            <button disabled className="w-full py-2 bg-black text-neutral-600 font-mono text-xs uppercase tracking-widest border border-white/5">
+                                LOCKED
+                            </button>
+                        ) : isExecuting ? (
+                            <button 
+                              onClick={() => handleVerifyTask(task)}
+                              disabled={!canVerify}
+                              className="w-full py-2 px-6 bg-cyan-500 text-black font-bold text-xs uppercase tracking-widest disabled:bg-neutral-800 disabled:text-neutral-500 transition-all"
+                            >
+                              {canVerify ? "VERIFY FINALIZATION" : "EXECUTING..."}
+                            </button>
+                        ) : (
+                            <button 
+                              onClick={() => handleStartTask(task)}
+                              className="w-full py-2 px-6 border border-cyan-500/50 text-cyan-400 hover:bg-cyan-500 hover:text-black font-mono text-xs uppercase tracking-widest transition-all"
+                            >
+                              INITIATE STAGE
+                            </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -301,82 +346,20 @@ export default function NichePage() {
           </div>
         )}
 
-        {/* RIVAL BATTLES (Warzone) */}
-        {activeTab === "WARZONE" && (
-          <div className="p-6 md:p-10 pb-32">
-            <div className="max-w-2xl mx-auto mb-12 text-center">
-              <Swords size={48} className="mx-auto mb-4 text-[#FFD4B2]" />
-              <h2 className="text-4xl font-black">RIVAL TRAINER BATTLES</h2>
-              <p className="text-neutral-400 font-mono">Steal rupees from other trainers in this habitat • 20 stamina per battle</p>
+        {/* CLIENT INTEL / DOSSIER PLACEHOLDER */}
+        {activeTab === "CLIENT_COMMS" && (
+            <div className="p-10 text-center text-neutral-500 font-mono">
+                [CLIENT DOSSIER ENCRYPTED // AWAITING CLEARANCE]
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-white/10 border border-white/10">
-              {rivalTrainers.length > 0 ? rivalTrainers.map((trainer) => (
-                <div key={trainer.uid} className="bg-[#050505] p-6 flex flex-col sm:flex-row items-center justify-between hover:bg-white/5 transition-all gap-6">
-                  <div className="flex items-center gap-5">
-                    <div className="w-16 h-16 border-2 border-[#FFD4B2]/30 overflow-hidden rounded-xl">
-                      <Image src={trainer.avatar || "/avatars/1.jpg"} alt="" fill className="object-cover" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-lg">{trainer.username}</div>
-                      <div className="text-xs font-mono text-neutral-500">₹{(trainer.wallet.popCoins || 0).toLocaleString()} RUPEES</div>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => handleRaid(trainer)}
-                    className="px-8 py-3 border border-red-500/50 hover:bg-red-500 hover:text-white text-xs font-mono uppercase tracking-widest transition-all"
-                  >
-                    BATTLE &amp; STEAL
-                  </button>
-                </div>
-              )) : (
-                <div className="col-span-full py-20 text-center text-neutral-500 font-mono text-sm">No rival trainers in this habitat yet...</div>
-              )}
-            </div>
-          </div>
         )}
 
-        {/* HABITAT RANKINGS (Leaderboard) */}
-        {activeTab === "LEADERBOARD" && (
-          <div className="p-6 md:p-10 pb-32 max-w-4xl mx-auto">
-            <div className="flex items-center gap-4 mb-12">
-              <Trophy size={32} className="text-[#FFD4B2]" />
-              <div>
-                <h2 className="text-4xl font-black">HABITAT ARENA RANKINGS</h2>
-                <p className="font-mono text-sm text-neutral-400">Top trainers who evolved this niche</p>
-              </div>
+        {/* LEDGER PLACEHOLDER */}
+        {activeTab === "LEDGER" && (
+            <div className="p-10 text-center text-neutral-500 font-mono">
+                [REVENUE LEDGER SYNCING...]
             </div>
-
-            <div className="bg-white/5 border border-white/10 divide-y divide-white/10">
-              {arenaRanking.map((trainer, i) => (
-                <div 
-                  key={trainer.uid} 
-                  className={cn(
-                    "flex items-center p-6 transition-all", 
-                    trainer.uid === user?.uid ? "bg-[#FFD4B2] text-black" : "hover:bg-white/5"
-                  )}
-                >
-                  <div className="w-10 text-center font-mono text-xl font-black text-neutral-500">
-                    #{i+1}
-                  </div>
-                  <div className="w-14 h-14 mx-6 border-2 border-current overflow-hidden rounded-2xl relative">
-                    <Image src={trainer.avatar || "/avatars/1.jpg"} alt="" fill className="object-cover" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-bold text-lg flex items-center gap-2">
-                      {trainer.username}
-                      {trainer.uid === user?.uid && <span className="text-xs bg-black/30 px-2 py-0.5 rounded">YOU</span>}
-                    </div>
-                  </div>
-                  <div className="text-right font-mono">
-                    <div className="text-2xl font-black">₹{trainer.wallet.popCoins}</div>
-                    <div className="text-xs text-neutral-500">TOTAL LOOT</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         )}
+
       </div>
     </main>
   );

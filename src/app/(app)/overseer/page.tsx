@@ -2,18 +2,13 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image"; 
 import { 
-  collection, getDocs, doc, updateDoc, query, increment, 
+  collection, doc, updateDoc, query, increment, onSnapshot, orderBy 
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/context/auth-context";
 import { 
-  Search, RefreshCw, Terminal, 
-  ArrowLeft, Users, Crown, 
-  Diamond, Flame, AlertTriangle,
-  Zap, Sparkles, Ban, Gift, Database, ShieldAlert, Settings2, Activity,
-  Trophy, Swords, Target
+  ArrowLeft, Globe, Banknote, CheckCircle2, Zap, Users, ExternalLink, Cpu, Target, Terminal, Coins
 } from "lucide-react";
 import { toast } from "sonner";
 import { HackerText } from "@/components/ui/hacker-text";
@@ -26,34 +21,25 @@ import { useSfx } from "@/hooks/use-sfx";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-// Sub-components (unchanged)
-import CampaignManager from "@/components/campaign-manager";
-import DatabaseSeeder from "@/components/seeder";
-
-interface AdminUserView {
-  uid: string;
-  username: string;
-  email: string;
-  status: string;
-  membership: { tier: string };
-  wallet: { popCoins: number; bubblePoints?: number };
-  unlockedNiches: string[];
-  instagramHandle?: string;
-  lastActive?: any;
-}
+// === USE NEW NICHE DATA ===
+import { MARKETING_PACKAGES } from "@/lib/niche-data";
 
 export default function OverseerPage() {
   const { userData, loading: authLoading } = useAuth(); 
   const router = useRouter();
   const { play } = useSfx();
   
-  const [users, setUsers] = useState<AdminUserView[]>([]);
+  const [activeTab, setActiveTab] = useState<"PAYMENTS" | "WEBSITES" | "TASKS" | "CLIENTS">("PAYMENTS");
+  
+  const [clients, setClients] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
+  
+  const [vercelLinks, setVercelLinks] = useState<Record<string, string>>({});
+  const [proofLinks, setProofLinks] = useState<Record<string, string>>({});
+  
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [globalStats, setGlobalStats] = useState({ totalUsers: 0, totalPC: 0, activeToday: 0 });
 
-  // COMMANDER ACCESS CHECK (unchanged)
   const isOverseer = userData?.email === "iznoatwork@gmail.com"; 
 
   useEffect(() => {
@@ -61,332 +47,352 @@ export default function OverseerPage() {
       if (!userData) router.push("/auth/login");
       else if (!isOverseer) {
         play("error");
-        toast.error("ACCESS DENIED // INCIDENT LOGGED");
+        toast.error("CLEARANCE DENIED // UNAUTHORIZED");
         router.push("/dashboard");
       }
     }
   }, [isOverseer, authLoading, router, userData, play]);
 
-  const fetchOperatives = async () => {
-    play("scan");
-    setLoading(true);
-    try {
-      const q = query(collection(db, "users")); 
-      const snap = await getDocs(q);
-      const operatives: AdminUserView[] = [];
-      let totalPC = 0;
-      let activeToday = 0;
-      const today = new Date().setHours(0,0,0,0);
-
-      snap.forEach((docSnap) => {
-        const data = docSnap.data();
-        const lastActive = data.lastActive?.toMillis() || 0;
-        operatives.push({ 
-          uid: docSnap.id,
-          username: data.username || "UNVERIFIED_TRAINER",
-          email: data.email || "CLASSIFIED",
-          status: data.status || "active",
-          membership: data.membership || { tier: "Rookie Trainer" },
-          wallet: data.wallet || { popCoins: 0 },
-          unlockedNiches: data.unlockedNiches || [],
-          instagramHandle: data.instagramHandle,
-          lastActive: data.lastActive
-        });
-        totalPC += data.wallet?.popCoins || 0;
-        if (lastActive > today) activeToday++;
-      });
-
-      setUsers(operatives);
-      setGlobalStats({
-        totalUsers: operatives.length,
-        totalPC,
-        activeToday
-      });
-      play("success");
-    } catch (error) {
-      toast.error("SYNC FAILED // REBOOT TERMINAL");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    if (isOverseer) fetchOperatives();
+    if (!isOverseer) return;
+
+    const unsubClients = onSnapshot(query(collection(db, "users")), (snap) => {
+        setClients(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    const unsubPayments = onSnapshot(query(collection(db, "payment_attempts"), orderBy("timestamp", "desc")), (snap) => {
+        setPayments(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    setLoading(false);
+    return () => { unsubClients(); unsubPayments(); };
   }, [isOverseer]);
 
-  // GOVERNANCE ACTIONS (logic unchanged)
-  const handlePromote = async (uid: string, username: string, newTier: string) => {
-    if (!confirm(`AUTHORIZE EVOLUTION: ${username.toUpperCase()} → ${newTier.toUpperCase()}?`)) return;
-    setProcessing(uid);
-    try {
-      const updates: any = { "membership.tier": newTier };
-      if (newTier === "Principal") updates["wallet.popCoins"] = increment(10000);
-      else if (newTier === "Executive") updates["wallet.popCoins"] = increment(5000);
-      
-      await updateDoc(doc(db, "users", uid), updates);
-      toast.success(`EVOLUTION COMPLETE // ${username.toUpperCase()} NOW ${newTier.toUpperCase()}`);
-      await fetchOperatives();
-    } catch (e) {
-      toast.error("EVOLUTION FAILED");
-    } finally {
-      setProcessing(null);
-    }
-  };
-
-  const handleBan = async (uid: string, username: string) => {
-    if (!confirm(`EXILE TRAINER ${username.toUpperCase()} FROM THE GRID?`)) return;
-    setProcessing(uid);
-    try {
-      await updateDoc(doc(db, "users", uid), { status: "banned" });
-      toast.success(`TRAINER EXILED // ACCESS REVOKED`);
-      await fetchOperatives();
-    } catch (e) {
-      toast.error("EXILE FAILED");
-    } finally {
-      setProcessing(null);
-    }
-  };
-
-  const handleGrantPC = async (uid: string, username: string, amount: number) => {
-    setProcessing(uid);
-    try {
-      await updateDoc(doc(db, "users", uid), { "wallet.popCoins": increment(amount) });
-      toast.success(`LOOT AWARDED // +${amount} RUPEES TO ${username.toUpperCase()}`);
-      await fetchOperatives();
-    } catch (e) {
-      toast.error("LOOT INJECTION FAILED");
-    } finally {
-      setProcessing(null);
-    }
-  };
-
-  const filteredUsers = users.filter(u => 
-    u.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.uid.includes(searchTerm) ||
-    (u.instagramHandle && u.instagramHandle.toLowerCase().includes(searchTerm.toLowerCase()))
+  // DERIVED STATES
+  const pendingInitialDeployments = clients.filter(c => c.deployment?.paymentStatus === "pending_verification");
+  const pendingWebsites = clients.filter(c => c.deployment?.paymentStatus === "verified" && c.deployment?.status !== "live");
+  
+  // UNIQUE TASK KEY FIX: Ensure the flatMap generates a truly unique composite key
+  const pendingTasks = clients.flatMap(c => 
+    (c.deployment?.tasks || [])
+      .filter((t: any) => t.status === "pending")
+      .map((t: any, index: number) => ({ 
+        client: c, 
+        task: t, 
+        uniqueKey: `${c.id}_${t.id}_${index}` // Composite unique key
+      }))
   );
+
+  const unverifiedTopups = payments.filter(p => p.status === "pending" || p.status === "QR_Shown");
+
+  const handleVerifyInitialPayment = async (client: any) => {
+      if (!confirm(`Verify deployment payment for ${client.deployment?.brandData?.name || client.username}?`)) return;
+      play("success");
+      setProcessing(client.id);
+      
+      try {
+          const selectedTemplate = client.deployment?.selectedTemplate;
+          const selectedAddons = client.deployment?.selectedAddons || [];
+          const newTasks: any[] = [];
+          
+          if (selectedTemplate && MARKETING_PACKAGES[selectedTemplate]) {
+              const niche = MARKETING_PACKAGES[selectedTemplate];
+              
+              newTasks.push({
+                  id: `base_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`, 
+                  title: `Deploy Architecture: ${niche.label}`,
+                  description: `Configure Next.js engine, connect domain (${client.deployment?.brandData?.domain || "Pending"}), and apply color profile (${client.deployment?.brandData?.colors || "Default"}).`,
+                  status: "pending",
+                  proofUrl: "",
+                  pkgName: "BASE_ENGINE"
+              });
+
+              selectedAddons.forEach((addonId: string) => {
+                  const addon = niche.addons?.find((a: any) => a.id === addonId);
+                  if (addon) {
+                      newTasks.push({
+                          // Ensure ID uniqueness by including timestamp and random string
+                          id: `addon_${addon.id}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`, 
+                          title: `Integrate Module: ${addon.name}`,
+                          description: "Setup and configure this niche-specific payload.",
+                          status: "pending",
+                          proofUrl: "",
+                          pkgName: "ADDON_MODULE"
+                      });
+                  }
+              });
+          }
+
+          const existingTasks = client.deployment?.tasks || [];
+
+          await updateDoc(doc(db, "users", client.id), { 
+              "deployment.paymentStatus": "verified",
+              "websiteStatus": "building",
+              "deployment.tasks": [...existingTasks, ...newTasks]
+          });
+          
+          toast.success(`VERIFIED // BUILD TIMER INITIATED`);
+      } catch (e) { toast.error("VERIFICATION FAILED"); } 
+      finally { setProcessing(null); }
+  };
+
+  const handleVerifyTopup = async (payment: any) => {
+      if (!confirm(`Verify ₹${payment.amount} and inject credits?`)) return;
+      play("kaching");
+      setProcessing(payment.id);
+      
+      try {
+          const creditsToAdd = Math.floor(payment.amount / 100); 
+          await updateDoc(doc(db, "users", payment.uid), { "wallet.credits": increment(creditsToAdd) });
+          await updateDoc(doc(db, "payment_attempts", payment.id), { status: "verified" });
+          toast.success(`VERIFIED // ${creditsToAdd} CR INJECTED`);
+      } catch (e) { toast.error("VERIFICATION FAILED"); } 
+      finally { setProcessing(null); }
+  };
+
+  const handleMarkWebsiteLive = async (clientId: string) => {
+      const link = vercelLinks[clientId];
+      if (!link || !link.includes("vercel.app")) {
+        return toast.error("PLEASE ENTER A VALID VERCEL URL");
+      }
+
+      play("success");
+      setProcessing(clientId);
+      try {
+          await updateDoc(doc(db, "users", clientId), { 
+            websiteStatus: "live",
+            "deployment.status": "live",
+            "deployment.vercelUrl": link
+          });
+          toast.success("WEBSITE DEPLOYED // URL PUSHED TO CLIENT");
+      } catch (e) { toast.error("DEPLOYMENT UPDATE FAILED"); }
+      finally { setProcessing(null); }
+  };
+
+  const handleMarkTaskComplete = async (clientId: string, taskId: string) => {
+      const link = proofLinks[taskId] || "";
+      play("success");
+      setProcessing(taskId);
+      
+      try {
+          const client = clients.find(c => c.id === clientId);
+          const updatedTasks = client.deployment.tasks.map((t: any) =>
+              t.id === taskId ? { ...t, status: "completed", proofUrl: link } : t
+          );
+          
+          await updateDoc(doc(db, "users", clientId), { "deployment.tasks": updatedTasks });
+          toast.success("TASK COMPLETED // PROOF PUSHED TO CLIENT DASHBOARD");
+      } catch (e) { toast.error("UPDATE FAILED"); }
+      finally { setProcessing(null); }
+  };
 
   if (authLoading || (!isOverseer && !loading)) return null;
 
   return (
-    <main className="relative min-h-screen bg-[#050505] text-[#f0f0f0] font-sans overflow-hidden flex flex-col selection:bg-[#FFD4B2] selection:text-black">
-      
-      {/* ATMOSPHERE - Pokémon Command Tower */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <Image 
-          src="/images/admin-bg.jpg" 
-          alt="Overseer Command Tower"
-          fill
-          priority
-          className="object-cover opacity-15 grayscale contrast-150 mix-blend-screen"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#050505]/95 via-[#050505]/80 to-[#050505]" />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-30 mix-blend-overlay" />
-      </div>
-
+    <main className="relative min-h-screen bg-black text-white font-sans overflow-hidden flex flex-col selection:bg-cyan-500 selection:text-black">
       <Background /> 
       <SoundPrompter />
 
-      {/* TOP HUD - Pokémon League Command Tower */}
-      <header className="relative z-50 flex-none border-b border-white/10 bg-[#050505]/90 backdrop-blur-md">
-        <div className="px-6 md:px-10 py-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          
-          <div className="flex items-center gap-6">
-            <TransitionLink href="/dashboard" className="group">
-              <div className="w-12 h-12 border border-[#FFD4B2]/40 bg-black/60 flex items-center justify-center group-hover:bg-[#FFD4B2] group-hover:text-black transition-all">
-                <ArrowLeft size={20} className="text-white group-hover:text-black" />
-              </div>
-            </TransitionLink>
-            
+      <header className="relative z-50 flex-none border-b border-cyan-900/50 bg-black/95 backdrop-blur-2xl">
+        <div className="px-6 py-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <TransitionLink href="/dashboard" className="group flex items-center gap-4">
+            <div className="w-12 h-12 border border-cyan-600/40 bg-black/70 backdrop-blur-md flex items-center justify-center group-hover:border-cyan-400 transition-all rounded-lg">
+              <ArrowLeft size={24} className="text-cyan-500 group-hover:text-cyan-300" />
+            </div>
             <div>
-              <HackerText text="OVERSEER COMMAND TOWER" className="text-2xl font-medium tracking-widest uppercase text-[#FFD4B2]" />
-              <div className="flex items-center gap-2 mt-1">
-                <Crown size={14} className="text-[#FFD4B2]" />
-                <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest">Poké-World Admin Clearance</span>
-              </div>
+              <HackerText text="OVERSEER_TERMINAL" className="text-2xl font-black text-cyan-400 leading-none" />
+              <p className="text-[10px] font-mono text-neutral-500 uppercase tracking-[0.3em] mt-1">Global Command Center</p>
             </div>
+          </TransitionLink>
+
+          <div className="flex items-center gap-4 flex-wrap">
+              <div className="bg-red-950/40 border border-red-500/30 px-4 py-2 rounded-lg flex items-center gap-2">
+                  <Banknote size={14} className="text-red-400" />
+                  <span className="text-[10px] font-mono text-red-400 uppercase font-bold">{pendingInitialDeployments.length + unverifiedTopups.length} PAYMENTS</span>
+              </div>
+              <div className="bg-yellow-950/40 border border-yellow-500/30 px-4 py-2 rounded-lg flex items-center gap-2">
+                  <Globe size={14} className="text-yellow-400" />
+                  <span className="text-[10px] font-mono text-yellow-400 uppercase font-bold">{pendingWebsites.length} SITES</span>
+              </div>
+              <div className="bg-purple-950/40 border border-purple-500/30 px-4 py-2 rounded-lg flex items-center gap-2">
+                  <Target size={14} className="text-purple-400" />
+                  <span className="text-[10px] font-mono text-purple-400 uppercase font-bold">{pendingTasks.length} TASKS</span>
+              </div>
           </div>
+        </div>
 
-          {/* Global Stats Bar */}
-          <div className="flex flex-wrap items-center gap-6 border border-[#FFD4B2]/30 p-3 bg-black/60 rounded-full">
-            <div className="px-4">
-              <span className="text-[9px] font-mono text-neutral-400 uppercase tracking-widest block mb-1">TOTAL TRAINERS</span>
-              <div className="flex items-center gap-2">
-                <Users size={16} className="text-[#FFD4B2]" />
-                <span className="text-xl font-mono text-white">{globalStats.totalUsers}</span>
-              </div>
-            </div>
-            
-            <div className="h-8 w-px bg-white/20 hidden md:block" />
-
-            <div className="px-4">
-              <span className="text-[9px] font-mono text-neutral-400 uppercase tracking-widest block mb-1">CIRCULATING LOOT</span>
-              <div className="flex items-center gap-2">
-                <Database size={16} className="text-[#FFD4B2]" />
-                <span className="text-xl font-mono text-[#FFD4B2]">{globalStats.totalPC.toLocaleString()}</span>
-              </div>
-            </div>
-            
-            <div className="h-8 w-px bg-white/20 hidden md:block" />
-
-            <div className="px-4">
-              <span className="text-[9px] font-mono text-neutral-400 uppercase tracking-widest block mb-1">ACTIVE TODAY</span>
-              <div className="flex items-center gap-2">
-                <Flame size={16} className="text-[#FFD4B2] animate-pulse" />
-                <span className="text-xl font-mono text-white">{globalStats.activeToday}</span>
-              </div>
-            </div>
-          </div>
-
+        <div className="flex border-t border-white/5">
+          {["PAYMENTS", "WEBSITES", "TASKS", "CLIENTS"].map((tab) => (
+            <button 
+              key={tab} 
+              onClick={() => setActiveTab(tab as any)} 
+              className={cn("flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all border-b-2", 
+              activeTab === tab ? "bg-cyan-950/30 text-cyan-400 border-cyan-500" : "text-neutral-500 border-transparent hover:text-white")}
+            >
+              {tab}
+            </button>
+          ))}
         </div>
       </header>
 
-      {/* MAIN COMMAND TOWER */}
-      <div className="relative z-40 flex-1 flex flex-col lg:flex-row gap-px bg-white/10 overflow-hidden">
-
-        {/* LEFT: TRAINER REGISTRY */}
-        <section className="flex-1 flex flex-col bg-[#050505]">
-          
-          {/* Controls */}
-          <div className="p-6 md:p-10 border-b border-white/10">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-6">
-              <div className="flex items-center gap-3">
-                <Terminal size={22} className="text-[#FFD4B2]" />
-                <h2 className="text-lg font-medium tracking-tight">NATIONAL TRAINER REGISTRY</h2>
-              </div>
-              <Button 
-                onClick={fetchOperatives} 
-                className="bg-transparent border-2 border-[#FFD4B2] hover:bg-[#FFD4B2] hover:text-black text-xs font-mono uppercase tracking-widest rounded-none h-11"
-              >
-                <RefreshCw size={14} className={cn("mr-2", loading && "animate-spin")} /> REFRESH REGISTRY
-              </Button>
-            </div>
-
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#FFD4B2]" size={18} />
-              <Input 
-                placeholder="SEARCH TRAINER • UID • INSTA HANDLE..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-12 h-14 text-sm bg-black/50 border border-[#FFD4B2]/30 focus:border-[#FFD4B2] font-mono uppercase tracking-widest rounded-none placeholder:text-neutral-600"
-              />
-            </div>
-          </div>
-
-          <ScrollArea className="flex-1">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-white/10 border-b border-white/10 pb-20">
-              
-              {filteredUsers.map((op) => (
-                <div key={op.uid} className={cn(
-                  "relative bg-[#050505] overflow-hidden transition-all hover:bg-white/5 p-8",
-                  op.status === "banned" && "opacity-40 grayscale"
-                )}>
-                  
-                  {op.membership.tier === "Principal" && (
-                    <div className="absolute -top-1 -right-1 text-[10px] font-mono bg-[#FFD4B2] text-black px-3 py-0.5 tracking-widest">LEGENDARY GYM LEADER</div>
-                  )}
-
-                  <div className="flex justify-between items-start mb-8">
+      <div className="relative z-40 flex-1 p-4 md:p-8 overflow-hidden">
+        <ScrollArea className="h-full pr-4">
+            
+            {activeTab === "PAYMENTS" && (
+                <div className="max-w-5xl mx-auto space-y-12">
                     <div>
-                      <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest">TRAINER #{op.uid.slice(0,8)}</div>
-                      <h3 className="text-2xl font-bold tracking-tight uppercase mt-1">{op.username}</h3>
-                      <p className="text-sm font-mono text-neutral-400">LVL • {op.membership.tier}</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs font-mono text-neutral-400">LOOT HELD</div>
-                      <div className="text-3xl font-black text-[#FFD4B2] tracking-tighter">₹{op.wallet.popCoins.toLocaleString()}</div>
-                    </div>
-                  </div>
-
-                  {/* EVOLUTION CONTROLS */}
-                  <div className="grid grid-cols-2 gap-px bg-white/10 border border-white/10">
-                    {op.status !== "banned" && op.membership.tier !== "Principal" && (
-                      <>
-                        <Button 
-                          onClick={() => handlePromote(op.uid, op.username, "Specialist")} 
-                          className="bg-[#050505] hover:bg-white text-neutral-400 hover:text-black font-mono text-xs uppercase tracking-widest rounded-none h-12"
-                        >
-                          Evolve → Specialist
-                        </Button>
-                        <Button 
-                          onClick={() => handlePromote(op.uid, op.username, "Executive")} 
-                          className="bg-[#050505] hover:bg-white text-neutral-400 hover:text-black font-mono text-xs uppercase tracking-widest rounded-none h-12"
-                        >
-                          Evolve → Executive
-                        </Button>
-                        <Button 
-                          onClick={() => handlePromote(op.uid, op.username, "Principal")} 
-                          className="col-span-2 bg-[#050505] hover:bg-white text-white hover:text-black font-mono text-xs uppercase tracking-widest rounded-none h-12 border-t border-white/10"
-                        >
-                          <Crown size={15} className="mr-2" /> EVOLVE TO LEGENDARY
-                        </Button>
-                      </>
-                    )}
-                    
-                    <Button 
-                      onClick={() => handleGrantPC(op.uid, op.username, 10000)} 
-                      className="bg-[#050505] hover:bg-white text-white hover:text-black font-mono text-xs uppercase tracking-widest rounded-none h-12 border-t border-white/10"
-                    >
-                      <Gift size={15} className="mr-2" /> AWARD 10K LOOT
-                    </Button>
-                    
-                    {op.status !== "banned" ? (
-                      <Button 
-                        onClick={() => handleBan(op.uid, op.username)} 
-                        className="bg-[#050505] hover:bg-red-600 text-neutral-400 hover:text-white font-mono text-xs uppercase tracking-widest rounded-none h-12 border-t border-white/10"
-                      >
-                        <Ban size={15} className="mr-2" /> EXILE TRAINER
-                      </Button>
-                    ) : (
-                      <div className="col-span-2 text-center text-xs font-mono tracking-widest text-red-400/80 uppercase py-5 border-t border-white/10 bg-[#050505]">
-                        TRAINER EXILED FROM THE GRID
+                      <h2 className="text-xs font-mono text-cyan-500 mb-4 border-b border-white/10 pb-2 uppercase tracking-widest">Initial Deployments</h2>
+                      {pendingInitialDeployments.length === 0 ? <div className="text-neutral-600 font-mono text-xs italic">No pending deployments.</div> : null}
+                      <div className="space-y-4">
+                        {pendingInitialDeployments.map(c => {
+                            const nicheLabel = c.deployment?.selectedTemplate ? MARKETING_PACKAGES[c.deployment.selectedTemplate]?.label : "UNKNOWN";
+                            return (
+                              <div key={c.id} className="bg-neutral-950 border border-cyan-900/50 p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-cyan-500/50 transition-all">
+                                  <div>
+                                      <div className="flex items-center gap-3 mb-2">
+                                        <h3 className="text-xl font-black uppercase text-white">{c.deployment?.brandData?.name || c.username}</h3>
+                                        <div className="text-[9px] bg-cyan-950/50 text-cyan-400 px-2 py-0.5 rounded border border-cyan-900">NEW_BUILD</div>
+                                      </div>
+                                      <p className="text-[10px] font-mono text-neutral-400 mb-2">{c.email}</p>
+                                      <div className="flex flex-wrap gap-2 mt-3">
+                                        <span className="text-[9px] font-mono text-emerald-400 border border-emerald-900 bg-emerald-950/30 px-2 py-1 rounded">Architecture: {nicheLabel}</span>
+                                        <span className="text-[9px] font-mono text-purple-400 border border-purple-900 bg-purple-950/30 px-2 py-1 rounded">Addons: {c.deployment?.selectedAddons?.length || 0}</span>
+                                      </div>
+                                  </div>
+                                  <Button onClick={() => handleVerifyInitialPayment(c)} disabled={processing === c.id} className="h-14 px-8 bg-cyan-600 hover:bg-cyan-500 text-black font-black uppercase tracking-widest text-xs shrink-0">
+                                      Verify Deployment <Cpu size={16} className="ml-2"/>
+                                  </Button>
+                              </div>
+                            );
+                        })}
                       </div>
-                    )}
-                  </div>
+                    </div>
 
+                    <div>
+                      <h2 className="text-xs font-mono text-green-500 mb-4 border-b border-white/10 pb-2 uppercase tracking-widest">Wallet Top-Ups</h2>
+                      {unverifiedTopups.length === 0 ? <div className="text-neutral-600 font-mono text-xs italic">No pending top-ups.</div> : null}
+                      <div className="space-y-4">
+                        {unverifiedTopups.map(p => (
+                            <div key={p.id} className="bg-neutral-950 border border-green-900/50 p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-green-500/50 transition-all">
+                                <div>
+                                    <h3 className="text-lg font-bold uppercase text-white mb-1">{p.brandName || p.username}</h3>
+                                    <p className="text-xs font-mono text-green-400">Amount: ₹{p.amount?.toLocaleString()}</p>
+                                </div>
+                                <Button onClick={() => handleVerifyTopup(p)} disabled={processing === p.id} className="h-12 px-8 bg-green-600 hover:bg-green-500 text-black font-black uppercase tracking-widest text-xs shrink-0">
+                                    Inject {Math.floor(p.amount / 100)} CR <Zap size={16} className="ml-2"/>
+                                </Button>
+                            </div>
+                        ))}
+                      </div>
+                    </div>
                 </div>
-              ))}
-            </div>
-          </ScrollArea>
-        </section>
+            )}
 
-        {/* RIGHT: OVERSEER PROTOCOLS */}
-        <aside className="w-full lg:w-[460px] flex flex-col bg-[#050505] overflow-y-auto no-scrollbar shrink-0 border-t lg:border-t-0 border-white/10">
-          <div className="p-8 md:p-10 space-y-12">
-            
-            <div className="flex items-center gap-4 pb-6 border-b border-white/10">
-               <Settings2 size={26} className="text-[#FFD4B2]" />
-               <HackerText text="GLOBAL OVERRIDE PROTOCOLS" className="text-2xl font-medium uppercase tracking-widest text-white" />
-            </div>
-            
-            <div className="space-y-14">
-              
-              {/* Quest & Campaign Control */}
-              <div>
-                <h4 className="text-xs font-mono uppercase text-neutral-400 tracking-widest mb-6 flex items-center gap-3">
-                  <Target size={16} /> WORLD QUEST DEPLOYMENT
-                </h4>
-                <div className="bg-[#050505] border-2 border-[#FFD4B2]/30 p-6 hover:border-[#FFD4B2] transition-all">
-                  <CampaignManager />
+            {activeTab === "WEBSITES" && (
+                <div className="max-w-5xl mx-auto space-y-6">
+                    {pendingWebsites.length === 0 ? <div className="text-neutral-600 font-mono text-xs italic text-center mt-10">No websites pending deployment.</div> : null}
+                    {pendingWebsites.map(client => (
+                        <div key={client.id} className="bg-neutral-950 border border-yellow-900/50 p-6 rounded-2xl space-y-6 hover:border-yellow-500/50 transition-all">
+                            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                                <div>
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-4 h-4 rounded-full border border-white/20" style={{backgroundColor: client.deployment?.brandData?.colors}}/>
+                                      <h3 className="text-xl font-black uppercase text-white">{client.deployment?.brandData?.name || "UNNAMED"}</h3>
+                                    </div>
+                                    <p className="text-[10px] font-mono text-emerald-400 mt-2">Architecture: {client.deployment?.selectedTemplate ? MARKETING_PACKAGES[client.deployment.selectedTemplate]?.label : "N/A"}</p>
+                                    <p className="text-[10px] font-mono text-cyan-400 mt-1">Domain: {client.deployment?.brandData?.domain || "N/A"}</p>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <div className="text-[10px] font-mono text-neutral-500 uppercase">Started</div>
+                                  <div className="text-xs font-bold text-yellow-500">{new Date(client.deployment?.startTime).toLocaleString()}</div>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <Input 
+                                    placeholder="Paste Live URL..." 
+                                    className="flex-1 bg-black border-white/10 text-xs font-mono h-14"
+                                    value={vercelLinks[client.id] || ""}
+                                    onChange={(e) => setVercelLinks({...vercelLinks, [client.id]: e.target.value})}
+                                />
+                                <Button onClick={() => handleMarkWebsiteLive(client.id)} disabled={processing === client.id} className="h-14 px-8 bg-yellow-600 hover:bg-yellow-500 text-black font-black uppercase tracking-widest text-xs whitespace-nowrap">
+                                    Launch Site <Globe size={16} className="ml-2"/>
+                                </Button>
+                            </div>
+                        </div>
+                    ))}
                 </div>
-              </div>
+            )}
 
-              {/* Habitat & Spawn Control */}
-              <div>
-                <h4 className="text-xs font-mono uppercase text-neutral-400 tracking-widest mb-6 flex items-center gap-3">
-                  <Sparkles size={16} /> HABITAT & SPAWN ENGINE
-                </h4>
-                <div className="bg-[#050505] border-2 border-[#FFD4B2]/30 p-6 hover:border-[#FFD4B2] transition-all">
-                  <DatabaseSeeder />
+            {/* === TASKS TAB: UNIQUE KEY FIX APPLIED HERE === */}
+            {activeTab === "TASKS" && (
+                <div className="max-w-5xl mx-auto space-y-6">
+                    {pendingTasks.length === 0 ? <div className="text-neutral-600 font-mono text-xs italic text-center mt-10">No setup tasks pending.</div> : null}
+                    
+                    {pendingTasks.map(({ client, task, uniqueKey }) => (
+                        <div key={uniqueKey} className="bg-neutral-950 border border-purple-900/50 p-6 rounded-2xl space-y-6 hover:border-purple-500/50 transition-all flex flex-col group">
+                            <div className="flex justify-between items-start gap-4">
+                                <div>
+                                    <div className="text-[10px] font-mono text-purple-400 uppercase tracking-widest mb-1 flex items-center gap-2">
+                                      <Terminal size={12}/> {client.deployment?.brandData?.name || client.username} /// {task.pkgName}
+                                    </div>
+                                    <h3 className="text-lg font-bold text-white tracking-wide">{task.title}</h3>
+                                    <p className="text-xs font-mono text-neutral-400 mt-2">{task.description}</p>
+                                </div>
+                            </div>
+                            
+                            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-white/5">
+                                <Input 
+                                  placeholder="Proof Link..." 
+                                  className="flex-1 bg-black border-white/10 text-xs font-mono h-12"
+                                  value={proofLinks[task.id] || ""}
+                                  onChange={(e) => setProofLinks({...proofLinks, [task.id]: e.target.value})}
+                                />
+                                <Button onClick={() => handleMarkTaskComplete(client.id, task.id)} disabled={processing === task.id} className="h-12 px-8 bg-purple-600 hover:bg-purple-500 text-white font-black uppercase tracking-widest text-xs shrink-0">
+                                    Mark Executed <CheckCircle2 size={16} className="ml-2"/>
+                                </Button>
+                            </div>
+                        </div>
+                    ))}
                 </div>
-              </div>
+            )}
 
-            </div>
+            {activeTab === "CLIENTS" && (
+                <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {clients.map(c => (
+                        <div key={c.id} className="bg-neutral-950 border border-white/10 p-6 rounded-2xl hover:border-white/30 transition-colors">
+                            <div className="flex items-center gap-3 mb-4 border-b border-white/5 pb-4">
+                              <div className="overflow-hidden">
+                                <h3 className="text-base font-black text-white truncate uppercase">{c.deployment?.brandData?.name || c.username}</h3>
+                                <p className="text-[10px] font-mono text-neutral-500 truncate">{c.email}</p>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-3 mb-4">
+                                <div className="bg-black p-3 rounded-lg border border-white/5">
+                                    <span className="block text-[9px] text-neutral-500 uppercase mb-1 tracking-widest">Niche</span>
+                                    <span className="font-bold text-cyan-400 text-[10px] uppercase truncate block">{c.deployment?.selectedTemplate ? MARKETING_PACKAGES[c.deployment.selectedTemplate]?.label : "N/A"}</span>
+                                </div>
+                                <div className="bg-black p-3 rounded-lg border border-white/5">
+                                    <span className="block text-[9px] text-neutral-500 uppercase mb-1 tracking-widest">Status</span>
+                                    <span className={cn("font-bold text-sm", c.websiteStatus === "live" ? "text-green-500" : "text-yellow-500")}>
+                                      {c.websiteStatus === "live" ? "LIVE" : "BUILDING"}
+                                    </span>
+                                </div>
+                            </div>
 
-          </div>
-        </aside>
+                            {c.deployment?.vercelUrl && (
+                                <a href={c.deployment.vercelUrl} target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 bg-white/5 hover:bg-white/10 transition-colors rounded-lg border border-white/5 group">
+                                  <span className="text-xs font-mono text-neutral-400 group-hover:text-white truncate">Open Live Site</span>
+                                  <ExternalLink size={14} className="text-neutral-500 group-hover:text-white shrink-0"/>
+                                </a>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
 
+        </ScrollArea>
       </div>
     </main>
   );

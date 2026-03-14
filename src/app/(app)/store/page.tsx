@@ -6,7 +6,7 @@ import {
   CreditCard, Package, Megaphone, ArrowLeft, 
   ShoppingCart, Smartphone, Box, Sparkles, Database,
   TrendingUp, Activity, Layers, Terminal,
-  ArrowRight
+  ArrowRight, ShieldCheck, Briefcase, Zap, Fingerprint
 } from "lucide-react";
 import { doc, updateDoc, increment, arrayUnion, addDoc, collection, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -23,10 +23,10 @@ import { HackerText } from "@/components/ui/hacker-text";
 
 const MERCHANT = {
   vpa: "iznoatwork@okicici", 
-  name: "PortalZ_Global_Exchange"
+  name: "Loyalties_Syndicate_Exchange"
 };
 
-// CAPITAL INJECTIONS (Formerly Supply Drops)
+// CAPITAL INJECTIONS (Convert Fiat to Ledger Credits)
 const SUPPLY_DROPS = [
   { id: "drop_xs", name: "Micro Injection", amount: 300, price: 199, tag: "ENTRY" },
   { id: "drop_s", name: "Seed Capital", amount: 800, price: 499, tag: "STARTER" },
@@ -36,7 +36,7 @@ const SUPPLY_DROPS = [
   { id: "drop_god", name: "Sovereign Wealth", amount: 25000, price: 14999, tag: "LIQUIDITY MAX", limited: true },
 ];
 
-// ASSET MARKET (Formerly Black Market)
+// ASSET MARKET (Agency Upgrades & Modules)
 const BLACK_MARKET = [
   { id: "boost_speed", name: "Algorithmic Routing", desc: "2x Processing Speed • 2 Hours", icon: "/items/boost_speed.jpg", cost: 150, rarity: "rare" },
   { id: "boost_loot", name: "Yield Multiplier", desc: "+50% Extraction Rate • 4 Hours", icon: "/items/boost_loot.jpg", cost: 300, rarity: "epic" },
@@ -48,14 +48,14 @@ const BLACK_MARKET = [
   { id: "growth_squad", name: "Automation Protocol", desc: "+100 Auto-Generated Leads", icon: "/items/growth_squad.jpg", cost: 1000, rarity: "rare" },
 ];
 
-// CORPORATE BUNDLES
+// CORPORATE BUNDLES (Starter Kits)
 const BUNDLES = [
   { id: "bundle_starter", name: "Startup Package", items: ["Seed Capital", "Algorithmic Routing", "Market Key"], original: 1748, price: 1299, tag: "OPTIMIZED" },
   { id: "bundle_pro", name: "Enterprise Suite", items: ["Series A Allocation", "Yield Multiplier", "Executive Pack"], original: 4499, price: 2999, tag: "HIGH YIELD" },
   { id: "bundle_god", name: "Monopoly Syndicate", items: ["Institutional Fund", "Unmetered Bandwidth", "Principal Designation", "Boardroom Access"], original: 24999, price: 14999, tag: "RESTRICTED" },
 ];
 
-// PR AGENCY
+// PR AGENCY (High-Ticket Placements)
 const AGENCY_PACKS = [
   { id: "pr_debut", name: "Market Introduction", price: 7999, features: ["1 Global Press Release", "100+ Syndications", "SEO Indexing", "Network Push"], tag: "INITIAL" },
   { id: "pr_viral", name: "Viral Distribution", price: 24999, features: ["3 Tier-A Features", "Forbes/Yahoo Strategy", "Social Verification Support", "1M Impression Cap"], tag: "SCALING" },
@@ -65,10 +65,10 @@ const AGENCY_PACKS = [
 
 const getRarityStyle = (rarity: string) => {
   switch (rarity) {
-    case "mythic": return { border: "border-white", bg: "bg-white text-black" };
-    case "legendary": return { border: "border-neutral-300", bg: "bg-neutral-300 text-black" };
-    case "epic": return { border: "border-neutral-500", bg: "bg-neutral-800 text-white" };
-    case "rare": return { border: "border-neutral-700", bg: "bg-neutral-900 text-white" };
+    case "mythic": return { border: "border-purple-500", bg: "bg-purple-500 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)]" };
+    case "legendary": return { border: "border-cyan-400", bg: "bg-cyan-500 text-black shadow-[0_0_10px_rgba(34,211,238,0.5)]" };
+    case "epic": return { border: "border-blue-400", bg: "bg-blue-900/50 text-blue-400" };
+    case "rare": return { border: "border-neutral-600", bg: "bg-neutral-800 text-white" };
     default: return { border: "border-white/10", bg: "bg-transparent text-neutral-500" };
   }
 };
@@ -83,7 +83,8 @@ export default function StorePage() {
   const [currentOrder, setCurrentOrder] = useState<any>(null);
   const [inventory, setInventory] = useState<any[]>([]);
 
-  const popCoins = userData?.wallet?.popCoins ?? 0;
+  // Adapted to use wallet.credits per auth-context update
+  const popCoins = userData?.wallet?.credits ?? 0;
 
   useEffect(() => {
     if (!user) return;
@@ -133,7 +134,7 @@ export default function StorePage() {
       play("kaching");
       try {
         await updateDoc(doc(db, "users", user.uid), {
-          "wallet.popCoins": increment(-item.cost),
+          "wallet.credits": increment(-item.cost),
           inventory: arrayUnion({
             itemId: item.id,
             name: item.name,
@@ -151,11 +152,11 @@ export default function StorePage() {
   };
 
   const handleSell = async (item: any) => {
-    if (!confirm(`LIQUIDATE ${item.name.toUpperCase()} FOR ${(item.cost * 0.5).toFixed(0)} CAP?`)) return;
+    if (!confirm(`LIQUIDATE ${item.name.toUpperCase()} FOR ${(item.cost * 0.5).toFixed(0)} CREDITS?`)) return;
     play("kaching");
     try {
       await updateDoc(doc(db, "users", user!.uid), {
-        "wallet.popCoins": increment(Math.floor(item.cost * 0.5))
+        "wallet.credits": increment(Math.floor(item.cost * 0.5))
       });
       toast.success(`LIQUIDATED // +${Math.floor(item.cost * 0.5)} CAPITAL`);
     } catch (e) {
@@ -166,10 +167,13 @@ export default function StorePage() {
   if (loading) return null;
 
   return (
-    <main className="relative min-h-screen bg-[#050505] text-[#f0f0f0] font-sans overflow-hidden flex flex-col selection:bg-white selection:text-black">
+    <main className="relative min-h-screen bg-[#050505] text-[#f0f0f0] font-sans overflow-hidden flex flex-col selection:bg-purple-500 selection:text-white">
       
-      {/* ATMOSPHERE - Architectural Treatment */}
+      {/* ATMOSPHERE - Cyber Syndicate Network */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-600/10 blur-[120px] rounded-full mix-blend-screen" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-cyan-600/10 blur-[150px] rounded-full mix-blend-screen" />
+        
         <Image src="/images/store-bg.jpg" alt="Exchange" fill priority className="object-cover opacity-10 grayscale contrast-150 mix-blend-screen" />
         <div className="absolute inset-0 bg-gradient-to-b from-[#050505]/95 via-[#050505]/80 to-[#050505]" />
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
@@ -177,25 +181,25 @@ export default function StorePage() {
 
       <SoundPrompter />
 
-      {/* TOP HUD - 1px Grid Architecture */}
+      {/* TOP HUD - Syndicate Architecture */}
       <header className="relative z-50 flex-none border-b border-white/10 bg-[#050505]/90 backdrop-blur-md">
         <div className="px-6 md:px-10 py-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           
           <TransitionLink href="/dashboard" className="flex items-center gap-4 group">
-            <div className="w-12 h-12 border border-white/20 bg-white/5 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-colors">
-              <ArrowLeft size={20} className="text-white group-hover:text-black" />
+            <div className="w-12 h-12 border border-cyan-500/30 bg-white/5 flex items-center justify-center group-hover:bg-cyan-500 group-hover:text-black transition-colors shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+              <ArrowLeft size={20} className="text-cyan-400 group-hover:text-black" />
             </div>
             <div>
-              <HackerText text="GLOBAL_EXCHANGE" className="text-2xl font-medium tracking-widest uppercase" />
-              <span className="block text-[10px] font-mono text-neutral-500 uppercase tracking-[0.2em] mt-1">Asset Management Protocol</span>
+              <HackerText text="GLOBAL_EXCHANGE" className="text-2xl font-medium tracking-widest uppercase text-white" />
+              <span className="block text-[10px] font-mono text-cyan-500/70 uppercase tracking-[0.2em] mt-1">Asset Management Protocol</span>
             </div>
           </TransitionLink>
 
-          <div className="flex items-center gap-4 border border-white/10 p-2 bg-white/5">
+          <div className="flex items-center gap-4 border border-white/10 p-2 bg-white/5 backdrop-blur-sm shadow-[0_0_15px_rgba(6,182,212,0.05)]">
             <div className="text-right px-4">
-              <span className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest block mb-1">Liquid Capital</span>
+              <span className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest block mb-1">Liquid Ledger</span>
               <div className="flex items-center gap-2">
-                <Database size={14} className="text-white animate-pulse" />
+                <Database size={14} className="text-cyan-400 animate-pulse" />
                 <span className="text-2xl font-mono text-white leading-none tracking-tight">{popCoins.toLocaleString()}</span>
               </div>
             </div>
@@ -203,18 +207,18 @@ export default function StorePage() {
 
         </div>
 
-        {/* TABS - 1px Grid Navigation */}
+        {/* TABS - Agency Navigation */}
         <div className="flex border-t border-white/10 bg-[#050505] overflow-x-auto no-scrollbar">
-          <button onClick={() => setActiveTab("CAPITAL")} className={cn("flex-1 min-w-[120px] py-4 text-[10px] md:text-xs font-mono uppercase tracking-[0.2em] transition-colors border-r border-white/10", activeTab === "CAPITAL" ? "bg-white text-black font-bold" : "text-neutral-500 hover:text-white hover:bg-white/5")}>
+          <button onClick={() => setActiveTab("CAPITAL")} className={cn("flex-1 min-w-[120px] py-4 text-[10px] md:text-xs font-mono uppercase tracking-[0.2em] transition-colors border-r border-white/10", activeTab === "CAPITAL" ? "bg-cyan-600 text-black font-bold" : "text-neutral-500 hover:text-cyan-400 hover:bg-cyan-950/20")}>
             <CreditCard size={14} className="inline mr-2 mb-0.5" /> Capital_Mint
           </button>
-          <button onClick={() => setActiveTab("ASSETS")} className={cn("flex-1 min-w-[120px] py-4 text-[10px] md:text-xs font-mono uppercase tracking-[0.2em] transition-colors border-r border-white/10", activeTab === "ASSETS" ? "bg-white text-black font-bold" : "text-neutral-500 hover:text-white hover:bg-white/5")}>
-            <ShoppingCart size={14} className="inline mr-2 mb-0.5" /> Asset_Market
+          <button onClick={() => setActiveTab("ASSETS")} className={cn("flex-1 min-w-[120px] py-4 text-[10px] md:text-xs font-mono uppercase tracking-[0.2em] transition-colors border-r border-white/10", activeTab === "ASSETS" ? "bg-cyan-600 text-black font-bold" : "text-neutral-500 hover:text-cyan-400 hover:bg-cyan-950/20")}>
+            <ShoppingCart size={14} className="inline mr-2 mb-0.5" /> Upgrade_Modules
           </button>
-          <button onClick={() => setActiveTab("BUNDLES")} className={cn("flex-1 min-w-[120px] py-4 text-[10px] md:text-xs font-mono uppercase tracking-[0.2em] transition-colors border-r border-white/10", activeTab === "BUNDLES" ? "bg-white text-black font-bold" : "text-neutral-500 hover:text-white hover:bg-white/5")}>
+          <button onClick={() => setActiveTab("BUNDLES")} className={cn("flex-1 min-w-[120px] py-4 text-[10px] md:text-xs font-mono uppercase tracking-[0.2em] transition-colors border-r border-white/10", activeTab === "BUNDLES" ? "bg-cyan-600 text-black font-bold" : "text-neutral-500 hover:text-cyan-400 hover:bg-cyan-950/20")}>
             <Package size={14} className="inline mr-2 mb-0.5" /> Corp_Bundles
           </button>
-          <button onClick={() => setActiveTab("AGENCY")} className={cn("flex-1 min-w-[120px] py-4 text-[10px] md:text-xs font-mono uppercase tracking-[0.2em] transition-colors", activeTab === "AGENCY" ? "bg-white text-black font-bold" : "text-neutral-500 hover:text-white hover:bg-white/5")}>
+          <button onClick={() => setActiveTab("AGENCY")} className={cn("flex-1 min-w-[120px] py-4 text-[10px] md:text-xs font-mono uppercase tracking-[0.2em] transition-colors", activeTab === "AGENCY" ? "bg-cyan-600 text-black font-bold" : "text-neutral-500 hover:text-cyan-400 hover:bg-cyan-950/20")}>
             <Megaphone size={14} className="inline mr-2 mb-0.5" /> PR_Agency
           </button>
         </div>
@@ -229,30 +233,30 @@ export default function StorePage() {
             {activeTab === "CAPITAL" && (
               <div>
                 <div className="mb-8 pb-4 border-b border-white/10">
-                  <HackerText text="LIQUIDITY_INJECTIONS" className="text-xl font-medium tracking-widest uppercase mb-2" />
-                  <p className="text-xs font-mono text-neutral-500 uppercase tracking-widest">Convert fiat currency into operational capital.</p>
+                  <HackerText text="LIQUIDITY_INJECTIONS" className="text-xl font-medium tracking-widest uppercase mb-2 text-white" />
+                  <p className="text-xs font-mono text-cyan-400/70 uppercase tracking-widest">Convert fiat currency into network capital.</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-px bg-white/10 border border-white/10">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-px bg-white/10 border border-white/10 shadow-2xl">
                   {SUPPLY_DROPS.map((drop) => (
-                    <div key={drop.id} className={cn("relative bg-[#050505] flex flex-col justify-between p-8 hover:bg-white/5 transition-colors group", drop.limited && "bg-[#0a0a0a]")}>
+                    <div key={drop.id} className={cn("relative bg-[#050505] flex flex-col justify-between p-8 hover:bg-cyan-950/20 transition-colors group", drop.limited && "bg-[#0a0a0a]")}>
                       
                       <div className="flex justify-between items-start mb-12">
-                        <span className={cn("text-[10px] font-mono border px-3 py-1 uppercase tracking-widest", drop.limited ? "border-white text-white" : "border-white/20 text-neutral-400")}>
+                        <span className={cn("text-[10px] font-mono border px-3 py-1 uppercase tracking-widest", drop.limited ? "border-purple-500 text-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.3)]" : "border-white/20 text-neutral-400")}>
                           {drop.tag}
                         </span>
-                        {drop.limited && <span className="w-2 h-2 bg-white rounded-full animate-pulse" />}
+                        {drop.limited && <span className="w-2 h-2 bg-purple-400 rounded-full animate-pulse" />}
                       </div>
 
                       <div className="mb-10 text-center">
-                        <h3 className="text-lg font-medium uppercase mb-2">{drop.name}</h3>
-                        <div className="text-4xl font-mono text-white tracking-tighter mb-2">{drop.amount.toLocaleString()}</div>
-                        <p className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest">Capital Issued</p>
+                        <h3 className="text-lg font-medium uppercase mb-2 text-white group-hover:text-cyan-400 transition-colors">{drop.name}</h3>
+                        <div className="text-4xl font-mono text-white tracking-tighter mb-2 group-hover:drop-shadow-[0_0_10px_rgba(255,255,255,0.3)] transition-all">{drop.amount.toLocaleString()}</div>
+                        <p className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest">Credits Issued</p>
                       </div>
 
                       <Button 
                         onClick={() => handlePurchase(drop, "fiat")} 
-                        className="w-full h-14 bg-transparent border border-white/20 text-white hover:bg-white hover:text-black font-mono text-xs uppercase tracking-widest rounded-none transition-colors"
+                        className="w-full h-14 bg-transparent border border-cyan-500/50 text-cyan-400 hover:bg-cyan-600 hover:text-black font-mono text-xs uppercase tracking-widest rounded-none transition-colors"
                       >
                         Execute ₹{drop.price}
                       </Button>
@@ -262,36 +266,36 @@ export default function StorePage() {
               </div>
             )}
 
-            {/* ASSET MARKET TAB */}
+            {/* ASSET MARKET TAB (Upgrades) */}
             {activeTab === "ASSETS" && (
               <div>
                 <div className="mb-8 pb-4 border-b border-white/10">
-                  <HackerText text="DIGITAL_ASSET_MARKET" className="text-xl font-medium tracking-widest uppercase mb-2" />
-                  <p className="text-xs font-mono text-neutral-500 uppercase tracking-widest">Acquire operational upgrades using capital.</p>
+                  <HackerText text="OPERATIONAL_UPGRADES" className="text-xl font-medium tracking-widest uppercase mb-2 text-white" />
+                  <p className="text-xs font-mono text-cyan-400/70 uppercase tracking-widest">Acquire algorithmic augmentations using ledger capital.</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-white/10 border border-white/10">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-white/10 border border-white/10 shadow-2xl">
                   {BLACK_MARKET.map((item) => {
                     const rarity = getRarityStyle(item.rarity || "rare");
                     const owned = inventory.some(i => i.itemId === item.id);
                     return (
-                      <div key={item.id} className="relative bg-[#050505] flex flex-col justify-between hover:bg-white/5 transition-colors group">
+                      <div key={item.id} className="relative bg-[#050505] flex flex-col justify-between hover:bg-cyan-950/20 transition-colors group">
                         
-                        <div className="aspect-video relative border-b border-white/10 overflow-hidden bg-black flex items-center justify-center">
-                          <Terminal size={48} className="text-white/20 group-hover:scale-110 transition-transform duration-700" strokeWidth={1} />
+                        <div className="aspect-video relative border-b border-white/10 overflow-hidden bg-[#0a0a0a] flex items-center justify-center">
+                          <Terminal size={48} className="text-cyan-500/20 group-hover:scale-110 group-hover:text-cyan-500/40 transition-all duration-700" strokeWidth={1} />
                           <div className="absolute inset-0 bg-gradient-to-t from-[#050505] to-transparent" />
                           <div className={cn("absolute top-4 left-4 text-[8px] font-mono font-bold uppercase tracking-widest border px-2 py-1", rarity.border, rarity.bg)}>
                             {item.rarity}
                           </div>
                           {owned && (
-                            <div className="absolute top-4 right-4 bg-white text-black px-2 py-1 text-[8px] font-mono font-bold uppercase tracking-widest">
+                            <div className="absolute top-4 right-4 bg-cyan-500 text-black px-2 py-1 text-[8px] font-mono font-bold uppercase tracking-widest shadow-[0_0_10px_rgba(6,182,212,0.5)]">
                               Installed
                             </div>
                           )}
                         </div>
 
                         <div className="p-6 flex flex-col flex-1">
-                          <h3 className="text-sm font-medium uppercase mb-2 tracking-widest">{item.name}</h3>
+                          <h3 className="text-sm font-medium uppercase mb-2 tracking-widest text-white group-hover:text-cyan-400 transition-colors">{item.name}</h3>
                           <p className="text-[10px] font-mono text-neutral-500 mb-8 uppercase leading-relaxed">{item.desc}</p>
                           
                           <div className="mt-auto">
@@ -300,16 +304,16 @@ export default function StorePage() {
                                 onClick={() => handleSell(item)} 
                                 className="w-full h-12 bg-transparent border border-white/20 text-neutral-400 hover:text-white hover:border-white font-mono text-[10px] uppercase tracking-widest rounded-none transition-colors"
                               >
-                                Liquidate: +{Math.floor(item.cost * 0.5)} CAP
+                                Liquidate: +{Math.floor(item.cost * 0.5)} CREDITS
                               </Button>
                             ) : (
                               <Button 
                                 onClick={() => handlePurchase(item, "points")} 
                                 disabled={processing === item.id || popCoins < item.cost} 
-                                className="w-full h-12 bg-white text-black hover:bg-neutral-200 font-mono text-[10px] uppercase tracking-widest rounded-none flex items-center justify-between px-4 transition-colors"
+                                className="w-full h-12 bg-cyan-600 text-black hover:bg-cyan-500 font-mono text-[10px] uppercase tracking-widest rounded-none flex items-center justify-between px-4 transition-colors shadow-[0_0_15px_rgba(6,182,212,0.3)]"
                               >
-                                <span>{processing === item.id ? "SYNCING..." : "Acquire"}</span>
-                                <span className="font-bold">{item.cost}</span>
+                                <span>{processing === item.id ? "SYNCING..." : "Acquire Module"}</span>
+                                <span className="font-bold flex items-center gap-1"><Database size={10} /> {item.cost}</span>
                               </Button>
                             )}
                           </div>
@@ -325,25 +329,27 @@ export default function StorePage() {
             {activeTab === "BUNDLES" && (
               <div>
                 <div className="mb-8 pb-4 border-b border-white/10">
-                  <HackerText text="CORPORATE_BUNDLES" className="text-xl font-medium tracking-widest uppercase mb-2" />
-                  <p className="text-xs font-mono text-neutral-500 uppercase tracking-widest">Optimized asset packages for rapid scaling.</p>
+                  <HackerText text="CORPORATE_BUNDLES" className="text-xl font-medium tracking-widest uppercase mb-2 text-white" />
+                  <p className="text-xs font-mono text-cyan-400/70 uppercase tracking-widest">Optimized asset packages for rapid agency scaling.</p>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-px bg-white/10 border border-white/10">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-px bg-white/10 border border-white/10 shadow-2xl">
                   {BUNDLES.map((bundle) => (
-                    <div key={bundle.id} className="relative bg-[#050505] p-10 flex flex-col justify-between hover:bg-[#0a0a0a] transition-colors">
+                    <div key={bundle.id} className="relative bg-[#050505] p-10 flex flex-col justify-between hover:bg-cyan-950/20 transition-colors group">
                       
                       <div className="flex justify-between items-start mb-10">
-                        <span className="text-[10px] font-mono border border-white px-3 py-1 uppercase tracking-widest bg-white text-black font-bold">
+                        <span className="text-[10px] font-mono border border-purple-500 px-3 py-1 uppercase tracking-widest bg-purple-500/20 text-purple-400 font-bold shadow-[0_0_15px_rgba(168,85,247,0.2)]">
                           {bundle.tag}
                         </span>
                       </div>
 
                       <div className="mb-10">
-                        <h3 className="text-2xl font-medium uppercase mb-6 tracking-tight">{bundle.name}</h3>
-                        <ul className="space-y-3 border-l border-white/20 pl-4">
+                        <h3 className="text-2xl font-medium uppercase mb-6 tracking-tight text-white group-hover:text-cyan-400 transition-colors">{bundle.name}</h3>
+                        <ul className="space-y-3 border-l border-cyan-500/30 pl-4">
                           {bundle.items.map((it, i) => (
-                            <li key={i} className="text-xs font-mono text-neutral-400 uppercase tracking-widest">{it}</li>
+                            <li key={i} className="text-xs font-mono text-neutral-400 uppercase tracking-widest flex items-center gap-2">
+                               <Fingerprint size={12} className="text-cyan-500/50" /> {it}
+                            </li>
                           ))}
                         </ul>
                       </div>
@@ -351,11 +357,11 @@ export default function StorePage() {
                       <div className="mt-auto">
                         <div className="flex items-end gap-4 mb-6 border-t border-white/10 pt-6">
                           <span className="text-sm font-mono text-neutral-600 line-through">₹{bundle.original}</span>
-                          <span className="text-3xl font-mono text-white tracking-tighter">₹{bundle.price}</span>
+                          <span className="text-3xl font-mono text-white tracking-tighter drop-shadow-md">₹{bundle.price}</span>
                         </div>
                         <Button 
                           onClick={() => handlePurchase({ ...bundle, price: bundle.price }, "fiat")} 
-                          className="w-full h-14 bg-transparent border border-white/20 text-white hover:bg-white hover:text-black font-mono text-xs uppercase tracking-widest rounded-none transition-colors"
+                          className="w-full h-14 bg-transparent border border-cyan-500/50 text-cyan-400 hover:bg-cyan-600 hover:text-black font-mono text-xs uppercase tracking-widest rounded-none transition-colors"
                         >
                           Execute Contract
                         </Button>
@@ -370,31 +376,31 @@ export default function StorePage() {
             {activeTab === "AGENCY" && (
               <div>
                 <div className="mb-8 pb-4 border-b border-white/10">
-                  <HackerText text="GLOBAL_INFLUENCE_AGENCY" className="text-xl font-medium tracking-widest uppercase mb-2" />
-                  <p className="text-xs font-mono text-neutral-500 uppercase tracking-widest">Acquire media dominance and public verification.</p>
+                  <HackerText text="GLOBAL_INFLUENCE_AGENCY" className="text-xl font-medium tracking-widest uppercase mb-2 text-white" />
+                  <p className="text-xs font-mono text-cyan-400/70 uppercase tracking-widest">Acquire media dominance and public verification.</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-px bg-white/10 border border-white/10">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-px bg-white/10 border border-white/10 shadow-2xl">
                   {AGENCY_PACKS.map((pack) => (
-                    <div key={pack.id} className="relative bg-[#050505] p-8 flex flex-col justify-between hover:bg-white/5 transition-colors">
+                    <div key={pack.id} className="relative bg-[#050505] p-8 flex flex-col justify-between hover:bg-cyan-950/20 transition-colors group">
                       
                       <div className="mb-8 border-b border-white/10 pb-6">
-                        <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest block mb-4">Tier: {pack.tag}</span>
-                        <h3 className="text-xl font-medium uppercase mb-4 tracking-tight">{pack.name}</h3>
-                        <div className="text-3xl font-mono text-white tracking-tighter">₹{pack.price.toLocaleString()}</div>
+                        <span className="text-[10px] font-mono text-purple-400 uppercase tracking-widest block mb-4">Tier: {pack.tag}</span>
+                        <h3 className="text-xl font-medium uppercase mb-4 tracking-tight text-white group-hover:text-cyan-400 transition-colors">{pack.name}</h3>
+                        <div className="text-3xl font-mono text-white tracking-tighter drop-shadow-md">₹{pack.price.toLocaleString()}</div>
                       </div>
 
                       <ul className="space-y-4 mb-10 flex-1">
                         {pack.features.map((f, i) => (
                           <li key={i} className="flex items-start gap-3 text-[10px] font-mono text-neutral-400 uppercase leading-relaxed tracking-widest">
-                            <ArrowRight size={12} className="text-white/50 shrink-0 mt-0.5" /> {f}
+                            <Zap size={12} className="text-cyan-500 shrink-0 mt-0.5" /> {f}
                           </li>
                         ))}
                       </ul>
 
                       <Button 
                         onClick={() => handlePurchase(pack, "fiat")} 
-                        className="w-full h-12 bg-white text-black hover:bg-neutral-200 font-mono text-[10px] uppercase tracking-[0.2em] rounded-none transition-colors"
+                        className="w-full h-12 bg-cyan-600 text-black hover:bg-cyan-500 font-mono text-[10px] font-black uppercase tracking-[0.2em] rounded-none transition-colors shadow-[0_0_15px_rgba(6,182,212,0.3)]"
                       >
                         Deploy Campaign
                       </Button>
@@ -408,30 +414,30 @@ export default function StorePage() {
         </ScrollArea>
       </div>
 
-      {/* SECURE PAYMENT MODAL - Brutalist Overlay */}
+      {/* SECURE PAYMENT MODAL - Cyber Overlay */}
       {showQR && currentOrder && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-[#050505]/95 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="relative bg-[#050505] border border-white/20 p-10 max-w-md w-full shadow-2xl">
-            <button onClick={() => setShowQR(false)} className="absolute top-6 right-6 text-neutral-500 hover:text-white transition-colors">
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-[#050505]/95 backdrop-blur-xl animate-in fade-in duration-300">
+          <div className="relative bg-[#050505] border border-cyan-500/40 p-10 max-w-md w-full shadow-[0_0_40px_rgba(6,182,212,0.2)]">
+            <button onClick={() => setShowQR(false)} className="absolute top-6 right-6 text-cyan-500/50 hover:text-cyan-400 transition-colors">
                <ArrowLeft size={20} className="rotate-180" />
             </button>
             
-            <HackerText text="SECURE_GATEWAY" className="text-lg font-medium tracking-widest uppercase mb-8 border-b border-white/10 pb-4" />
+            <HackerText text="SECURE_GATEWAY" className="text-lg font-medium tracking-widest uppercase mb-8 border-b border-cyan-500/20 pb-4 text-white" />
             
-            <div className="bg-white p-6 mb-8 flex items-center justify-center">
+            <div className="bg-white p-6 mb-8 flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.2)]">
               <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(currentOrder.upiUrl)}`} alt="QR Code" className="w-full max-w-[200px]" />
             </div>
             
             <div className="text-left space-y-2 mb-8">
               <span className="block text-[10px] font-mono text-neutral-500 uppercase tracking-widest">Total Valuation</span>
-              <div className="text-4xl font-mono text-white tracking-tighter">₹{currentOrder.price.toLocaleString()}</div>
-              <p className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest mt-4">Asset: {currentOrder.name}</p>
+              <div className="text-4xl font-black italic text-cyan-400 tracking-tighter drop-shadow-[0_0_10px_rgba(34,211,238,0.4)]">₹{currentOrder.price.toLocaleString()}</div>
+              <p className="text-[10px] font-mono text-white/80 uppercase tracking-widest mt-4">Asset: {currentOrder.name}</p>
               <p className="text-[10px] font-mono text-neutral-600 uppercase tracking-widest">Txn ID: {currentOrder.txnRef}</p>
             </div>
 
             <Button 
               onClick={() => window.location.href = currentOrder.upiUrl} 
-              className="w-full h-14 bg-white text-black hover:bg-neutral-200 font-mono text-xs uppercase tracking-widest rounded-none transition-colors flex items-center justify-center gap-3"
+              className="w-full h-14 bg-cyan-600 text-black hover:bg-cyan-500 font-mono font-black text-xs uppercase tracking-widest rounded-none transition-colors flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(6,182,212,0.4)]"
             >
               Open External Gateway <Smartphone size={16} />
             </Button>

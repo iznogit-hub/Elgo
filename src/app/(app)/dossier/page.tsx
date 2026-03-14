@@ -11,7 +11,7 @@ import {
   Terminal, Crown, Pencil, ArrowLeft, 
   LogOut, Instagram, CheckCircle2, ShieldCheck, 
   UserCog, Shirt, Lock, Check, ShoppingCart, AlertTriangle,
-  Zap, Flame, Trophy, Diamond, Skull, Radio, Sparkles, User, Settings, Database, Activity
+  Zap, Flame, Trophy, Diamond, Skull, Radio, Sparkles, User, Settings, Database, Activity, Briefcase
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -27,31 +27,33 @@ import { HackerText } from "@/components/ui/hacker-text";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-const SKIN_DB = [
+// --- AGENCY IDENTITY DATABASE ---
+// Rebranding "Skins" to "Agency Avatars"
+const IDENTITY_DB = [
   // TIER 1: STANDARD ISSUE
-  { id: "recruit_m1", src: "/avatars/1.jpg", name: "Base Node (M)", type: "standard", cost: 0, rarity: "common" },
-  { id: "recruit_m2", src: "/avatars/2.jpg", name: "Operator (M)", type: "standard", cost: 0, rarity: "common" },
-  { id: "recruit_f1", src: "/avatars/3.jpg", name: "Base Node (F)", type: "standard", cost: 0, rarity: "common" },
-  { id: "recruit_f2", src: "/avatars/4.jpg", name: "Operator (F)", type: "standard", cost: 0, rarity: "common" },
+  { id: "recruit_m1", src: "/avatars/1.jpg", name: "Junior Strategist (M)", type: "standard", cost: 0, rarity: "common" },
+  { id: "recruit_m2", src: "/avatars/2.jpg", name: "Media Buyer (M)", type: "standard", cost: 0, rarity: "common" },
+  { id: "recruit_f1", src: "/avatars/3.jpg", name: "Junior Strategist (F)", type: "standard", cost: 0, rarity: "common" },
+  { id: "recruit_f2", src: "/avatars/4.jpg", name: "Copywriter (F)", type: "standard", cost: 0, rarity: "common" },
   
   // TIER 2: PREMIUM MODULES
-  { id: "cyber_1", src: "/avatars/cyber_1.jpg", name: "Neon Architect", type: "premium", cost: 800, rarity: "rare" },
-  { id: "cyber_2", src: "/avatars/cyber_2.jpg", name: "Data Broker", type: "premium", cost: 900, rarity: "rare" },
-  { id: "assassin_1", src: "/avatars/assassin_1.jpg", name: "Dark Pool Spec", type: "premium", cost: 1200, rarity: "epic" },
-  { id: "shadow_1", src: "/avatars/shadow_1.jpg", name: "Yield Arbitrage", type: "premium", cost: 1500, rarity: "epic" },
+  { id: "cyber_1", src: "/avatars/cyber_1.jpg", name: "Growth Hacker", type: "premium", cost: 800, rarity: "rare" },
+  { id: "cyber_2", src: "/avatars/cyber_2.jpg", name: "SEO Architect", type: "premium", cost: 900, rarity: "rare" },
+  { id: "assassin_1", src: "/avatars/assassin_1.jpg", name: "PR Director", type: "premium", cost: 1200, rarity: "epic" },
+  { id: "shadow_1", src: "/avatars/shadow_1.jpg", name: "Performance Exec", type: "premium", cost: 1500, rarity: "epic" },
 
   // TIER 3: EXCLUSIVE ASSETS
-  { id: "gold_1", src: "/avatars/gold_1.jpg", name: "The Executive", type: "elite", cost: 3000, rarity: "legendary" },
-  { id: "boss_1", src: "/avatars/boss_1.jpg", name: "Sector Principal", type: "elite", cost: 6000, rarity: "legendary" },
-  { id: "glitch_1", src: "/avatars/glitch_1.jpg", name: "System Override", type: "elite", cost: 8000, rarity: "mythic" },
+  { id: "gold_1", src: "/avatars/gold_1.jpg", name: "Syndicate Partner", type: "elite", cost: 3000, rarity: "legendary" },
+  { id: "boss_1", src: "/avatars/boss_1.jpg", name: "Network Overseer", type: "elite", cost: 6000, rarity: "legendary" },
+  { id: "glitch_1", src: "/avatars/glitch_1.jpg", name: "Algorithm Override", type: "elite", cost: 8000, rarity: "mythic" },
 ];
 
 const getRarityStyle = (rarity: string) => {
   switch (rarity) {
-    case "mythic": return { border: "border-white", bg: "bg-white text-black" };
-    case "legendary": return { border: "border-neutral-300", bg: "bg-neutral-300 text-black" };
-    case "epic": return { border: "border-neutral-500", bg: "bg-neutral-800 text-white" };
-    case "rare": return { border: "border-neutral-700", bg: "bg-neutral-900 text-white" };
+    case "mythic": return { border: "border-purple-500", bg: "bg-purple-500 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)]" };
+    case "legendary": return { border: "border-cyan-400", bg: "bg-cyan-500 text-black shadow-[0_0_10px_rgba(34,211,238,0.5)]" };
+    case "epic": return { border: "border-blue-400", bg: "bg-blue-900/50 text-blue-400" };
+    case "rare": return { border: "border-neutral-600", bg: "bg-neutral-800 text-white" };
     default: return { border: "border-white/10", bg: "bg-transparent text-neutral-500" };
   }
 };
@@ -67,52 +69,52 @@ export default function DossierPage() {
   const [igHandle, setIgHandle] = useState(userData?.instagramHandle || "");
   const [isBinding, setIsBinding] = useState(false);
   const [buyingId, setBuyingId] = useState<string | null>(null);
-  const [selectedSkin, setSelectedSkin] = useState<any>(null);
+  const [selectedIdentity, setSelectedIdentity] = useState<any>(null);
 
-  const tier = userData?.membership?.tier || "Base Node";
-  const popCoins = userData?.wallet?.popCoins || 0;
+  const tier = userData?.membership?.tier || "Junior Operative";
+  const popCoins = userData?.wallet?.credits || 0; // Adapted from popCoins to credits based on auth-context
   const username = userData?.username || "OPERATOR";
   const currentAvatar = userData?.avatar || "/avatars/1.jpg";
   const inventory = userData?.inventory || [];
   const ownedCount = inventory.length;
-  const totalSkins = SKIN_DB.length;
+  const totalIdentities = IDENTITY_DB.length;
 
-  const handlePurchaseOrEquip = async (skin: any) => {
+  const handlePurchaseOrEquip = async (identity: any) => {
       if (!user) return;
 
-      const isOwned = skin.type === "standard" || inventory.some((item: any) => item.itemId === skin.id);
+      const isOwned = identity.type === "standard" || inventory.some((item: any) => item.itemId === identity.id);
 
       if (isOwned) {
           play("click");
           try {
-              await updateDoc(doc(db, "users", user.uid), { avatar: skin.src });
-              toast.success(`MODULE EQUIPPED // ${skin.name.toUpperCase()} ACTIVE`);
-              setSelectedSkin(skin);
+              await updateDoc(doc(db, "users", user.uid), { avatar: identity.src });
+              toast.success(`IDENTITY EQUIPPED // ${identity.name.toUpperCase()} ACTIVE`);
+              setSelectedIdentity(identity);
           } catch (e) {
               toast.error("SYSTEM ERROR // RETRY");
           }
           return;
       }
 
-      if (popCoins < skin.cost) {
+      if (popCoins < identity.cost) {
           play("error");
-          toast.error(`INSUFFICIENT CAPITAL // EXTRACT MORE YIELD`);
+          toast.error(`INSUFFICIENT LEDGER BALANCE // CLEAR MORE CONTRACTS`);
           return;
       }
 
-      if (!confirm(`AUTHORIZE TRANSFER // ${skin.cost} CREDITS FOR ${skin.name.toUpperCase()}?`)) return;
+      if (!confirm(`AUTHORIZE LEDGER TRANSFER // ${identity.cost} CREDITS FOR ${identity.name.toUpperCase()}?`)) return;
 
-      setBuyingId(skin.id);
+      setBuyingId(identity.id);
       play("kaching");
 
       try {
           await updateDoc(doc(db, "users", user.uid), {
-              "wallet.popCoins": increment(-skin.cost),
-              inventory: arrayUnion({ itemId: skin.id, name: skin.name, purchasedAt: new Date().toISOString() }),
-              avatar: skin.src
+              "wallet.credits": increment(-identity.cost), // Using credits
+              inventory: arrayUnion({ itemId: identity.id, name: identity.name, purchasedAt: new Date().toISOString() }),
+              avatar: identity.src
           });
-          toast.success(`TRANSACTION CLEAR // ${skin.name.toUpperCase()} ACQUIRED`);
-          setSelectedSkin(skin);
+          toast.success(`TRANSACTION CLEARED // ${identity.name.toUpperCase()} ACQUIRED`);
+          setSelectedIdentity(identity);
       } catch (e) {
           toast.error("TRANSACTION FAILED");
       } finally {
@@ -133,7 +135,7 @@ export default function DossierPage() {
       play("click");
       try {
           await updateDoc(doc(db, "users", user.uid), { instagramHandle: igHandle });
-          toast.success("DIGITAL ASSET VERIFIED");
+          toast.success("DIGITAL FOOTPRINT VERIFIED");
           play("success");
       } catch (e) { toast.error("VERIFICATION FAILED"); } 
       finally { setIsBinding(false); }
@@ -144,7 +146,7 @@ export default function DossierPage() {
      play("click");
      try {
         await updateDoc(doc(db, "users", user.uid), { username: newUsername.trim().toUpperCase() });
-        toast.success("OPERATOR ID UPDATED");
+        toast.success("AGENCY ALIAS UPDATED");
         setShowNameEdit(false);
      } catch (e) { toast.error("UPDATE REJECTED"); }
   };
@@ -152,32 +154,32 @@ export default function DossierPage() {
   if (!userData) return null;
 
   return (
-    <main className="relative min-h-screen bg-[#050505] text-[#f0f0f0] font-sans overflow-hidden flex flex-col selection:bg-white selection:text-black">
+    <main className="relative min-h-screen bg-[#050505] text-[#f0f0f0] font-sans overflow-hidden flex flex-col selection:bg-purple-500 selection:text-white">
       
-      {/* ATMOSPHERE */}
+      {/* ATMOSPHERE - Cyber Agency */}
       <div className="absolute inset-0 z-0 pointer-events-none">
-        <Image src="/images/profile-bg.jpg" alt="Data Core" fill priority className="object-cover opacity-10 grayscale contrast-150 mix-blend-screen" />
+        <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-purple-600/10 blur-[150px] rounded-full mix-blend-screen" />
         <div className="absolute inset-0 bg-gradient-to-b from-[#050505]/90 via-[#050505]/60 to-[#050505]/95" />
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay" />
       </div>
       <SoundPrompter />
       <Background />
 
-      {/* TOP HUD - Brutalist Architecture */}
+      {/* TOP HUD - 1px Grid */}
       <header className="relative z-50 flex-none border-b border-white/10 bg-[#050505]/90 backdrop-blur-md">
         <div className="px-6 md:px-10 py-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <TransitionLink href="/dashboard" className="flex items-center gap-4 group">
-            <div className="w-10 h-10 border border-white/20 bg-white/5 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-colors">
-              <ArrowLeft size={18} className="text-white group-hover:text-black" />
+            <div className="w-10 h-10 border border-cyan-500/30 bg-white/5 flex items-center justify-center group-hover:bg-cyan-500 group-hover:text-black transition-colors shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+              <ArrowLeft size={18} className="text-cyan-400 group-hover:text-black" />
             </div>
-            <span className="text-xs font-mono text-neutral-400 uppercase tracking-widest group-hover:text-white transition-colors">Terminal Return</span>
+            <span className="text-xs font-mono text-neutral-400 uppercase tracking-widest group-hover:text-cyan-400 transition-colors">Command Center</span>
           </TransitionLink>
 
-          <div className="flex flex-wrap items-center gap-6 border border-white/10 p-2 bg-white/5">
+          <div className="flex flex-wrap items-center gap-6 border border-white/10 p-2 bg-white/5 backdrop-blur-sm">
             <div className="text-right px-4">
-              <span className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest block mb-1">Liquid Capital</span>
+              <span className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest block mb-1">Ledger Balance</span>
               <div className="flex items-center gap-2">
-                <Database size={14} className="text-white/50" />
+                <Database size={14} className="text-cyan-500/50" />
                 <span className="text-xl font-mono text-white leading-none">{popCoins.toLocaleString()}</span>
               </div>
             </div>
@@ -186,17 +188,17 @@ export default function DossierPage() {
             
             <div className="text-right px-4">
               <span className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest block mb-1">Assets Owned</span>
-              <span className="text-xl font-mono text-white leading-none">{ownedCount}/{totalSkins}</span>
+              <span className="text-xl font-mono text-white leading-none">{ownedCount}/{totalIdentities}</span>
             </div>
           </div>
         </div>
 
         {/* Tabs - 1px Grid */}
         <div className="flex border-t border-white/10 bg-[#050505]">
-          <button onClick={() => setActiveTab("ALLOCATE")} className={cn("flex-1 py-4 text-xs font-mono uppercase tracking-widest transition-colors border-r border-white/10", activeTab === "ALLOCATE" ? "bg-white text-black font-bold" : "text-neutral-500 hover:text-white hover:bg-white/5")}>
-            <ShoppingCart size={14} className="inline mr-2 mb-0.5" /> Asset_Market
+          <button onClick={() => setActiveTab("ALLOCATE")} className={cn("flex-1 py-4 text-xs font-mono uppercase tracking-widest transition-colors border-r border-white/10", activeTab === "ALLOCATE" ? "bg-cyan-600 text-black font-bold" : "text-neutral-500 hover:text-cyan-400 hover:bg-cyan-950/20")}>
+            <ShoppingCart size={14} className="inline mr-2 mb-0.5" /> Identity_Market
           </button>
-          <button onClick={() => setActiveTab("SETTINGS")} className={cn("flex-1 py-4 text-xs font-mono uppercase tracking-widest transition-colors", activeTab === "SETTINGS" ? "bg-white text-black font-bold" : "text-neutral-500 hover:text-white hover:bg-white/5")}>
+          <button onClick={() => setActiveTab("SETTINGS")} className={cn("flex-1 py-4 text-xs font-mono uppercase tracking-widest transition-colors", activeTab === "SETTINGS" ? "bg-cyan-600 text-black font-bold" : "text-neutral-500 hover:text-cyan-400 hover:bg-cyan-950/20")}>
             <Settings size={14} className="inline mr-2 mb-0.5" /> System_Protocols
           </button>
         </div>
@@ -209,9 +211,9 @@ export default function DossierPage() {
         <aside className="w-full lg:w-[400px] flex flex-col bg-[#050505] p-6 md:p-10 shrink-0">
           
           {/* AVATAR PREVIEW */}
-          <div className="relative border border-white/10 bg-white/5 p-8 flex flex-col items-center text-center mb-6">
+          <div className="relative border border-white/10 bg-white/5 p-8 flex flex-col items-center text-center mb-6 shadow-xl backdrop-blur-md">
             <div className="relative w-48 h-48 mb-8">
-              <div className="absolute inset-0 border border-white/20 animate-pulse" />
+              <div className="absolute inset-0 border border-cyan-500/40 animate-pulse shadow-[0_0_20px_rgba(6,182,212,0.3)]" />
               <Image 
                 src={currentAvatar} 
                 alt="Identity" 
@@ -221,30 +223,30 @@ export default function DossierPage() {
               <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent" />
             </div>
 
-            <HackerText text={username} className="text-2xl font-medium tracking-widest mb-4 uppercase" />
+            <HackerText text={username} className="text-2xl font-medium tracking-widest mb-4 uppercase text-white" />
 
             <div className="w-full border-t border-white/10 pt-4 flex justify-between items-center text-xs font-mono uppercase text-neutral-400 mb-8">
-              <span>Class // {tier}</span>
-              <span>Yield // {(userData as any).dailyTracker?.bountiesClaimed || 0} Tx</span>
+              <span>Tier // {tier}</span>
+              <span className="text-cyan-400">Contracts // {(userData as any).dailyTracker?.tasksCompleted || 0}</span>
             </div>
 
             <Button 
               onClick={() => { setNewUsername(username); setShowNameEdit(true); play("click"); }}
-              className="w-full h-12 bg-transparent border border-white/20 text-white hover:bg-white hover:text-black text-[10px] font-mono uppercase tracking-widest rounded-none transition-colors"
+              className="w-full h-12 bg-transparent border border-white/20 text-white hover:border-cyan-500 hover:text-cyan-400 text-[10px] font-mono uppercase tracking-widest rounded-none transition-colors"
             >
-              <Pencil size={14} className="mr-2" /> Modify ID
+              <Pencil size={14} className="mr-2" /> Modify Alias
             </Button>
           </div>
 
           {/* QUICK STATS */}
-          <div className="grid grid-cols-2 gap-px bg-white/10 border border-white/10">
-            <div className="bg-[#050505] p-6 text-center hover:bg-white/5 transition-colors">
-              <Sparkles size={18} className="text-white/50 mx-auto mb-3" />
+          <div className="grid grid-cols-2 gap-px bg-white/10 border border-white/10 shadow-xl">
+            <div className="bg-[#050505] p-6 text-center hover:bg-cyan-950/20 transition-colors">
+              <Briefcase size={18} className="text-purple-400 mx-auto mb-3" />
               <span className="block text-[9px] font-mono text-neutral-500 uppercase tracking-widest">Inventory</span>
               <span className="text-2xl font-mono text-white">{ownedCount}</span>
             </div>
-            <div className="bg-[#050505] p-6 text-center hover:bg-white/5 transition-colors">
-              <Activity size={18} className="text-white mx-auto mb-3 animate-pulse" />
+            <div className="bg-[#050505] p-6 text-center hover:bg-cyan-950/20 transition-colors">
+              <Activity size={18} className="text-cyan-400 mx-auto mb-3 animate-pulse" />
               <span className="block text-[9px] font-mono text-neutral-500 uppercase tracking-widest">Network Status</span>
               <span className="text-lg font-mono text-white">OPTIMAL</span>
             </div>
@@ -257,33 +259,33 @@ export default function DossierPage() {
           {activeTab === "ALLOCATE" && (
             <div className="flex flex-col h-full">
               <div className="p-8 md:p-10 border-b border-white/10 shrink-0">
-                <HackerText text="Asset_Allocation" className="text-[5vw] md:text-4xl font-medium tracking-tighter uppercase mb-2" />
-                <p className="text-xs font-mono text-neutral-500 uppercase tracking-widest">Acquire identity modules to modify digital presence.</p>
+                <HackerText text="Identity_Market" className="text-[5vw] md:text-4xl font-medium tracking-tighter uppercase mb-2 text-white" />
+                <p className="text-xs font-mono text-cyan-500/80 uppercase tracking-widest">Acquire operative assets to modify digital presence.</p>
               </div>
 
               <ScrollArea className="flex-1">
                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-px bg-white/10 border-b border-white/10 pb-32">
-                  {SKIN_DB.map((skin) => {
-                      const isOwned = skin.type === "standard" || inventory.some((item: any) => item.itemId === skin.id);
-                      const isEquipped = currentAvatar === skin.src;
-                      const isAffordable = popCoins >= skin.cost;
-                      const isBuying = buyingId === skin.id;
-                      const rarityStyle = getRarityStyle(skin.rarity || "common");
+                  {IDENTITY_DB.map((identity) => {
+                      const isOwned = identity.type === "standard" || inventory.some((item: any) => item.itemId === identity.id);
+                      const isEquipped = currentAvatar === identity.src;
+                      const isAffordable = popCoins >= identity.cost;
+                      const isBuying = buyingId === identity.id;
+                      const rarityStyle = getRarityStyle(identity.rarity || "common");
 
                       return (
                           <div 
-                              key={skin.id} 
-                              onClick={() => handlePurchaseOrEquip(skin)}
+                              key={identity.id} 
+                              onClick={() => handlePurchaseOrEquip(identity)}
                               className={cn(
                                   "group relative aspect-square bg-[#050505] overflow-hidden cursor-pointer transition-colors duration-500",
-                                  isEquipped ? "bg-white/10" : "hover:bg-white/5"
+                                  isEquipped ? "bg-cyan-950/20" : "hover:bg-cyan-900/10"
                               )}
                           >
                               {/* Image */}
                               <div className="absolute inset-0 z-0">
                                 <Image 
-                                    src={skin.src} 
-                                    alt={skin.name} 
+                                    src={identity.src} 
+                                    alt={identity.name} 
                                     fill 
                                     className={cn("object-cover transition-all duration-700 mix-blend-screen", !isOwned && "grayscale opacity-30", "group-hover:grayscale-0 group-hover:opacity-70 group-hover:scale-105")} 
                                 />
@@ -293,14 +295,14 @@ export default function DossierPage() {
                               {/* Rarity Tag */}
                               <div className="absolute top-4 left-4 z-10">
                                 <div className={cn("px-2 py-1 text-[8px] font-mono font-bold uppercase tracking-widest border", rarityStyle.border, rarityStyle.bg)}>
-                                  {skin.rarity}
+                                  {identity.rarity}
                                 </div>
                               </div>
 
                               {/* Equipped Badge */}
                               {isEquipped && (
                                 <div className="absolute top-4 right-4 z-10">
-                                  <div className="bg-white text-black px-2 py-1 text-[8px] font-mono font-bold uppercase tracking-widest flex items-center gap-1">
+                                  <div className="bg-cyan-500 text-black px-2 py-1 text-[8px] font-mono font-black uppercase tracking-widest flex items-center gap-1 shadow-[0_0_10px_rgba(6,182,212,0.5)]">
                                     <Check size={10} /> Active
                                   </div>
                                 </div>
@@ -308,18 +310,18 @@ export default function DossierPage() {
 
                               {/* Bottom Panel */}
                               <div className="absolute bottom-0 left-0 right-0 p-6 flex flex-col z-10">
-                                <h3 className="text-sm font-medium uppercase tracking-widest text-white mb-2">{skin.name}</h3>
+                                <h3 className="text-sm font-medium uppercase tracking-widest text-white mb-2">{identity.name}</h3>
                                 
                                 {isBuying ? (
-                                  <div className="text-white font-mono text-[10px] animate-pulse uppercase tracking-widest border border-white/20 p-2 text-center">Processing...</div>
+                                  <div className="text-cyan-400 font-mono text-[10px] animate-pulse uppercase tracking-widest border border-cyan-500/50 p-2 text-center bg-cyan-950/50">Processing...</div>
                                 ) : isOwned ? (
-                                  <div className="text-neutral-400 font-mono text-[10px] uppercase tracking-widest border border-white/20 p-2 text-center group-hover:border-white group-hover:text-white transition-colors">
+                                  <div className="text-neutral-400 font-mono text-[10px] uppercase tracking-widest border border-white/20 p-2 text-center group-hover:border-cyan-500 group-hover:text-cyan-400 transition-colors">
                                     {isEquipped ? "Installed" : "Initialize"}
                                   </div>
                                 ) : (
-                                  <div className={cn("font-mono text-xs flex items-center justify-between border p-2 transition-colors", isAffordable ? "border-white/40 text-white group-hover:bg-white group-hover:text-black" : "border-white/10 text-neutral-600")}>
+                                  <div className={cn("font-mono text-xs flex items-center justify-between border p-2 transition-colors", isAffordable ? "border-cyan-500/50 text-cyan-400 group-hover:bg-cyan-600 group-hover:text-black" : "border-white/10 text-neutral-600")}>
                                     <span className="uppercase tracking-widest text-[9px]">Acquire</span>
-                                    <span>{skin.cost.toLocaleString()}</span>
+                                    <span>{identity.cost.toLocaleString()}</span>
                                   </div>
                                 )}
                               </div>
@@ -334,8 +336,8 @@ export default function DossierPage() {
           {/* SETTINGS TAB */}
           {activeTab === "SETTINGS" && (
             <div className="flex-1 flex items-center justify-center p-6">
-              <div className="w-full max-w-xl bg-[#050505] border border-white/20 p-12">
-                <HackerText text="System_Protocols" className="text-2xl font-medium tracking-widest uppercase mb-10" />
+              <div className="w-full max-w-xl bg-[#050505] border border-white/10 p-12 shadow-2xl backdrop-blur-md">
+                <HackerText text="System_Protocols" className="text-2xl font-medium tracking-widest uppercase mb-10 text-cyan-400" />
 
                 {/* Instagram Bind */}
                 <div className="space-y-6">
@@ -349,13 +351,13 @@ export default function DossierPage() {
                         onChange={(e) => setIgHandle(e.target.value)}
                         placeholder="@INSTAGRAM_HANDLE"
                         disabled={!!userData?.instagramHandle}
-                        className="h-14 bg-transparent border-white/20 text-white font-mono text-sm uppercase focus:border-white rounded-none"
+                        className="h-14 bg-transparent border-white/20 text-white font-mono text-sm uppercase focus:border-cyan-500 rounded-none transition-colors"
                     />
                     {!userData?.instagramHandle && (
                         <Button 
                           onClick={handleBindInstagram} 
                           disabled={isBinding}
-                          className="h-14 bg-white text-black hover:bg-neutral-200 text-[10px] font-mono font-bold uppercase tracking-[0.2em] rounded-none"
+                          className="h-14 bg-cyan-600 text-black hover:bg-cyan-500 text-[10px] font-mono font-black uppercase tracking-[0.2em] rounded-none shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all"
                         >
                           {isBinding ? "TRANSMITTING..." : "VERIFY ASSET"}
                         </Button>
@@ -363,7 +365,7 @@ export default function DossierPage() {
                   </div>
                   
                   {userData?.instagramHandle && (
-                    <div className="p-4 border border-white/20 bg-white/5 flex items-center gap-3 text-xs font-mono uppercase text-white">
+                    <div className="p-4 border border-cyan-500/30 bg-cyan-950/20 flex items-center gap-3 text-xs font-mono uppercase text-cyan-400 shadow-inner">
                       <CheckCircle2 size={16} /> Asset Linked // @{userData.instagramHandle}
                     </div>
                   )}
@@ -373,7 +375,7 @@ export default function DossierPage() {
 
                 <Button 
                   onClick={handleLogout} 
-                  className="w-full h-14 bg-transparent border border-white/20 text-white hover:bg-white hover:text-black font-mono text-[10px] uppercase tracking-[0.2em] rounded-none transition-colors"
+                  className="w-full h-14 bg-transparent border border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white font-mono text-[10px] uppercase tracking-[0.2em] rounded-none transition-colors"
                 >
                   <LogOut size={14} className="mr-3" /> Terminate Session
                 </Button>
@@ -383,11 +385,11 @@ export default function DossierPage() {
         </section>
       </div>
 
-      {/* NAME EDIT MODAL - Brutalist Overlay */}
+      {/* ALIAS EDIT MODAL - Cyber Overlay */}
       {showNameEdit && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#050505]/95 backdrop-blur-md p-6">
-          <div className="w-full max-w-lg bg-[#050505] border border-white/20 p-10">
-            <HackerText text="Operator_Reassignment" className="text-xl font-medium tracking-widest uppercase mb-8" />
+          <div className="w-full max-w-lg bg-[#050505] border border-cyan-500/40 p-10 shadow-[0_0_40px_rgba(6,182,212,0.15)]">
+            <HackerText text="Operator_Reassignment" className="text-xl font-medium tracking-widest uppercase mb-8 text-white" />
             
             <label className="block text-[10px] font-mono text-neutral-500 uppercase tracking-widest mb-3">
               New Identifier
@@ -395,12 +397,12 @@ export default function DossierPage() {
             <Input 
               value={newUsername} 
               onChange={(e) => setNewUsername(e.target.value.toUpperCase())} 
-              className="h-16 text-lg bg-transparent border-white/30 text-white focus:border-white font-mono uppercase tracking-widest rounded-none mb-8"
+              className="h-16 text-lg bg-transparent border-white/20 text-cyan-400 focus:border-cyan-500 font-mono uppercase tracking-widest rounded-none mb-8 transition-colors"
               placeholder="ENTER_ID"
             />
             
             <div className="flex gap-4">
-              <Button onClick={handleNameUpdate} className="flex-1 h-14 bg-white text-black hover:bg-neutral-200 font-mono text-[10px] uppercase tracking-[0.2em] rounded-none">
+              <Button onClick={handleNameUpdate} className="flex-1 h-14 bg-cyan-600 text-black hover:bg-cyan-500 font-mono font-black text-[10px] uppercase tracking-[0.2em] rounded-none shadow-[0_0_15px_rgba(6,182,212,0.3)]">
                 Execute
               </Button>
               <Button onClick={() => setShowNameEdit(false)} className="flex-1 h-14 bg-transparent border border-white/20 text-neutral-400 hover:text-white hover:border-white font-mono text-[10px] uppercase tracking-[0.2em] rounded-none">

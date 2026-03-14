@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { doc, writeBatch, collection } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { NICHE_DATA } from "@/lib/niche-data"; 
+import { MARKETING_PACKAGES } from "@/lib/niche-data";
 import { Button } from "@/components/ui/button";
 import { Database, CheckCircle2, AlertTriangle, Loader2, Users } from "lucide-react";
 import { toast } from "sonner";
@@ -20,11 +20,11 @@ export default function DatabaseSeeder() {
     setLoading(true);
     try {
       const batch = writeBatch(db);
-      Object.entries(NICHE_DATA).forEach(([id, data]) => {
-        const ref = doc(db, "sectors", id); 
+      Object.keys(MARKETING_PACKAGES).forEach((key) => {
+        const ref = doc(db, "sectors", key); 
         // Destructure to remove the React Icon component before saving
         // @ts-ignore
-        const { icon, ...cleanData } = data; 
+        const { icon, ...cleanData } = MARKETING_PACKAGES[key]; 
         batch.set(ref, { ...cleanData, lastUpdated: new Date().toISOString() });
       });
       await batch.commit();
